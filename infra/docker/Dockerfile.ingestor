@@ -2,12 +2,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
+RUN groupadd --gid 1001 ingestor \
+    && useradd --uid 1001 --gid 1001 --no-create-home ingestor
+
 COPY apps/ingestor/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source
 COPY apps/ingestor/ .
 
-# Run
+USER ingestor
 CMD ["python", "-m", "src.main"]

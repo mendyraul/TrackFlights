@@ -1,5 +1,9 @@
 # Database Schema
 
+## Supabase Structure
+
+All data lives in a single Supabase Postgres database. The frontend connects with the anon key (read-only via RLS). The ingestor connects with the service role key (full access).
+
 ## Entity Relationship
 
 ```
@@ -14,45 +18,93 @@ airports            analytics_hourly
 ## Tables
 
 ### flights_current
-Live state of all active flights (in-air, scheduled, taxiing).
-- Primary key: `id` (UUID)
-- Unique constraint: `flight_iata + scheduled_departure`
-- Realtime enabled for frontend subscriptions
-- Rows are moved to `flights_history` once completed/cancelled
+
+Live state of all active flights. **Realtime enabled** — the frontend subscribes to changes on this table via WebSocket.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| flight_iata | VARCHAR(10) | Flight number (e.g., AA100) |
+| flight_icao | VARCHAR(10) | ICAO flight ID |
+| airline_iata | VARCHAR(3) | Airline code → airlines.iata_code |
+| airline_name | VARCHAR(255) | Airline display name |
+| aircraft_icao | VARCHAR(10) | Aircraft type code |
+| aircraft_registration | VARCHAR(20) | Tail number |
+| direction | ENUM | 'arrival' or 'departure' |
+| origin_iata / destination_iata | VARCHAR(3) | Route endpoints |
+| scheduled_departure / arrival | TIMESTAMPTZ | Scheduled times |
+| actual_departure / arrival | TIMESTAMPTZ | Actual times |
+| estimated_arrival | TIMESTAMPTZ | Current ETA |
+| status | ENUM | scheduled, en_route, landed, arrived, departed, cancelled, diverted, delayed, unknown |
+| delay_minutes | INTEGER | Delay in minutes |
+| latitude / longitude | DOUBLE | Current position |
+| altitude_ft | INTEGER | Altitude in feet |
+| heading | DOUBLE | Heading in degrees |
+| ground_speed_knots | INTEGER | Ground speed |
+| vertical_speed_fpm | INTEGER | Vertical speed |
+| departure_terminal / gate | VARCHAR | Terminal and gate |
+| arrival_terminal / gate | VARCHAR | Terminal and gate |
+| baggage_belt | VARCHAR | Baggage carousel |
+| data_source | VARCHAR(50) | Which provider supplied this data |
+| updated_at | TIMESTAMPTZ | Auto-updated via trigger |
+
+**Unique constraint**: `(flight_iata, scheduled_departure)` — used for upserts.
 
 ### flights_history
-Archived flights for analytics and historical queries.
-- Same schema as `flights_current` plus `archived_at`
-- Partitioned by month (future optimization)
+
+Same schema as `flights_current` plus `archived_at`. Rows are moved here after completion.
 
 ### airlines
-Reference table for airline metadata.
-- IATA code, ICAO code, name, logo URL
+
+Reference table with IATA/ICAO codes, name, logo URL, country. Seeded with 15 MIA carriers.
 
 ### aircraft
-Reference table for aircraft types.
-- ICAO type code, model name, manufacturer, category
+
+Reference table with ICAO type code, model, manufacturer, category.
 
 ### airports
-Reference table (primarily MIA, but includes origin/destination airports).
-- IATA, ICAO, name, lat, lng, timezone
 
-### analytics_hourly
-Pre-computed hourly metrics for dashboard performance.
-- on_time_arrivals, delayed_arrivals, cancelled, diverted, avg_delay_minutes
+Reference table. MIA is seeded by default.
 
-### analytics_daily
-Daily rollups of analytics_hourly.
+### analytics_hourly / analytics_daily
 
-## Indexes
+Pre-computed aggregations for the dashboard. Each row contains:
+- total_flights, on_time, delayed, cancelled, diverted
+- avg_delay_minutes, max_delay_minutes
+- (daily only) top_delayed_airline, busiest_hour
 
-- `flights_current(flight_iata)` — search by flight number
-- `flights_current(airline_iata)` — filter by airline
-- `flights_current(status)` — filter by status
-- `flights_current(scheduled_arrival)` — sort by arrival time
-- `flights_history(archived_at)` — time-range queries
+## Realtime
+
+`flights_current` is added to the `supabase_realtime` publication. The frontend subscribes:
+
+```typescript
+supabase.channel("flights_current_changes")
+  .on("postgres_changes", { event: "*", schema: "public", table: "flights_current" }, callback)
+  .subscribe();
+```
 
 ## Row Level Security
 
-- Anonymous users: SELECT on all tables (read-only public dashboard)
-- Service role (ingestor): Full CRUD on all tables
+- All tables have RLS enabled
+- Anonymous (anon key): SELECT only on all tables
+- Service role (ingestor): Full CRUD (bypasses RLS by default)
+
+## Indexes
+
+Optimized for the frontend's primary query patterns:
+- `flight_iata` — search by flight number
+- `airline_iata` — filter by airline
+- `status` — filter by status
+- `direction` — arrivals vs departures
+- `scheduled_arrival/departure` — sort by time
+- `updated_at` — freshness queries
+
+## Frontend Queries
+
+The web app makes these primary queries:
+
+1. **Map & Table**: `SELECT * FROM flights_current ORDER BY updated_at DESC`
+2. **Analytics hourly**: `SELECT * FROM analytics_hourly ORDER BY hour DESC LIMIT 48`
+3. **Analytics daily**: `SELECT * FROM analytics_daily ORDER BY date DESC LIMIT 30`
+
+All subsequent updates come through the realtime subscription — no polling needed.

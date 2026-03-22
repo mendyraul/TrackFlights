@@ -2,25 +2,46 @@
 
 import asyncio
 import signal
-import sys
 
 import structlog
 
 from src.config import settings
-from src.services.ingestor import FlightIngestor
+from src.providers.base_provider import BaseFlightProvider
+from src.providers.aviationstack_provider import AviationStackProvider
+from src.providers.example_provider import ExampleProvider
+from src.worker.poller import Poller
 
 logger = structlog.get_logger()
+
+PROVIDERS: dict[str, type[BaseFlightProvider]] = {
+    "aviationstack": AviationStackProvider,
+    "example": ExampleProvider,
+}
+
+
+def get_provider() -> BaseFlightProvider:
+    """Instantiate the configured flight data provider."""
+    name = settings.flight_provider
+    cls = PROVIDERS.get(name)
+    if cls is None:
+        raise ValueError(
+            f"Unknown provider '{name}'. Available: {list(PROVIDERS.keys())}"
+        )
+    return cls()
 
 
 async def main() -> None:
     """Run the ingestion loop."""
+    provider = get_provider()
+    poller = Poller(provider)
+
     logger.info(
         "Starting MIA Flight Ingestor",
+        provider=provider.name,
         poll_interval=settings.poll_interval_seconds,
         airport=settings.mia_iata_code,
     )
 
-    ingestor = FlightIngestor()
     shutdown = asyncio.Event()
 
     def handle_signal(sig: int, _frame: object) -> None:
@@ -32,14 +53,17 @@ async def main() -> None:
 
     while not shutdown.is_set():
         try:
-            await ingestor.poll_and_upsert()
+            stats = await poller.execute()
+            logger.info("Cycle stats", **stats)
         except Exception:
             logger.exception("Error during poll cycle")
 
         try:
-            await asyncio.wait_for(shutdown.wait(), timeout=settings.poll_interval_seconds)
+            await asyncio.wait_for(
+                shutdown.wait(), timeout=settings.poll_interval_seconds
+            )
         except asyncio.TimeoutError:
-            pass  # Normal: timeout means time to poll again
+            pass  # Normal: time to poll again
 
     logger.info("Ingestor shutdown complete")
 

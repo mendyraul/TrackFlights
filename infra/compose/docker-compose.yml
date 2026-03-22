@@ -1,24 +1,10 @@
 version: "3.8"
 
-services:
-  # Local Supabase (Postgres + API)
-  supabase-db:
-    image: supabase/postgres:15.1.1.41
-    ports:
-      - "54322:5432"
-    environment:
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
-    volumes:
-      - supabase-db-data:/var/lib/postgresql/data
-      - ../../supabase/migrations:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+# Docker Compose for local development.
+# Supabase is expected to be external (cloud or local CLI).
+# Set environment variables in ../.env or pass via shell.
 
-  # Next.js frontend (dev mode)
+services:
   web:
     build:
       context: ../..
@@ -26,27 +12,19 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-your-anon-key}
-    depends_on:
-      supabase-db:
-        condition: service_healthy
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    restart: unless-stopped
 
-  # Python ingestor
   ingestor:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.ingestor
     environment:
-      SUPABASE_URL: http://localhost:54321
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-your-service-role-key}
-      FLIGHT_API_KEY: ${FLIGHT_API_KEY:-your-api-key}
-      FLIGHT_API_BASE_URL: ${FLIGHT_API_BASE_URL:-https://api.aviationstack.com/v1}
-      POLL_INTERVAL_SECONDS: "30"
-    depends_on:
-      supabase-db:
-        condition: service_healthy
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - FLIGHT_API_KEY=${FLIGHT_API_KEY}
+      - FLIGHT_API_BASE_URL=${FLIGHT_API_BASE_URL:-https://api.aviationstack.com/v1}
+      - FLIGHT_PROVIDER=${FLIGHT_PROVIDER:-aviationstack}
+      - POLL_INTERVAL_SECONDS=${POLL_INTERVAL_SECONDS:-60}
     restart: unless-stopped
-
-volumes:
-  supabase-db-data:

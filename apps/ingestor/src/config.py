@@ -7,8 +7,11 @@ class Settings(BaseSettings):
     supabase_service_role_key: str
 
     # Flight API
-    flight_api_key: str
+    flight_api_key: str = ""
     flight_api_base_url: str = "https://api.aviationstack.com/v1"
+
+    # Provider: "aviationstack" or "example" (mock data for dev)
+    flight_provider: str = "aviationstack"
 
     # Ingestion
     poll_interval_seconds: int = 60
