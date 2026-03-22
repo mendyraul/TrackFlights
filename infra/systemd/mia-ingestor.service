@@ -1,0 +1,23 @@
+[Unit]
+Description=MIA Flight Tracker - Ingestion Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/mia-flight-tracker/apps/ingestor
+EnvironmentFile=/home/pi/mia-flight-tracker/.env
+ExecStart=/home/pi/mia-flight-tracker/apps/ingestor/venv/bin/python -m src.main
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Resource limits
+MemoryMax=256M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

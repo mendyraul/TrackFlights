@@ -1,0 +1,17 @@
+[project]
+id = "mia-flight-tracker"
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[api]
+enabled = true
+port = 54321
+
+[realtime]
+enabled = true

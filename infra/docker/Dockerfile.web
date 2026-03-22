@@ -1,0 +1,31 @@
+FROM node:18-alpine AS base
+
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json* ./
+COPY apps/web/package.json apps/web/
+COPY packages/shared-types/package.json packages/shared-types/
+RUN npm ci
+
+# Copy source
+COPY apps/web/ apps/web/
+COPY packages/shared-types/ packages/shared-types/
+COPY tsconfig.json ./
+
+# Build
+WORKDIR /app/apps/web
+RUN npm run build
+
+# Production
+FROM node:18-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY --from=base /app/apps/web/.next/standalone ./
+COPY --from=base /app/apps/web/.next/static ./.next/static
+COPY --from=base /app/apps/web/public ./public
+
+EXPOSE 3000
+CMD ["node", "server.js"]

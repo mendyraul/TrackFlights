@@ -1,0 +1,17 @@
+{
+  "name": "mia-flight-tracker",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/shared-types"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspace=apps/web",
+    "lint": "npm run lint --workspace=apps/web",
+    "type-check": "tsc --noEmit --project apps/web/tsconfig.json"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
