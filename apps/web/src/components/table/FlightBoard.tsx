@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { useFlights } from "@/hooks/useFlights";
-import type { Flight, FlightDirection } from "@/types/database";
+import { ConnectionBadge } from "@/components/ui/ConnectionBadge";
+import type { Flight, FlightDirection, FlightStatus } from "@/types/database";
 
 type SortField =
   | "flight_iata"
@@ -13,6 +14,17 @@ type SortField =
   | "status"
   | "gate";
 type SortDir = "asc" | "desc";
+
+const ALL_STATUSES: { value: FlightStatus | ""; label: string }[] = [
+  { value: "", label: "Any Status" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "en_route", label: "En Route" },
+  { value: "landed", label: "Landed" },
+  { value: "departed", label: "Departed" },
+  { value: "delayed", label: "Delayed" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "diverted", label: "Diverted" },
+];
 
 function formatTime(iso: string | null): string {
   if (!iso) return "--:--";
@@ -45,7 +57,11 @@ function statusBadge(status: Flight["status"]) {
   );
 }
 
-function getSortValue(flight: Flight, field: SortField, direction: FlightDirection): string {
+function getSortValue(
+  flight: Flight,
+  field: SortField,
+  direction: FlightDirection
+): string {
   switch (field) {
     case "flight_iata":
       return flight.flight_iata;
@@ -56,28 +72,43 @@ function getSortValue(flight: Flight, field: SortField, direction: FlightDirecti
         ? flight.origin_iata || ""
         : flight.destination_iata || "";
     case "scheduled":
-      return (direction === "arrival"
-        ? flight.scheduled_arrival
-        : flight.scheduled_departure) || "";
+      return (
+        (direction === "arrival"
+          ? flight.scheduled_arrival
+          : flight.scheduled_departure) || ""
+      );
     case "estimated":
-      return (direction === "arrival"
-        ? flight.estimated_arrival || flight.actual_arrival
-        : flight.actual_departure) || "";
+      return (
+        (direction === "arrival"
+          ? flight.estimated_arrival || flight.actual_arrival
+          : flight.actual_departure) || ""
+      );
     case "status":
       return flight.status;
     case "gate":
-      return (direction === "arrival"
-        ? flight.arrival_gate
-        : flight.departure_gate) || "";
+      return (
+        (direction === "arrival"
+          ? flight.arrival_gate
+          : flight.departure_gate) || ""
+      );
     default:
       return "";
   }
 }
 
 export function FlightBoard() {
-  const { flights, loading, error } = useFlights();
+  const {
+    flights,
+    loading,
+    error,
+    connectionStatus,
+    lastUpdate,
+    recentlyChanged,
+  } = useFlights();
   const [direction, setDirection] = useState<FlightDirection>("arrival");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<FlightStatus | "">("");
+  const [airlineFilter, setAirlineFilter] = useState("");
   const [sort, setSort] = useState<{ field: SortField; dir: SortDir }>({
     field: "scheduled",
     dir: "asc",
@@ -92,14 +123,30 @@ export function FlightBoard() {
   };
 
   const sortIndicator = (field: SortField) => {
-    if (sort.field !== field) return <span className="text-gray-600 ml-1">↕</span>;
-    return <span className="text-mia-accent ml-1">{sort.dir === "asc" ? "↑" : "↓"}</span>;
+    if (sort.field !== field)
+      return <span className="ml-1 text-gray-600">↕</span>;
+    return (
+      <span className="ml-1 text-mia-accent">
+        {sort.dir === "asc" ? "↑" : "↓"}
+      </span>
+    );
   };
+
+  // Unique airlines for filter
+  const airlines = useMemo(() => {
+    const codes = new Set<string>();
+    for (const f of flights) {
+      if (f.airline_iata) codes.add(f.airline_iata);
+    }
+    return [...codes].sort();
+  }, [flights]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return flights
       .filter((f) => f.direction === direction)
+      .filter((f) => !statusFilter || f.status === statusFilter)
+      .filter((f) => !airlineFilter || f.airline_iata === airlineFilter)
       .filter(
         (f) =>
           !q ||
@@ -116,7 +163,7 @@ export function FlightBoard() {
         const cmp = aVal.localeCompare(bVal);
         return sort.dir === "asc" ? cmp : -cmp;
       });
-  }, [flights, direction, search, sort]);
+  }, [flights, direction, search, statusFilter, airlineFilter, sort]);
 
   if (loading) {
     return (
@@ -132,7 +179,7 @@ export function FlightBoard() {
   return (
     <div className="p-6">
       {/* Board header */}
-      <div className="mb-4 flex flex-wrap items-center gap-4">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         {/* Direction toggle */}
         <div className="flex overflow-hidden rounded-lg border border-gray-700">
           {(["arrival", "departure"] as FlightDirection[]).map((dir) => (
@@ -150,6 +197,33 @@ export function FlightBoard() {
           ))}
         </div>
 
+        {/* Status filter */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as FlightStatus | "")}
+          className="rounded-lg border border-gray-700 bg-mia-panel px-3 py-2.5 text-sm text-gray-200"
+        >
+          {ALL_STATUSES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+
+        {/* Airline filter */}
+        <select
+          value={airlineFilter}
+          onChange={(e) => setAirlineFilter(e.target.value)}
+          className="rounded-lg border border-gray-700 bg-mia-panel px-3 py-2.5 text-sm text-gray-200"
+        >
+          <option value="">All Airlines</option>
+          {airlines.map((code) => (
+            <option key={code} value={code}>
+              {code}
+            </option>
+          ))}
+        </select>
+
         {/* Search */}
         <div className="relative">
           <input
@@ -157,7 +231,7 @@ export function FlightBoard() {
             placeholder="Search flight, airline, city..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-64 rounded-lg border border-gray-700 bg-mia-panel pl-9 pr-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:border-mia-accent focus:outline-none"
+            className="w-56 rounded-lg border border-gray-700 bg-mia-panel pl-9 pr-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:border-mia-accent focus:outline-none"
           />
           <svg
             className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500"
@@ -174,13 +248,10 @@ export function FlightBoard() {
           </svg>
         </div>
 
-        {/* Live badge + count */}
+        {/* Connection status + count */}
         <div className="ml-auto flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-xs text-gray-500">Auto-updating</span>
-          </div>
-          <span className="rounded bg-mia-dark px-2 py-1 text-xs text-gray-400">
+          <ConnectionBadge status={connectionStatus} lastUpdate={lastUpdate} />
+          <span className="rounded bg-mia-dark px-2.5 py-1 text-xs font-medium text-gray-400">
             {filtered.length} flights
           </span>
         </div>
@@ -195,7 +266,7 @@ export function FlightBoard() {
       {/* Table */}
       <div className="overflow-x-auto rounded-lg border border-gray-800">
         <table className="w-full text-sm">
-          <thead className="bg-mia-panel text-gray-400 text-xs uppercase tracking-wider">
+          <thead className="bg-mia-panel text-xs uppercase tracking-wider text-gray-400">
             <tr>
               <th
                 className="cursor-pointer px-4 py-3 text-left hover:text-gray-200"
@@ -244,67 +315,74 @@ export function FlightBoard() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800/50">
-            {filtered.map((flight) => (
-              <tr
-                key={flight.id}
-                className="transition-colors hover:bg-gray-800/30"
-              >
-                <td className="px-4 py-3 text-gray-300">
-                  <span className="font-mono text-xs text-mia-accent mr-1.5">
-                    {flight.airline_iata}
-                  </span>
-                  {flight.airline_name || "--"}
-                </td>
-                <td className="px-4 py-3 font-mono font-semibold text-white">
-                  {flight.flight_iata}
-                </td>
-                <td className="px-4 py-3">
-                  <span className="font-mono font-medium">
-                    {direction === "arrival"
-                      ? flight.origin_iata || "--"
-                      : flight.destination_iata || "--"}
-                  </span>
-                  <span className="ml-2 text-xs text-gray-500">
-                    {direction === "arrival"
-                      ? flight.origin_name
-                      : flight.destination_name}
-                  </span>
-                </td>
-                <td className="px-4 py-3 font-mono">
-                  {formatTime(
-                    direction === "arrival"
-                      ? flight.scheduled_arrival
-                      : flight.scheduled_departure
-                  )}
-                </td>
-                <td className="px-4 py-3 font-mono">
-                  {direction === "arrival"
-                    ? formatTime(
-                        flight.estimated_arrival || flight.actual_arrival
-                      )
-                    : formatTime(flight.actual_departure)}
-                  {flight.delay_minutes > 0 && (
-                    <span className="ml-1.5 text-xs text-yellow-400">
-                      +{flight.delay_minutes}m
+            {filtered.map((flight) => {
+              const isChanged = recentlyChanged.has(flight.id);
+              return (
+                <tr
+                  key={flight.id}
+                  className={`transition-all duration-700 ${
+                    isChanged
+                      ? "bg-mia-accent/5 ring-1 ring-inset ring-mia-accent/20"
+                      : "hover:bg-gray-800/30"
+                  }`}
+                >
+                  <td className="px-4 py-3 text-gray-300">
+                    <span className="mr-1.5 font-mono text-xs text-mia-accent">
+                      {flight.airline_iata}
                     </span>
-                  )}
-                </td>
-                <td className="px-4 py-3">{statusBadge(flight.status)}</td>
-                <td className="px-4 py-3 font-mono text-gray-300">
-                  {(direction === "arrival"
-                    ? flight.arrival_gate
-                    : flight.departure_gate) || "--"}
-                </td>
-              </tr>
-            ))}
+                    {flight.airline_name || "--"}
+                  </td>
+                  <td className="px-4 py-3 font-mono font-semibold text-white">
+                    {flight.flight_iata}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono font-medium">
+                      {direction === "arrival"
+                        ? flight.origin_iata || "--"
+                        : flight.destination_iata || "--"}
+                    </span>
+                    <span className="ml-2 text-xs text-gray-500">
+                      {direction === "arrival"
+                        ? flight.origin_name
+                        : flight.destination_name}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 font-mono">
+                    {formatTime(
+                      direction === "arrival"
+                        ? flight.scheduled_arrival
+                        : flight.scheduled_departure
+                    )}
+                  </td>
+                  <td className="px-4 py-3 font-mono">
+                    {direction === "arrival"
+                      ? formatTime(
+                          flight.estimated_arrival || flight.actual_arrival
+                        )
+                      : formatTime(flight.actual_departure)}
+                    {flight.delay_minutes > 0 && (
+                      <span className="ml-1.5 text-xs text-yellow-400">
+                        +{flight.delay_minutes}m
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">{statusBadge(flight.status)}</td>
+                  <td className="px-4 py-3 font-mono text-gray-300">
+                    {(direction === "arrival"
+                      ? flight.arrival_gate
+                      : flight.departure_gate) || "--"}
+                  </td>
+                </tr>
+              );
+            })}
             {filtered.length === 0 && (
               <tr>
                 <td
                   colSpan={7}
                   className="px-4 py-12 text-center text-gray-500"
                 >
-                  {search
-                    ? "No flights match your search"
+                  {search || statusFilter || airlineFilter
+                    ? "No flights match your filters"
                     : "No flights found"}
                 </td>
               </tr>

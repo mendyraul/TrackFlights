@@ -56,11 +56,11 @@ def test_diff_engine_new_flights():
         {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "en_route"},
         {"flight_iata": "DL200", "scheduled_departure": "2024-01-01T11:00:00", "status": "scheduled"},
     ]
-    current_db: list[dict] = []
 
-    diff = compute_diff(incoming, current_db)
-    assert len(diff["new"]) == 2
-    assert len(diff["updated"]) == 0
+    diff = compute_diff(incoming, [])
+    assert len(diff.new) == 2
+    assert len(diff.updated) == 0
+    assert len(diff.removed) == 0
 
 
 def test_diff_engine_detects_changes():
@@ -72,13 +72,61 @@ def test_diff_engine_detects_changes():
     ]
 
     diff = compute_diff(incoming, current_db)
-    assert len(diff["new"]) == 0
-    assert len(diff["updated"]) == 1
+    assert len(diff.new) == 0
+    assert len(diff.updated) == 1
+    assert len(diff.change_details) == 1
+    assert "status" in diff.change_details[0]["changes"]
+    assert diff.change_details[0]["changes"]["status"]["old"] == "en_route"
+    assert diff.change_details[0]["changes"]["status"]["new"] == "landed"
 
 
 def test_diff_engine_unchanged():
-    flight = {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "en_route", "latitude": 28.5}
+    flight = {
+        "flight_iata": "AA100",
+        "scheduled_departure": "2024-01-01T10:00:00",
+        "status": "en_route",
+        "latitude": 28.5,
+    }
     diff = compute_diff([flight], [flight])
-    assert len(diff["unchanged"]) == 1
-    assert len(diff["new"]) == 0
-    assert len(diff["updated"]) == 0
+    assert len(diff.unchanged) == 1
+    assert len(diff.new) == 0
+    assert len(diff.updated) == 0
+
+
+def test_diff_engine_detects_removed():
+    incoming = [
+        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "en_route"},
+    ]
+    current_db = [
+        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "en_route"},
+        {"flight_iata": "DL200", "scheduled_departure": "2024-01-01T11:00:00", "status": "landed"},
+    ]
+
+    diff = compute_diff(incoming, current_db)
+    assert len(diff.removed) == 1
+    assert diff.removed[0]["flight_iata"] == "DL200"
+
+
+def test_diff_engine_deduplicates_incoming():
+    """When incoming has duplicate keys, keep the last occurrence."""
+    incoming = [
+        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "en_route"},
+        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "landed"},
+    ]
+
+    diff = compute_diff(incoming, [])
+    assert len(diff.new) == 1
+    assert diff.new[0]["status"] == "landed"  # Last one wins
+
+
+def test_to_upsert_combines_new_and_updated():
+    incoming = [
+        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "landed"},
+        {"flight_iata": "DL200", "scheduled_departure": "2024-01-01T11:00:00", "status": "scheduled"},
+    ]
+    current_db = [
+        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "en_route"},
+    ]
+
+    diff = compute_diff(incoming, current_db)
+    assert len(diff.to_upsert) == 2  # 1 updated + 1 new

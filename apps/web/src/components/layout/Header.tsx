@@ -8,10 +8,9 @@ export function Header() {
           <span className="text-2xl font-bold text-mia-accent">MIA</span>
           <span className="text-lg text-gray-300">Flight Tracker</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-sm text-gray-400">Live</span>
-        </div>
+        <span className="text-xs text-gray-500">
+          Miami International Airport — Real-time Tracking
+        </span>
       </div>
     </header>
   );

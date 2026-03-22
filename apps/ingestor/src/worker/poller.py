@@ -18,19 +18,29 @@ class Poller:
         1. Fetch arrivals + departures from the provider
         2. Normalize all records to canonical schema
         3. Load current flights from Supabase
-        4. Diff to find new + updated flights
-        5. Upsert changes into flights_current
-        6. Archive old completed flights to flights_history
-        7. Log statistics
+        4. Diff to find new / updated / removed flights
+        5. Upsert only changed flights (minimal writes)
+        6. Mark stale flights (in DB but gone from API)
+        7. Archive old completed flights to flights_history
+        8. Log detailed statistics
     """
 
     def __init__(self, provider: BaseFlightProvider) -> None:
         self.provider = provider
         self.db = SupabaseFlightClient()
+        self._cycle_count = 0
 
     async def execute(self) -> dict[str, int]:
         """Run one full poll cycle. Returns stats dict."""
+        self._cycle_count += 1
         airport = settings.mia_iata_code
+
+        logger.info(
+            "Poll cycle starting",
+            cycle=self._cycle_count,
+            provider=self.provider.name,
+            airport=airport,
+        )
 
         # 1. Fetch from provider
         raw_arrivals = await self.provider.fetch_arrivals(airport)
@@ -38,7 +48,6 @@ class Poller:
 
         logger.info(
             "Fetched raw flights",
-            provider=self.provider.name,
             arrivals=len(raw_arrivals),
             departures=len(raw_departures),
         )
@@ -54,26 +63,45 @@ class Poller:
         # 4. Diff
         diff = compute_diff(all_normalized, current_db)
 
-        # 5. Upsert new + updated
-        to_upsert = diff["new"] + diff["updated"]
-        upserted = self.db.upsert_flights(to_upsert)
+        # 5. Upsert only new + updated (minimal writes)
+        upserted = self.db.upsert_flights(diff.to_upsert)
 
-        # 6. Archive old completed flights
+        # 6. Mark removed flights as stale (update status if they disappeared)
+        stale_marked = 0
+        if diff.removed:
+            stale_marked = self.db.mark_stale_flights(diff.removed)
+
+        # 7. Archive old completed flights
         archived = self.db.archive_completed_flights()
 
-        # 7. Stats
+        # 8. Stats
         stats = {
+            "cycle": self._cycle_count,
             "fetched_arrivals": len(raw_arrivals),
             "fetched_departures": len(raw_departures),
             "normalized": len(all_normalized),
-            "new": len(diff["new"]),
-            "updated": len(diff["updated"]),
-            "unchanged": len(diff["unchanged"]),
+            "new": len(diff.new),
+            "updated": len(diff.updated),
+            "unchanged": len(diff.unchanged),
+            "removed_from_api": len(diff.removed),
+            "stale_marked": stale_marked,
             "upserted": upserted,
             "archived": archived,
         }
 
+        # Log per-flight change details at debug level
+        for detail in diff.change_details:
+            logger.debug(
+                "Flight change detail",
+                flight=detail["flight_iata"],
+                changes=detail["changes"],
+            )
+
         db_stats = self.db.get_flight_stats()
-        logger.info("Poll cycle complete", **stats, db_status_counts=db_stats)
+        logger.info(
+            "Poll cycle complete",
+            **stats,
+            db_status_counts=db_stats,
+        )
 
         return stats
