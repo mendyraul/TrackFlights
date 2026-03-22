@@ -18,6 +18,15 @@ class Settings(BaseSettings):
     mia_iata_code: str = "MIA"
     mia_icao_code: str = "KMIA"
 
+    # Weather
+    weather_enabled: bool = True
+    weather_provider: str = "openmeteo"
+    weather_poll_interval_seconds: int = 300  # Every 5 minutes
+
+    # ML / Predictions
+    predictions_enabled: bool = True
+    anomaly_detection_enabled: bool = True
+
     # Logging
     log_level: str = "INFO"
 

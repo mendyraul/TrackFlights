@@ -82,6 +82,80 @@ export interface AnalyticsDaily {
   busiest_hour: number | null;
 }
 
+// ── Phase 4: Weather, Predictions, Anomalies ──────────────────────────
+
+export interface WeatherSnapshot {
+  id: string;
+  airport_iata: string;
+  observed_at: string;
+  temperature_c: number | null;
+  feels_like_c: number | null;
+  wind_speed_knots: number | null;
+  wind_direction_deg: number | null;
+  wind_gust_knots: number | null;
+  visibility_km: number | null;
+  precipitation_mm: number | null;
+  precipitation_probability: number | null;
+  humidity_pct: number | null;
+  cloud_coverage_pct: number | null;
+  weather_code: number | null;
+  weather_description: string | null;
+  is_thunderstorm: boolean;
+  is_fog: boolean;
+  is_freezing: boolean;
+  pressure_hpa: number | null;
+  data_source: string;
+}
+
+export type PredictionType =
+  | "delay_risk"
+  | "delay_minutes"
+  | "on_time_probability"
+  | "cancellation_risk";
+
+export interface DelayPrediction {
+  id: string;
+  flight_iata: string;
+  scheduled_departure: string | null;
+  direction: string;
+  prediction_type: PredictionType;
+  predicted_value: number;
+  confidence: number | null;
+  factors: Record<string, number> | null;
+  model_version: string;
+  created_at: string;
+  expires_at: string | null;
+}
+
+export type AnomalyType =
+  | "arrival_spike"
+  | "departure_spike"
+  | "mass_delay"
+  | "delay_distribution_shift"
+  | "congestion"
+  | "unusual_cancellations"
+  | "weather_impact";
+
+export type AnomalySeverity = "low" | "medium" | "high" | "critical";
+
+export interface TrafficAnomaly {
+  id: string;
+  anomaly_type: AnomalyType;
+  severity: AnomalySeverity;
+  title: string;
+  description: string | null;
+  affected_flights: string[];
+  affected_airlines: string[];
+  affected_count: number;
+  metric_name: string | null;
+  metric_value: number | null;
+  baseline_value: number | null;
+  deviation_pct: number | null;
+  is_active: boolean;
+  detected_at: string;
+  resolved_at: string | null;
+}
+
 // Supabase generated types placeholder
 export interface Database {
   public: {
@@ -110,6 +184,21 @@ export interface Database {
         Row: AnalyticsDaily;
         Insert: Partial<AnalyticsDaily>;
         Update: Partial<AnalyticsDaily>;
+      };
+      weather_snapshots: {
+        Row: WeatherSnapshot;
+        Insert: Partial<WeatherSnapshot>;
+        Update: Partial<WeatherSnapshot>;
+      };
+      delay_predictions: {
+        Row: DelayPrediction;
+        Insert: Partial<DelayPrediction>;
+        Update: Partial<DelayPrediction>;
+      };
+      traffic_anomalies: {
+        Row: TrafficAnomaly;
+        Insert: Partial<TrafficAnomaly>;
+        Update: Partial<TrafficAnomaly>;
       };
     };
   };
