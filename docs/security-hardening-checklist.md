@@ -4,6 +4,8 @@ Purpose: ship a repeatable, auditable baseline before production scale-up.
 
 ## 1) Web Security Headers (Vercel / Next.js)
 
+Implementation status (Phase 4 Slice C): baseline headers are now enforced in `apps/web/next.config.js` for all routes. Keep HSTS at the edge (Vercel) for production.
+
 Target headers for all app routes:
 
 - `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
