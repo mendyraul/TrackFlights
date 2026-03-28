@@ -71,7 +71,18 @@ Current checks:
 - `npm audit --omit=dev --audit-level=critical`
 - `pip check` in `apps/ingestor/.venv` (when venv exists)
 
-## 6) Definition of Done for Baseline
+## 6) Phase 4 Runtime Hardening Checklist (Issue #2 Slice 2)
+
+Canonical hardening checklist:
+- `docs/runtime-hardening-checklist.md`
+
+Scope covered:
+- web header/CSP ownership and verification cadence
+- secrets rotation cadence and evidence path
+- dependency update cadence with SLA by severity
+- backup + restore verification cadence
+
+## 7) Definition of Done for Baseline
 
 - [x] CI workflow committed and running in GitHub Actions.
 - [x] Deterministic installs (`npm ci`) and lockfile committed.

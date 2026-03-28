@@ -8,12 +8,14 @@ Sage-style decomposition into small slices that fit local 32k context execution.
   - `pip check` inside `apps/ingestor/.venv` when present
 - Document expected pass/fail behavior and remediation ownership.
 
-## Slice 2: Runtime hardening checklist
-- Add concrete production hardening checklist for web + ingestor:
+## Slice 2: Runtime hardening checklist ✅
+- Added concrete production hardening checklist for web + ingestor:
   - headers/CSP ownership
   - secrets rotation cadence
   - dependency update cadence
   - backup restore verification cadence
+- Deliverable: `docs/runtime-hardening-checklist.md`
+- Linked from `docs/production-baseline.md`
 
 ## Slice 3: Performance SLO baseline
 - Define initial SLO targets and simple measurement commands:
