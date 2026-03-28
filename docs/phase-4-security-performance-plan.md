@@ -17,11 +17,12 @@ Sage-style decomposition into small slices that fit local 32k context execution.
 - Deliverable: `docs/runtime-hardening-checklist.md`
 - Linked from `docs/production-baseline.md`
 
-## Slice 3: Performance SLO baseline
-- Define initial SLO targets and simple measurement commands:
+## Slice 3: Performance SLO baseline ✅
+- Added baseline SLO targets + measurement commands for:
   - web API health latency budget
   - ingestor cycle timing + queue lag target
-  - alert thresholds and owner
+  - alert thresholds + owner routing
+- Deliverable: `docs/performance-slo-baseline.md`
 
 ## Slice 4: Release-readiness signoff expansion
 - Extend release preflight docs with Phase 4 signoff checklist and evidence capture path.

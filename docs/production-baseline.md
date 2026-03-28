@@ -82,7 +82,17 @@ Scope covered:
 - dependency update cadence with SLA by severity
 - backup + restore verification cadence
 
-## 7) Definition of Done for Baseline
+## 7) Phase 4 Performance SLO Baseline (Issue #2 Slice 3)
+
+Canonical SLO baseline + measurement commands:
+- `docs/performance-slo-baseline.md`
+
+Scope covered:
+- web health latency budget (p50/p95/p99)
+- ingestor cycle timing + queue lag targets
+- alert thresholds + owner routing
+
+## 8) Definition of Done for Baseline
 
 - [x] CI workflow committed and running in GitHub Actions.
 - [x] Deterministic installs (`npm ci`) and lockfile committed.
