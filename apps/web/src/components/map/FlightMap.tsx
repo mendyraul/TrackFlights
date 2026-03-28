@@ -140,7 +140,7 @@ function MapBoundsUpdater({ flights }: { flights: Flight[] }) {
     bounds.extend(MIA_CENTER);
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 10 });
     hasFitted.current = true;
-  }, [flights.length > 0, map]);
+  }, [flights, map]);
 
   return null;
 }
