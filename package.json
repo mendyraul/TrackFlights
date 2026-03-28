@@ -9,7 +9,9 @@
     "dev": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=apps/web",
     "lint": "npm run lint --workspace=apps/web",
-    "type-check": "tsc --noEmit --project apps/web/tsconfig.json"
+    "type-check": "tsc --noEmit --project apps/web/tsconfig.json",
+    "security:preflight": "bash scripts/security-preflight.sh",
+    "security:audit:web": "npm audit --omit=dev --audit-level=high --workspace=apps/web"
   },
   "engines": {
     "node": ">=18"

@@ -14,6 +14,7 @@ This checklist is the merge gate for production-bound changes.
 
 ## 3) Security gate
 - [ ] `docs/security-hardening-checklist.md` items reviewed
+- [ ] Run `npm run security:preflight` and archive output in PR notes
 - [ ] No high/critical findings from `npm audit --omit=dev --audit-level=high`
 - [ ] No pip-audit findings requiring patch before release
 - [ ] Secret scan / env review completed
