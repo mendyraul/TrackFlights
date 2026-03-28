@@ -5,7 +5,11 @@ import signal
 
 import structlog
 
-from src.config import settings
+from src.config import (
+    get_runtime_config_summary,
+    settings,
+    validate_runtime_settings,
+)
 from src.providers.base_provider import BaseFlightProvider
 from src.providers.aviationstack_provider import AviationStackProvider
 from src.providers.example_provider import ExampleProvider
@@ -32,9 +36,12 @@ def get_provider() -> BaseFlightProvider:
 
 async def main() -> None:
     """Run the ingestion loop."""
+    validate_runtime_settings()
+
     provider = get_provider()
     poller = Poller(provider)
 
+    logger.info("Runtime config validated", **get_runtime_config_summary())
     logger.info(
         "Starting MIA Flight Ingestor",
         provider=provider.name,

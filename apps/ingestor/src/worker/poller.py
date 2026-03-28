@@ -35,6 +35,7 @@ class Poller:
         self.db = SupabaseFlightClient()
         self._cycle_count = 0
         self._last_weather_time = 0.0
+        self._last_successful_cycle_time = 0.0
 
         # Lazy-init ML services (only if enabled)
         self._weather_ingester = None
@@ -71,6 +72,7 @@ class Poller:
     async def execute(self) -> dict[str, int]:
         """Run one full poll cycle. Returns stats dict."""
         self._cycle_count += 1
+        cycle_started_at = time.time()
         airport = settings.mia_iata_code
         stats: dict[str, int] = {"cycle": self._cycle_count}
 
@@ -102,7 +104,33 @@ class Poller:
 
         # ── 10. Log ──────────────────────────────────────────────────
         db_stats = self.db.get_flight_stats()
-        logger.info("Poll cycle complete", **stats, db_status_counts=db_stats)
+        cycle_finished_at = time.time()
+        cycle_duration_ms = int((cycle_finished_at - cycle_started_at) * 1000)
+        seconds_since_last_success = (
+            0
+            if self._last_successful_cycle_time == 0
+            else int(cycle_finished_at - self._last_successful_cycle_time)
+        )
+        self._last_successful_cycle_time = cycle_finished_at
+
+        logger.info(
+            "Poll cycle complete",
+            **stats,
+            db_status_counts=db_stats,
+            cycle_duration_ms=cycle_duration_ms,
+        )
+
+        if self._cycle_count == 1 or self._cycle_count % 10 == 0:
+            logger.info(
+                "Ingestor runtime heartbeat",
+                cycle=self._cycle_count,
+                provider=self.provider.name,
+                cycle_duration_ms=cycle_duration_ms,
+                weather_enabled=settings.weather_enabled,
+                predictions_enabled=settings.predictions_enabled,
+                anomaly_detection_enabled=settings.anomaly_detection_enabled,
+                seconds_since_last_success=seconds_since_last_success,
+            )
 
         return stats
 
