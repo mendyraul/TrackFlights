@@ -107,6 +107,8 @@ Hard requirement per release candidate:
 Canonical decomposition + execution tracker:
 - `docs/phase-3-scale-plan.md`
 - `docs/adr/0001-ingestor-scale-failover.md`
+- `docs/realtime-throughput-baseline.md`
+- `docs/evidence/realtime-throughput-template.md`
 
 One-command failover drill (systemd-managed ingestor):
 - `npm run ops:failover-drill -- <systemd-service-name>`
