@@ -4,6 +4,7 @@ Use this checklist during reliability drills and paste outputs into an issue com
 
 ## Evidence destination
 - Create one evidence file per drill at: `docs/evidence/phase2-alert-tests/YYYY-MM-DD.md`
+- Fast path: `./scripts/create-alert-evidence.sh` (from repo root) to generate the dated template.
 - Include command output snippets + timestamps (UTC).
 
 ## Baseline self-check commands
