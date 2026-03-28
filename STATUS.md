@@ -17,3 +17,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-28 | Rico | Issue #1 (Phase 1 Slice 3) | Added explicit GitHub branch protection handoff checklist (exact toggles + required check name) to production baseline docs and marked plan slice complete | Completed on feature/phase1-ci-baseline
 2026-03-28 | Rico | Issue #1 (Phase 1 Slice 4) | Synced evidence/status checklist in phase-1 baseline plan with branch + PR flow and added quick verification commands | Completed on feature/phase1-ci-baseline
 2026-03-28 | Rico | Issue #1 (Phase 1 Slice 5 proactive) | Cleared `FlightMap` hook dependency lint warnings by stabilizing map-bounds effect dependencies; web lint now clean | Completed on feature/phase1-ci-baseline
+2026-03-28 | Rico | Issue #9 (Phase 1 Slice B) | Added dedicated branch protection policy doc with exact required check context and 5-minute owner setup checklist; linked baseline doc to canonical policy | Completed on feature/phase1-ci-baseline

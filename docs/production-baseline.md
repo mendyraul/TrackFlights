@@ -30,32 +30,12 @@ Workflow: `.github/workflows/ci.yml`
 
 ## 2) Branch Protection Strategy
 
-Current repo state has `main` and feature branches only.
+Detailed policy is maintained in `docs/branch-protection.md` (Issue #9 / Slice B), including:
+- exact required check name (`Phase 1 Baseline / Phase 1 Baseline Check`)
+- PR-only merge + approval policy for `main` and `dev`
+- 5-minute GitHub UI handoff checklist
 
-### Immediate policy (apply now)
-Protect `main` with:
-1. Require pull request before merging.
-2. Require status checks to pass (`Phase 1 Baseline / Phase 1 Baseline Check`).
-3. Require branch to be up to date before merging.
-4. Restrict direct pushes (maintainers merge via PR only).
-
-### Owner handoff checklist (GitHub UI)
-Path: **Settings → Branches → Add branch protection rule** (or ruleset) for `main`.
-
-- [ ] Branch name pattern: `main`
-- [ ] **Require a pull request before merging**
-- [ ] **Require approvals**: at least 1 approval
-- [ ] **Dismiss stale pull request approvals when new commits are pushed**
-- [ ] **Require status checks to pass before merging**
-  - [ ] Required check: `Phase 1 Baseline / Phase 1 Baseline Check`
-- [ ] **Require branches to be up to date before merging**
-- [ ] **Do not allow bypassing the above settings** (admins included)
-- [ ] **Restrict who can push to matching branches** (maintainers merge via PR only)
-
-### Target policy (when `dev` branch is added)
-- `feature/*` → PR to `dev`.
-- `dev` → PR to `main` for releases only.
-- Keep the same required status checks on both `dev` and `main`.
+Baseline requirement remains: no direct pushes to protected branches and no merges without required checks passing.
 
 ## 3) Environment Variable Strategy
 
