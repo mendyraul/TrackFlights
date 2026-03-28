@@ -13,7 +13,8 @@
     "ci:baseline": "./scripts/verify-phase1-baseline.sh",
     "release:preflight": "./scripts/release-preflight.sh",
     "security:baseline": "./scripts/security-baseline.sh",
-    "ops:evidence-template": "./scripts/create-alert-evidence.sh"
+    "ops:evidence-template": "./scripts/create-alert-evidence.sh",
+    "ops:release-evidence": "./scripts/create-release-evidence.sh"
   },
   "engines": {
     "node": ">=18"

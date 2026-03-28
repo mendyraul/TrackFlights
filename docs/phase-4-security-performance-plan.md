@@ -24,6 +24,7 @@ Sage-style decomposition into small slices that fit local 32k context execution.
   - alert thresholds + owner routing
 - Deliverable: `docs/performance-slo-baseline.md`
 
-## Slice 4: Release-readiness signoff expansion
-- Extend release preflight docs with Phase 4 signoff checklist and evidence capture path.
-- Require one “last known good” evidence snapshot per release candidate.
+## Slice 4: Release-readiness signoff expansion ✅
+- Extended release-readiness docs with Phase 4 signoff checklist + evidence capture path.
+- Added release evidence template generator (`npm run ops:release-evidence -- <rc-id>`).
+- Required one “last known good” evidence snapshot per release candidate.

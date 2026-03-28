@@ -92,7 +92,17 @@ Scope covered:
 - ingestor cycle timing + queue lag targets
 - alert thresholds + owner routing
 
-## 8) Definition of Done for Baseline
+## 8) Phase 4 Release-Readiness Signoff (Issue #2 Slice 4)
+
+Canonical signoff checklist and evidence workflow:
+- `docs/release-readiness.md`
+- `npm run ops:release-evidence -- <rc-id>`
+- evidence path: `docs/evidence/release-candidates/<rc-id>.md`
+
+Hard requirement per release candidate:
+- capture one **last known good** snapshot (UTC timestamp, commit SHA, rollback target)
+
+## 9) Definition of Done for Baseline
 
 - [x] CI workflow committed and running in GitHub Actions.
 - [x] Deterministic installs (`npm ci`) and lockfile committed.
