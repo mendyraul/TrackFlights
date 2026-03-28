@@ -30,6 +30,9 @@ jobs:
     defaults:
       run:
         working-directory: apps/ingestor
+    env:
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-key
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

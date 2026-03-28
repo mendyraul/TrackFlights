@@ -98,6 +98,9 @@ cp .env.example .env
 
 See [docs/deployment.md](docs/deployment.md) for detailed instructions.
 
+Production readiness baseline (CI/CD, branch protection, env strategy):
+- [docs/production-baseline.md](docs/production-baseline.md)
+
 ## License
 
 MIT
