@@ -12,6 +12,7 @@ build/
 __pycache__/
 *.pyc
 .pytest_cache/
+*.tsbuildinfo
 
 # Environment
 .env

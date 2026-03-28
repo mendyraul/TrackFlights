@@ -24,6 +24,11 @@ Workflow: `.github/workflows/ci.yml`
 - CI must be green before merge.
 - No direct push to protected branches.
 
+### Fail + rerun policy
+- If CI fails, push a fix commit to the same PR branch (do not bypass checks).
+- After flaky/network failures, rerun failed jobs once; if the second run fails, treat as a real failure and fix root cause.
+- Do not merge with skipped or neutral required checks.
+
 ## 2) Branch Protection Strategy
 
 Current repo state has `main` and feature branches only.
