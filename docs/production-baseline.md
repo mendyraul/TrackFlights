@@ -59,7 +59,19 @@ One-command local preflight:
 
 This preflight intentionally reuses `npm run ci:baseline` to keep local and CI behavior aligned.
 
-## 5) Definition of Done for Baseline
+## 5) Phase 4 Security Baseline (Issue #2 Slice 1)
+
+Sage-style decomposition plan:
+- `docs/phase-4-security-performance-plan.md`
+
+One-command baseline security gate:
+- `npm run security:baseline`
+
+Current checks:
+- `npm audit --omit=dev --audit-level=critical`
+- `pip check` in `apps/ingestor/.venv` (when venv exists)
+
+## 6) Definition of Done for Baseline
 
 - [x] CI workflow committed and running in GitHub Actions.
 - [x] Deterministic installs (`npm ci`) and lockfile committed.
