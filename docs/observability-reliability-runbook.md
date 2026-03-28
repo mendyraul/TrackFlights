@@ -74,7 +74,7 @@ Current baseline:
 
 ## 5) Alert Test Checklist
 
-Run this before closing Issue #3:
+Run this before closing Issue #3 (evidence path + commands in `docs/alert-test-evidence.md`):
 - [ ] Simulate web health endpoint failure and confirm alert dispatch.
 - [ ] Stop ingestor for > 2 intervals and confirm heartbeat-miss alert.
 - [ ] Trigger a controlled Supabase auth failure and confirm alert.
