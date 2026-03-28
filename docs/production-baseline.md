@@ -48,7 +48,18 @@ Minimum baseline requirements:
 - `.env.example` contains key names/placeholders only (no real values).
 - CI baseline remains placeholder-safe for lint/type-check/build/pytest.
 
-## 4) Definition of Done for Baseline
+## 4) PR Gate Checklist + Deployment Preflight (Issue #11 / Slice D)
+
+Canonical release-readiness checklist:
+- `docs/release-readiness.md`
+- `.github/pull_request_template.md`
+
+One-command local preflight:
+- `npm run release:preflight`
+
+This preflight intentionally reuses `npm run ci:baseline` to keep local and CI behavior aligned.
+
+## 5) Definition of Done for Baseline
 
 - [x] CI workflow committed and running in GitHub Actions.
 - [x] Deterministic installs (`npm ci`) and lockfile committed.

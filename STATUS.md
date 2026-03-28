@@ -19,3 +19,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-28 | Rico | Issue #1 (Phase 1 Slice 5 proactive) | Cleared `FlightMap` hook dependency lint warnings by stabilizing map-bounds effect dependencies; web lint now clean | Completed on feature/phase1-ci-baseline
 2026-03-28 | Rico | Issue #9 (Phase 1 Slice B) | Added dedicated branch protection policy doc with exact required check context and 5-minute owner setup checklist; linked baseline doc to canonical policy | Completed on feature/phase1-ci-baseline
 2026-03-28 | Rico | Issue #10 (Phase 1 Slice C) | Added environment matrix + secrets ownership mapping doc and linked production baseline to canonical env policy | Completed on feature/phase1-ci-baseline
+2026-03-28 | Rico | Issue #11 (Phase 1 Slice D) | Added PR template gate checklist, one-command release preflight script (`npm run release:preflight`), and release-readiness baseline doc | Completed on feature/phase1-ci-baseline

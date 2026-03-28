@@ -38,3 +38,8 @@ npm run ci:baseline
 - [x] Documented per-environment setup responsibilities (Vercel vs Pi ingestor vs GitHub Actions).
 - [x] Added explicit guardrails + rotation/checklist to reduce accidental secret exposure.
 
+## Slice 6 (Issue #11 / Slice D): PR gate checklist + deployment preflight
+- [x] Added `.github/pull_request_template.md` aligned to Phase 1 required checks and env/secrets policy.
+- [x] Added one-command preflight `npm run release:preflight` (`scripts/release-preflight.sh`) with protected-branch guardrail.
+- [x] Added `docs/release-readiness.md` baseline and linked canonical policy docs.
+
