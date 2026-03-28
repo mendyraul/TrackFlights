@@ -99,6 +99,7 @@ cp .env.example .env
 See [docs/deployment.md](docs/deployment.md) for detailed instructions.
 
 Production hardening checklist: [docs/security-hardening-checklist.md](docs/security-hardening-checklist.md).
+Release gate checklist: [docs/release-readiness-checklist.md](docs/release-readiness-checklist.md).
 
 ## License
 
