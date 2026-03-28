@@ -10,6 +10,7 @@
     "build": "npm run build --workspace=apps/web",
     "lint": "npm run lint --workspace=apps/web",
     "type-check": "tsc --noEmit --project apps/web/tsconfig.json",
+    "ci:baseline": "./scripts/verify-phase1-baseline.sh",
     "ops:evidence-template": "./scripts/create-alert-evidence.sh"
   },
   "engines": {

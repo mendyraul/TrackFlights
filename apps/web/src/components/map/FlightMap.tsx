@@ -130,9 +130,10 @@ function SmoothMarker({
 function MapBoundsUpdater({ flights }: { flights: Flight[] }) {
   const map = useMap();
   const hasFitted = useRef(false);
+  const flightCount = flights.length;
 
   useEffect(() => {
-    if (hasFitted.current || flights.length === 0) return;
+    if (hasFitted.current || flightCount === 0) return;
 
     const bounds = L.latLngBounds(
       flights.map((f) => [f.latitude!, f.longitude!] as [number, number])
@@ -140,7 +141,7 @@ function MapBoundsUpdater({ flights }: { flights: Flight[] }) {
     bounds.extend(MIA_CENTER);
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 10 });
     hasFitted.current = true;
-  }, [flights.length > 0, map]);
+  }, [flightCount, flights, map]);
 
   return null;
 }

@@ -11,14 +11,13 @@ Workflow: `.github/workflows/ci.yml`
 - Run on pushes to protected integration branches (`main` now, `dev` when introduced).
 
 ### Required jobs
-- **Web checks** (Node 20):
+- **Phase 1 Baseline Check** (Node 20 + Python 3.11 via `npm run ci:baseline`):
   - `npm ci`
   - `npm run lint`
   - `npm run type-check`
   - `npm run build`
-- **Ingestor tests** (Python 3.11):
-  - install `apps/ingestor/requirements.txt`
-  - `pytest -q`
+  - ingestor dependency install from `apps/ingestor/requirements.txt`
+  - ingestor `pytest -q`
 
 ### Gate policy
 - CI must be green before merge.
@@ -36,9 +35,22 @@ Current repo state has `main` and feature branches only.
 ### Immediate policy (apply now)
 Protect `main` with:
 1. Require pull request before merging.
-2. Require status checks to pass (`CI / Web lint, type-check, build`, `CI / Ingestor pytest`).
+2. Require status checks to pass (`Phase 1 Baseline / Phase 1 Baseline Check`).
 3. Require branch to be up to date before merging.
 4. Restrict direct pushes (maintainers merge via PR only).
+
+### Owner handoff checklist (GitHub UI)
+Path: **Settings → Branches → Add branch protection rule** (or ruleset) for `main`.
+
+- [ ] Branch name pattern: `main`
+- [ ] **Require a pull request before merging**
+- [ ] **Require approvals**: at least 1 approval
+- [ ] **Dismiss stale pull request approvals when new commits are pushed**
+- [ ] **Require status checks to pass before merging**
+  - [ ] Required check: `Phase 1 Baseline / Phase 1 Baseline Check`
+- [ ] **Require branches to be up to date before merging**
+- [ ] **Do not allow bypassing the above settings** (admins included)
+- [ ] **Restrict who can push to matching branches** (maintainers merge via PR only)
 
 ### Target policy (when `dev` branch is added)
 - `feature/*` → PR to `dev`.
