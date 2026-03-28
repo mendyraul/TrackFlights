@@ -39,24 +39,14 @@ Baseline requirement remains: no direct pushes to protected branches and no merg
 
 ## 3) Environment Variable Strategy
 
-### Frontend (`apps/web`)
-Public-only variables:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+Canonical environment matrix + ownership mapping:
+- `docs/environment-matrix.md` (Issue #10 / Phase 1 Slice C)
 
-Notes:
-- Build must not crash in CI when these are unset; local fallback values are acceptable for compile-time checks only.
-- Real deployments must set real values in Vercel project settings.
-
-### Ingestor (`apps/ingestor`)
-Server-side secrets:
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `FLIGHT_API_KEY` (if provider requires)
-
-Notes:
-- Never expose ingestor secrets to client/runtime bundles.
-- Use `.env.example` for key names only (no real secrets).
+Minimum baseline requirements:
+- Frontend (`apps/web`) uses only public `NEXT_PUBLIC_*` variables at runtime.
+- Ingestor (`apps/ingestor`) keeps service-role and provider keys server-side only.
+- `.env.example` contains key names/placeholders only (no real values).
+- CI baseline remains placeholder-safe for lint/type-check/build/pytest.
 
 ## 4) Definition of Done for Baseline
 

@@ -32,3 +32,9 @@ git rev-parse --abbrev-ref HEAD
 git status --short --branch
 npm run ci:baseline
 ```
+
+## Slice 5 (Issue #10 / Slice C): Environment matrix + secrets mapping
+- [x] Added `docs/environment-matrix.md` with variable ownership, runtime scope, secret classification, and source-of-truth mapping.
+- [x] Documented per-environment setup responsibilities (Vercel vs Pi ingestor vs GitHub Actions).
+- [x] Added explicit guardrails + rotation/checklist to reduce accidental secret exposure.
+
