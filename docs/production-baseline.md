@@ -102,7 +102,19 @@ Canonical signoff checklist and evidence workflow:
 Hard requirement per release candidate:
 - capture one **last known good** snapshot (UTC timestamp, commit SHA, rollback target)
 
-## 9) Definition of Done for Baseline
+## 9) Phase 3 Scale + Failover Baseline (Issue #4)
+
+Canonical decomposition + execution tracker:
+- `docs/phase-3-scale-plan.md`
+- `docs/adr/0001-ingestor-scale-failover.md`
+
+One-command failover drill (systemd-managed ingestor):
+- `npm run ops:failover-drill -- <systemd-service-name>`
+- default service name: `mia-ingestor.service`
+
+This drill validates crash recovery (process kill -> service restart with new PID) and emits journal evidence for runbook records.
+
+## 10) Definition of Done for Baseline
 
 - [x] CI workflow committed and running in GitHub Actions.
 - [x] Deterministic installs (`npm ci`) and lockfile committed.
