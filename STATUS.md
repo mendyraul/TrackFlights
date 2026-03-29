@@ -9,3 +9,4 @@ Format: YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-28 | Rico | Issue #2 (Phase 4 Slice E proactive) | Fixed FlightMap exhaustive-deps warnings by correcting MapBoundsUpdater dependencies for deterministic lint-clean build | lint+typecheck+build pass, ready on branch
 2026-03-28 | Rico | Issue #2 (Phase 4 Slice F proactive) | Hardened Python security gate to audit only app requirements (`pip-audit --strict -r requirements.txt`) instead of toolchain environment | ready on branch
 2026-03-28 | Rico | Issue #2 (Phase 4 Slice B2) | Added one-command security preflight runner (`npm run security:preflight`) covering web audit, pip-audit, and secret grep; linked into release checklist | Ready on feature/phase4-security-release-slice1
+2026-03-29 | Rico | Issue #2 (Phase 4 Slice G proactive) | Added performance baseline protocol doc + release gate linkage for web/API/ingestor metrics evidence capture | ready on branch

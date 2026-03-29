@@ -11,6 +11,7 @@ This checklist is the merge gate for production-bound changes.
 - [ ] Vercel preview deployment succeeded
 - [ ] Smoke test completed for key pages and map load
 - [ ] `/api/health` endpoint returns healthy status
+- [ ] `docs/performance-baseline.md` baseline capture run and evidence files attached
 
 ## 3) Security gate
 - [ ] `docs/security-hardening-checklist.md` items reviewed
