@@ -19,13 +19,14 @@ Deliverables:
 - Saturation fallback behavior and degrade modes
 - Capacity thresholds tied to warning/critical runbook actions
 
-### Slice D — Capacity alarms + canary rollout
-Status: queued next.
+### Slice D — Capacity alarms + canary rollout ✅
+Status: completed in this cycle.
 
 Deliverables:
 - Capacity alert thresholds (queue depth, cycle lag, fanout delay)
 - Canary rollout checklist + rollback triggers
 - Dashboard/ops visibility checklist for rollout windows
+- Delivered in `docs/phase-3-capacity-canary-rollout.md`
 
 ## Execution order
 1. Slice A (measure before changing behavior)
@@ -34,5 +35,5 @@ Deliverables:
 4. Slice D (safe rollout + alerting)
 
 ## Current cycle action
-- Delivered: Slice C realtime fanout guardrails + operational runbook (`docs/phase-3-realtime-fanout-guardrails.md`).
-- Next: Slice D canary rollout checklist and alerting thresholds.
+- Delivered: Slice D canary rollout + alert threshold runbook (`docs/phase-3-capacity-canary-rollout.md`).
+- Next: convert Slice D runbook into alert manifests/dashboard checks in implementation PR.

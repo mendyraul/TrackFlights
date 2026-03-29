@@ -1,2 +1,3 @@
 2026-03-29 | Rico | Issue #4 | Added Phase 3 Slice B docs (`docs/phase-3-queue-retry-idempotency.md`, `docs/phase-3-scale-slices.md`) with queue/backpressure, retry, idempotency, and failure-mode response policy | branch feature/phase3-sliceb-queue-retry-idempotency pushed (commit 7a53265)
 2026-03-29 | Rico | Issue #4 | Added Phase 3 Slice C docs (`docs/phase-3-realtime-fanout-guardrails.md`) and refreshed `docs/phase-3-scale-slices.md` with next D-slice rollout plan | branch feature/phase3-slicec-realtime-guardrails ready
+2026-03-29 | Rico | Issue #4 | Added Phase 3 Slice D runbook (`docs/phase-3-capacity-canary-rollout.md`) with concrete thresholds, canary gates, rollback triggers, and implementation handoff | branch feature/phase3-slicec-realtime-guardrails updated
