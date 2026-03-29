@@ -98,6 +98,11 @@ cp .env.example .env
 
 See [docs/deployment.md](docs/deployment.md) for detailed instructions.
 
+### Operations Runbooks
+
+- [Release checklist](docs/release-checklist.md)
+- [Rollback runbook](docs/rollback-runbook.md)
+
 ## License
 
 MIT
