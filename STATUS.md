@@ -1,1 +1,2 @@
 2026-03-29 | Rico | Issue #4 | Added Phase 3 Slice C guardrails doc (topic partitioning, connection/stale cleanup limits, saturation fallback, 32k-safe implementation handoff) and updated scale-slice tracker | branch feature/phase3-slicec-fanout-guardrails pushed
+2026-03-29 | Rico | Issue #4 | Added Phase 3 Slice D capacity alert thresholds + canary/rollback runbook and updated scale-slice tracker | branch feature/phase3-sliced-capacity-canary ready

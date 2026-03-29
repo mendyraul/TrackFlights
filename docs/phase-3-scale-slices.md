@@ -31,5 +31,5 @@ Deliverables:
 4. Slice D (safe rollout + alerting)
 
 ## Current cycle action
-- Delivered: Slice C realtime fanout guardrails and local implementation handoff.
-- Next: Slice D capacity alarm thresholds + canary rollout checklist/rollback triggers.
+- Delivered: Slice D capacity alarm thresholds and canary/rollback runbook.
+- Next: open PR for Slice C + D package, then execute D1 metrics plumbing implementation.
