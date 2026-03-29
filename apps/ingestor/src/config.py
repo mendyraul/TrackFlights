@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     predictions_enabled: bool = True
     anomaly_detection_enabled: bool = True
 
+    # Capacity alerting thresholds (Phase 3 Slice D1)
+    capacity_cycle_lag_warn_seconds: float = 15.0
+    capacity_queue_depth_warn: int = 2000
+    capacity_retry_ratio_warn: float = 0.2
+    capacity_fanout_p95_warn_ms: int = 1500
+    capacity_churn_ratio_warn: float = 0.35
+
     # Logging
     log_level: str = "INFO"
 

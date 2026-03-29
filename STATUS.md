@@ -1,0 +1,1 @@
+2026-03-29 | Rico | Issue #4 | Implemented Phase 3 Slice D1 capacity metrics plumbing (snapshot builder, threshold evaluator, poller wiring, docs) | branch feature/phase3-sliced-metrics-plumbing pushed
