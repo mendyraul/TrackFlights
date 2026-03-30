@@ -9,7 +9,13 @@
     "dev": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=apps/web",
     "lint": "npm run lint --workspace=apps/web",
-    "type-check": "tsc --noEmit --project apps/web/tsconfig.json"
+    "type-check": "tsc --noEmit --project apps/web/tsconfig.json",
+    "ci:baseline": "./scripts/verify-phase1-baseline.sh",
+    "release:preflight": "./scripts/release-preflight.sh",
+    "security:baseline": "./scripts/security-baseline.sh",
+    "ops:evidence-template": "./scripts/create-alert-evidence.sh",
+    "ops:release-evidence": "./scripts/create-release-evidence.sh",
+    "ops:failover-drill": "./scripts/test-ingestor-failover.sh"
   },
   "engines": {
     "node": ">=18"
