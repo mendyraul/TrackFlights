@@ -50,7 +50,7 @@ class SupabaseFlightClient:
             batch = flights[i : i + batch_size]
             self.client.table("flights_current").upsert(
                 batch,
-                on_conflict="flight_iata,scheduled_departure",
+                on_conflict="flight_iata",
             ).execute()
             total += len(batch)
 
