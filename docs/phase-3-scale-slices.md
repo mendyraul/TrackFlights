@@ -5,9 +5,10 @@ Goal: increase ingestion and realtime capacity without destabilizing reliability
 ## Slice plan (32k-safe)
 
 ### Slice A — Ingestion throughput profiling baseline ✅
-Status: completed in prior cycle (baseline profiling and decomposition delivered).
+Status: completed in prior cycle.
 
 ### Slice B — Queue/backpressure strategy ✅
+Status: completed.
 Deliverable:
 - `docs/phase-3-queue-retry-idempotency.md`
 
@@ -15,15 +16,17 @@ Deliverable:
 Status: completed.
 Deliverables:
 - `docs/phase-3-realtime-fanout-guardrails.md`
-- Channel/topic partitioning policy
-- Connection limits and stale-subscriber cleanup policy
-- Saturation fallback behavior
+- Channel partitioning and naming policy
+- Subscriber caps + stale cleanup policy
+- Saturation fallback behavior and degrade modes
 
-### Slice D — Capacity alarms + canary rollout (in progress)
+### Slice D — Capacity alarms + canary rollout ✅
+Status: completed (with D1 metrics plumbing).
 Deliverables:
 - Capacity alert thresholds (queue depth, cycle lag, fanout delay)
 - Canary rollout checklist + rollback triggers
-- D1 metrics plumbing implementation (`apps/ingestor/src/worker/capacity.py`) ✅
+- `docs/phase-3-capacity-canary-rollout.md`
+- D1 metrics plumbing implementation (`apps/ingestor/src/worker/capacity.py`)
 
 ## Execution order
 1. Slice A (measure before changing behavior)
@@ -32,6 +35,6 @@ Deliverables:
 4. Slice D (safe rollout + alerting)
 
 ## Current cycle action
-- Delivered: Slice D capacity alarm thresholds and canary/rollback runbook.
+- Delivered: Slice C/D docs and runbooks.
 - Delivered: Slice D1 metrics plumbing + threshold evaluator + unit tests.
-- Next: D2 persist snapshots to Supabase for trend dashboarding.
+- Next: persist snapshots to Supabase for trend dashboarding.
