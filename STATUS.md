@@ -32,3 +32,5 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-04-08 | Rico | Issue #42 | Re-verified PR #46 merge health (CLEAN, all checks green) and posted issue progress handoff for merge/first scheduled evidence review | Awaiting merge/close sequencing
 2026-04-08 | Rico | Issue #42 | Ran fresh branch audit, pruned stale local branch `feature/phase1-ci-baseline`, and added operations report under docs/operations. | Ready on feature/issue-42-branch-hygiene-audit
 2026-04-07 | Rico | Issue #43 | Added stable /api/healthz/live + /api/healthz/ready routes and smoke-health script covering / + health endpoints | PR #44 open
+2026-03-29 | Rico | Issue #4 | Added Phase 3 Slice C guardrails doc (topic partitioning, connection/stale cleanup limits, saturation fallback, 32k-safe implementation handoff) and updated scale-slice tracker | branch feature/phase3-slicec-fanout-guardrails pushed
+2026-03-29 | Rico | Issue #4 | Added Phase 3 Slice D capacity alert thresholds + canary/rollback runbook and updated scale-slice tracker | branch feature/phase3-sliced-capacity-canary ready
