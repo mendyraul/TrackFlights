@@ -27,16 +27,23 @@ fi
 fail=0
 for table in "${required_tables[@]}"; do
   url="${NEXT_PUBLIC_SUPABASE_URL}/rest/v1/${table}?select=*&limit=1"
-  body=$(curl -sS -H "apikey: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}" -H "Authorization: Bearer ${NEXT_PUBLIC_SUPABASE_ANON_KEY}" "$url")
 
-  if echo "$body" | grep -q 'PGRST205'; then
-    echo "❌ Missing table in schema cache: ${table}"
-    fail=1
-    continue
-  fi
+  out_file="$(mktemp /tmp/trackflights-schema.XXXXXX.out)"
+  status=$(curl -sS --connect-timeout 5 --max-time 20 \
+    -H "apikey: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
+    -H "Authorization: Bearer ${NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
+    -o "${out_file}" -w "%{http_code}" "$url")
+  body=$(cat "${out_file}")
+  rm -f "${out_file}"
 
-  if echo "$body" | grep -q '"message"'; then
-    echo "❌ API error on ${table}: $body"
+  if [[ "$status" != 2* ]]; then
+    if echo "$body" | grep -q 'PGRST205'; then
+      echo "❌ Missing table in schema cache: ${table}"
+      fail=1
+      continue
+    fi
+
+    echo "❌ API error on ${table}: HTTP ${status} ${body}"
     fail=1
     continue
   fi

@@ -2,7 +2,7 @@ name: Schema Smoke
 
 on:
   pull_request:
-    branches: [dev]
+    branches: [main, dev]
     paths:
       - "supabase/migrations/**"
       - "scripts/smoke-supabase-schema.sh"

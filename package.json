@@ -16,7 +16,11 @@
     "ops:evidence-template": "./scripts/create-alert-evidence.sh",
     "ops:release-evidence": "./scripts/create-release-evidence.sh",
     "ops:failover-drill": "./scripts/test-ingestor-failover.sh",
+<<<<<<< HEAD
     "smoke:schema": "./scripts/smoke-supabase-schema.sh"
+=======
+    "smoke:health": "./scripts/smoke-health-endpoints.sh"
+>>>>>>> origin/feature/issue-43-health-smoke
   },
   "engines": {
     "node": ">=18"

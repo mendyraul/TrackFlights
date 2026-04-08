@@ -31,3 +31,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-04-08 | Rico | Issue #42 | Added weekly GitHub Actions branch-hygiene dry-run workflow with explicit manual apply gate + policy automation notes | Pushed to feature/issue-42-branch-hygiene-audit (PR #46)
 2026-04-08 | Rico | Issue #42 | Re-verified PR #46 merge health (CLEAN, all checks green) and posted issue progress handoff for merge/first scheduled evidence review | Awaiting merge/close sequencing
 2026-04-08 | Rico | Issue #42 | Ran fresh branch audit, pruned stale local branch `feature/phase1-ci-baseline`, and added operations report under docs/operations. | Ready on feature/issue-42-branch-hygiene-audit
+2026-04-07 | Rico | Issue #43 | Added stable /api/healthz/live + /api/healthz/ready routes and smoke-health script covering / + health endpoints | PR #44 open
