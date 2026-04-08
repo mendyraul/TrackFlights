@@ -28,3 +28,6 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 
 2026-03-28 | Rico | Issue #4 (Phase 3 Slice 3) | Added Supabase realtime throughput baseline assumptions + repeatable measurement recipe and evidence template; linked into production baseline docs | Completed on feature/phase1-ci-baseline
 2026-03-28 | Rico | Issue #8 (Phase 1 Slice A) | Replaced baseline CI with scoped PR/dev pipeline: change-detection + separate web lint/typecheck/build and ingestor pytest jobs with dependency caching and safe no-op path | Completed on feature/phase1-ci-baseline
+2026-04-08 | Rico | Issue #42 | Added weekly GitHub Actions branch-hygiene dry-run workflow with explicit manual apply gate + policy automation notes | Pushed to feature/issue-42-branch-hygiene-audit (PR #46)
+2026-04-08 | Rico | Issue #42 | Re-verified PR #46 merge health (CLEAN, all checks green) and posted issue progress handoff for merge/first scheduled evidence review | Awaiting merge/close sequencing
+2026-04-08 | Rico | Issue #42 | Ran fresh branch audit, pruned stale local branch `feature/phase1-ci-baseline`, and added operations report under docs/operations. | Ready on feature/issue-42-branch-hygiene-audit
