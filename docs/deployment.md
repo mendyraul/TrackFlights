@@ -48,3 +48,7 @@ docker run -d --name mia-ingestor --env-file .env mia-ingestor
 - **Ingestor logs**: `journalctl -u mia-ingestor -f`
 - **Supabase dashboard**: Monitor database usage and realtime connections
 - **Vercel dashboard**: Monitor frontend deployments and analytics
+
+## Security Hardening (Phase 4)
+
+Use the production checklist in [`docs/security-hardening-checklist.md`](security-hardening-checklist.md) before every release cut.

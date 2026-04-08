@@ -13,6 +13,8 @@
     "ci:baseline": "./scripts/verify-phase1-baseline.sh",
     "release:preflight": "./scripts/release-preflight.sh",
     "security:baseline": "./scripts/security-baseline.sh",
+    "security:preflight": "bash scripts/security-preflight.sh",
+    "security:audit:web": "npm audit --omit=dev --audit-level=high --workspace=apps/web",
     "ops:evidence-template": "./scripts/create-alert-evidence.sh",
     "ops:release-evidence": "./scripts/create-release-evidence.sh",
     "ops:failover-drill": "./scripts/test-ingestor-failover.sh",
