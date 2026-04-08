@@ -1,20 +1,23 @@
 # Branch Hygiene Policy
 
-This repo follows a conservative cleanup workflow:
+## Goals
+- Keep active work obvious.
+- Remove stale merged branches safely.
+- Never delete unmerged work without explicit human approval.
 
-1. Never push directly to `main`.
-2. Feature work happens on `feature/*` branches via PR.
-3. A branch is eligible for deletion only after:
-   - PR is merged, and
-   - branch appears in `git branch -r --merged origin/main`.
-4. Keep long-lived protected branches (`main`, `dev` if present).
-5. Run `scripts/git/branch-hygiene-audit.sh` before cleanup windows.
+## Protected Branches
+- `main`, `master`, `dev`, `develop`, `staging`, `release/*`
 
-## Safe cleanup commands (manual confirmation required)
+## Weekly Cadence
+1. Run inventory:
+   - `scripts/git/branch-hygiene-audit.sh main origin > docs/branch-hygiene-$(date +%F).md`
+2. Run cleanup dry-run for merged `feature/*` branches:
+   - `scripts/git/branch-hygiene.sh --remote origin --default-branch main`
+3. Review output and confirm no active branch is listed.
+4. Apply deletion only after confirmation:
+   - `scripts/git/branch-hygiene.sh --apply --remote origin --default-branch main`
 
-- Delete one merged remote branch:
-  - `git push origin --delete <branch>`
-- Delete local tracking branch:
-  - `git branch -d <branch>`
-
-Do not bulk-delete without verifying branch purpose and PR status.
+## Safety Rules
+- Default mode is dry-run.
+- Only merged `feature/*` branches are eligible for automated deletion.
+- Unmerged stale branches require manual triage and explicit approval.
