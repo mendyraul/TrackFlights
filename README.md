@@ -103,6 +103,11 @@ Production readiness baseline (CI/CD, branch protection, env strategy):
 - [docs/observability-reliability-runbook.md](docs/observability-reliability-runbook.md)
 - [docs/alert-test-evidence.md](docs/alert-test-evidence.md)
 
+### Operations Runbooks
+
+- [Release checklist](docs/release-checklist.md)
+- [Rollback runbook](docs/rollback-runbook.md)
+
 ## License
 
 MIT
