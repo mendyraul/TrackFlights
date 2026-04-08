@@ -28,3 +28,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 
 2026-03-28 | Rico | Issue #4 (Phase 3 Slice 3) | Added Supabase realtime throughput baseline assumptions + repeatable measurement recipe and evidence template; linked into production baseline docs | Completed on feature/phase1-ci-baseline
 2026-03-28 | Rico | Issue #8 (Phase 1 Slice A) | Replaced baseline CI with scoped PR/dev pipeline: change-detection + separate web lint/typecheck/build and ingestor pytest jobs with dependency caching and safe no-op path | Completed on feature/phase1-ci-baseline
+2026-04-07 | Rico | Issue #43 | Added stable /api/healthz/live + /api/healthz/ready routes and smoke-health script covering / + health endpoints | PR #44 open
