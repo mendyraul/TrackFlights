@@ -102,3 +102,8 @@ Before production release:
 
 Owner: Rico  
 Status: Draft baseline committed in Phase 4 Slice A
+
+## Baseline Summary Snapshot (Issue #19)
+- Pass: 6
+- Gap: 8
+- Priority remediations: headers policy, dependency/secret scanning in CI, API/rate-limit template, deployment hardening + key rotation runbook.
