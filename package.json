@@ -15,7 +15,8 @@
     "security:baseline": "./scripts/security-baseline.sh",
     "ops:evidence-template": "./scripts/create-alert-evidence.sh",
     "ops:release-evidence": "./scripts/create-release-evidence.sh",
-    "ops:failover-drill": "./scripts/test-ingestor-failover.sh"
+    "ops:failover-drill": "./scripts/test-ingestor-failover.sh",
+    "smoke:health": "./scripts/smoke-health-endpoints.sh"
   },
   "engines": {
     "node": ">=18"
