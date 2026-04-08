@@ -4,25 +4,26 @@ Goal: increase ingestion and realtime capacity without destabilizing reliability
 
 ## Slice plan (32k-safe)
 
-### Slice A — Ingestion throughput profiling baseline
-Status: completed in prior cycle (baseline profiling/decomposition delivered).
+### Slice A — Ingestion throughput profiling baseline ✅
+Status: completed in prior cycle (baseline profiling and decomposition delivered).
 
 ### Slice B — Queue/backpressure strategy ✅
-Status: completed in prior cycle.
-
 Deliverable:
 - `docs/phase-3-queue-retry-idempotency.md`
 
 ### Slice C — Realtime fanout guardrails ✅
-Status: completed in this cycle.
-
-Deliverable:
+Status: completed.
+Deliverables:
 - `docs/phase-3-realtime-fanout-guardrails.md`
+- Channel/topic partitioning policy
+- Connection limits and stale-subscriber cleanup policy
+- Saturation fallback behavior
 
-### Slice D — Capacity alarms + canary rollout
+### Slice D — Capacity alarms + canary rollout (in progress)
 Deliverables:
 - Capacity alert thresholds (queue depth, cycle lag, fanout delay)
 - Canary rollout checklist + rollback triggers
+- D1 metrics plumbing implementation (`apps/ingestor/src/worker/capacity.py`) ✅
 
 ## Execution order
 1. Slice A (measure before changing behavior)
@@ -32,4 +33,5 @@ Deliverables:
 
 ## Current cycle action
 - Delivered: Slice D capacity alarm thresholds and canary/rollback runbook.
-- Next: open PR for Slice C + D package, then execute D1 metrics plumbing implementation.
+- Delivered: Slice D1 metrics plumbing + threshold evaluator + unit tests.
+- Next: D2 persist snapshots to Supabase for trend dashboarding.

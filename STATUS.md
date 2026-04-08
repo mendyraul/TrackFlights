@@ -34,3 +34,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-04-07 | Rico | Issue #43 | Added stable /api/healthz/live + /api/healthz/ready routes and smoke-health script covering / + health endpoints | PR #44 open
 2026-03-29 | Rico | Issue #4 | Added Phase 3 Slice C guardrails doc (topic partitioning, connection/stale cleanup limits, saturation fallback, 32k-safe implementation handoff) and updated scale-slice tracker | branch feature/phase3-slicec-fanout-guardrails pushed
 2026-03-29 | Rico | Issue #4 | Added Phase 3 Slice D capacity alert thresholds + canary/rollback runbook and updated scale-slice tracker | branch feature/phase3-sliced-capacity-canary ready
+2026-03-29 | Rico | Issue #4 | Implemented Phase 3 Slice D1 capacity metrics plumbing (snapshot builder, threshold evaluator, poller wiring, docs) | branch feature/phase3-sliced-metrics-plumbing pushed

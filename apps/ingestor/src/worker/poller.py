@@ -1,6 +1,7 @@
 """Polling worker — orchestrates flight ingestion, weather, predictions, and anomaly detection."""
 
 import time
+from dataclasses import asdict
 
 import structlog
 from supabase import create_client
@@ -10,6 +11,11 @@ from src.providers.base_provider import BaseFlightProvider
 from src.services.supabase_client import SupabaseFlightClient
 from src.services.flight_normalizer import normalize_batch
 from src.services.flight_diff_engine import compute_diff
+from src.worker.capacity import (
+    CapacityThresholds,
+    build_capacity_snapshot,
+    evaluate_capacity,
+)
 
 logger = structlog.get_logger()
 
@@ -47,6 +53,13 @@ class Poller:
             settings.supabase_url,
             settings.supabase_service_role_key,
         )
+        self._capacity_thresholds = CapacityThresholds(
+            cycle_lag_warn_seconds=settings.capacity_cycle_lag_warn_seconds,
+            queue_depth_warn=settings.capacity_queue_depth_warn,
+            retry_ratio_warn=settings.capacity_retry_ratio_warn,
+            fanout_p95_warn_ms=settings.capacity_fanout_p95_warn_ms,
+            churn_ratio_warn=settings.capacity_churn_ratio_warn,
+        )
 
     def _get_weather_ingester(self):
         if self._weather_ingester is None:
@@ -81,6 +94,7 @@ class Poller:
             cycle=self._cycle_count,
             provider=self.provider.name,
         )
+        cycle_started = time.monotonic()
 
         # ── 1-6. Flight ingestion ────────────────────────────────────
         flight_stats = await self._ingest_flights(airport)
@@ -103,6 +117,15 @@ class Poller:
             self._run_anomaly_detection(current_flights, weather_data, stats)
 
         # ── 10. Log ──────────────────────────────────────────────────
+        cycle_duration_seconds = time.monotonic() - cycle_started
+        capacity_snapshot = build_capacity_snapshot(
+            stats,
+            cycle_duration_seconds=cycle_duration_seconds,
+            poll_interval_seconds=settings.poll_interval_seconds,
+        )
+        breaches = evaluate_capacity(capacity_snapshot, self._capacity_thresholds)
+        stats.update(asdict(capacity_snapshot))
+
         db_stats = self.db.get_flight_stats()
         cycle_finished_at = time.time()
         cycle_duration_ms = int((cycle_finished_at - cycle_started_at) * 1000)
@@ -130,6 +153,13 @@ class Poller:
                 predictions_enabled=settings.predictions_enabled,
                 anomaly_detection_enabled=settings.anomaly_detection_enabled,
                 seconds_since_last_success=seconds_since_last_success,
+            )
+
+        if any(breaches.values()):
+            logger.warning(
+                "Capacity threshold exceeded",
+                breaches=[name for name, tripped in breaches.items() if tripped],
+                **asdict(capacity_snapshot),
             )
 
         return stats
