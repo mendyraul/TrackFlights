@@ -6,6 +6,7 @@ import {
   TileLayer,
   Marker,
   Popup,
+  Polyline,
   useMap,
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
@@ -21,6 +22,7 @@ interface FlightMapProps {
   onSelect: (flight: Flight) => void;
   selectedId: string | null;
   recentlyChanged: Set<string>;
+  routeLine: { from: [number, number]; to: [number, number] } | null;
 }
 
 // ── Aircraft Icon ──────────────────────────────────────────────────────
@@ -174,6 +176,7 @@ function FlightMapInner({
   onSelect,
   selectedId,
   recentlyChanged,
+  routeLine,
 }: FlightMapProps) {
   return (
     <MapContainer
@@ -193,6 +196,19 @@ function FlightMapInner({
           <strong>MIA</strong><br />Miami International Airport
         </Popup>
       </Marker>
+
+
+      {routeLine && (
+        <Polyline
+          positions={[routeLine.from, routeLine.to]}
+          pathOptions={{
+            color: "#22d3ee",
+            weight: 3,
+            opacity: 0.9,
+            dashArray: "8 8",
+          }}
+        />
+      )}
 
       {/* Aircraft markers with clustering */}
       <MarkerClusterGroup

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useFlights } from "@/hooks/useFlights";
 import type { Flight, FlightDirection } from "@/types/database";
 import { FlightDetailSidebar } from "@/components/map/FlightDetailSidebar";
 import { MapFilters } from "@/components/map/MapFilters";
 import { ConnectionBadge } from "@/components/ui/ConnectionBadge";
+import { supabase } from "@/lib/supabase";
 
 const FlightMap = dynamic(() => import("@/components/map/FlightMap"), {
   ssr: false,
@@ -19,6 +20,12 @@ const FlightMap = dynamic(() => import("@/components/map/FlightMap"), {
     </div>
   ),
 });
+
+
+interface RouteLine {
+  from: [number, number];
+  to: [number, number];
+}
 
 export interface MapFilterState {
   direction: FlightDirection | "all";
@@ -37,6 +44,7 @@ export function MapView() {
     airline: "",
     search: "",
   });
+  const [routeLine, setRouteLine] = useState<RouteLine | null>(null);
 
   const filtered = flights.filter((f) => {
     if (filters.direction !== "all" && f.direction !== filters.direction) return false;
@@ -60,6 +68,48 @@ export function MapView() {
   const syncedSelected = selectedFlight
     ? flights.find((f) => f.id === selectedFlight.id) ?? selectedFlight
     : null;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRouteLine() {
+      if (!syncedSelected?.origin_iata || !syncedSelected.destination_iata) {
+        setRouteLine(null);
+        return;
+      }
+
+      const airportCodes = [syncedSelected.origin_iata, syncedSelected.destination_iata];
+      const { data, error: airportsError } = await supabase
+        .from("airports")
+        .select("iata_code,latitude,longitude")
+        .in("iata_code", airportCodes);
+
+      if (airportsError || !data) {
+        setRouteLine(null);
+        return;
+      }
+
+      const coordsByIata = new Map(
+        data
+          .filter((row) => row.latitude != null && row.longitude != null)
+          .map((row) => [row.iata_code, [row.latitude, row.longitude] as [number, number]])
+      );
+
+      const from = coordsByIata.get(syncedSelected.origin_iata);
+      const to = coordsByIata.get(syncedSelected.destination_iata);
+
+      if (!cancelled && from && to) {
+        setRouteLine({ from, to });
+      } else if (!cancelled) {
+        setRouteLine(null);
+      }
+    }
+
+    loadRouteLine();
+    return () => {
+      cancelled = true;
+    };
+  }, [syncedSelected?.id, syncedSelected?.origin_iata, syncedSelected?.destination_iata]);
 
   if (loading) {
     return (
@@ -113,6 +163,7 @@ export function MapView() {
           onSelect={setSelectedFlight}
           selectedId={syncedSelected?.id ?? null}
           recentlyChanged={recentlyChanged}
+          routeLine={routeLine}
         />
       </div>
     </div>
