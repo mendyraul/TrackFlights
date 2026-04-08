@@ -1,0 +1,44 @@
+name: Branch Hygiene
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Delete merged remote feature/* branches (dangerous)."
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+  schedule:
+    - cron: "0 13 * * 3"
+
+permissions:
+  contents: write
+
+jobs:
+  branch-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run branch hygiene (dry-run by default)
+        env:
+          APPLY: ${{ github.event.inputs.apply || 'false' }}
+        run: |
+          chmod +x scripts/git/branch-hygiene.sh
+          if [ "$APPLY" = "true" ]; then
+            scripts/git/branch-hygiene.sh --apply --remote origin --default-branch main | tee branch-hygiene-output.txt
+          else
+            scripts/git/branch-hygiene.sh --remote origin --default-branch main | tee branch-hygiene-output.txt
+          fi
+
+      - name: Upload run output
+        uses: actions/upload-artifact@v4
+        with:
+          name: branch-hygiene-output
+          path: branch-hygiene-output.txt
