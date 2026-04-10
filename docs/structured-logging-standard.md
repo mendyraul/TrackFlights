@@ -44,9 +44,12 @@ console.info(JSON.stringify({
 ## Ingestor example
 
 ```py
+from datetime import datetime, timezone
+
 logger.info(
     "ingestor.poll.complete",
     extra={
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "severity": "info",
         "component": "ingestor",
         "event": "ingestor.poll.complete",

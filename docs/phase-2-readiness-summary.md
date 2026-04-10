@@ -14,11 +14,10 @@ Issue #3 requires:
 
 - Alerts + test trigger process documented:
   - `docs/observability-reliability-runbook.md`
-  - `docs/alert-test-evidence.md`
   - `docs/evidence/phase2-alert-tests/README.md`
 - Health/incident runbooks documented:
-  - `docs/operations/healthchecks.md`
-  - `docs/operations/incident-runbook.md`
+  - `docs/observability-reliability-runbook.md`
+  - `docs/rollback-runbook.md`
 - Backup/restore evidence path established:
   - `docs/evidence/phase2-backup-restore/README.md`
 
