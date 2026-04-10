@@ -6,6 +6,7 @@ Goal: capture repeatable baseline metrics before scale work so regressions are v
 
 - Web performance baseline (Lighthouse: home + map route)
 - API health latency baseline (`/api/health`)
+- API load smoke baseline (k6 short run)
 - Ingestor cycle latency baseline (single poll run)
 
 ## Baseline capture protocol
@@ -34,7 +35,17 @@ for i in {1..20}; do curl -s -o /dev/null -w "%{time_total}\n" https://<preview-
 
 Record p50/p95 in PR notes.
 
-### 3) Ingestor cycle latency baseline
+### 3) API load smoke baseline (k6)
+
+```bash
+k6 run -e BASE_URL=https://<preview-or-prod-url> scripts/k6/health-smoke.js
+```
+
+Starter acceptance target:
+- p95 < 800ms on `/api/health`
+- error rate < 1%
+
+### 4) Ingestor cycle latency baseline
 
 ```bash
 python -m apps.ingestor.src.main --once --provider example --airport MIA --log-json | tee ./docs/evidence/perf/ingestor-once.log

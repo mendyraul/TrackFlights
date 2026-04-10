@@ -39,7 +39,17 @@ Use this checklist before every production release.
 - [ ] Error rate does not spike after deploy.
 - [ ] Spot-check arrivals/departures board for sane data.
 
-## 4) Release Evidence
+## 4) Cost Guardrails Verification
+
+- [ ] Vercel budget alerts configured (50%/80%/95%).
+- [ ] Supabase quota alerts configured (60%/85%/95%).
+- [ ] Ingestor host capacity alerts active (CPU/memory/disk).
+- [ ] Cost escalation contact/channel confirmed.
+- [ ] Weekly cost review doc prepared (or updated) under `docs/evidence/cost/`.
+
+Reference: `docs/cost-guardrails.md`
+
+## 5) Release Evidence
 
 - [ ] Link release PR.
 - [ ] Link Vercel deployment URL/build log.
@@ -47,6 +57,6 @@ Use this checklist before every production release.
 - [ ] Note any migration IDs applied.
 - [ ] Record verification outcome and operator initials.
 
-## 5) Exit Criteria
+## 6) Exit Criteria
 
 Release is complete only when all boxes above are checked and no rollback triggers are active.
