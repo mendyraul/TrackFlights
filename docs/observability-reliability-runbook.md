@@ -72,10 +72,19 @@ Current baseline:
 3. Run ingestor against restored environment in dry-run/read mode.
 4. Record restore duration and data gap.
 
-## 5) Alert Test Checklist
+## 5) Final Verification Checklist (Issue #3 close-out)
 
-Run this before closing Issue #3 (evidence path + commands in `docs/alert-test-evidence.md`):
+Run this before closing Issue #3:
 - [ ] Simulate web health endpoint failure and confirm alert dispatch.
 - [ ] Stop ingestor for > 2 intervals and confirm heartbeat-miss alert.
 - [ ] Trigger a controlled Supabase auth failure and confirm alert.
-- [ ] Capture evidence links in issue comments.
+- [ ] Capture acknowledgment path for each alert trigger.
+- [ ] Execute one non-prod restore drill and record measured RPO/RTO.
+
+Evidence locations:
+- Alert trigger proof: `docs/evidence/phase2-alerts/`
+- Backup/restore drill proof: `docs/evidence/phase2-backup-restore/`
+
+Latest validated run:
+- Alert scenarios: `docs/evidence/phase2-alerts/2026-04-10.md`
+- Backup/restore drill: `docs/evidence/phase2-backup-restore/2026-04-10.md`
