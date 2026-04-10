@@ -101,9 +101,25 @@ Before production release:
 - [ ] Supabase policy review complete
 
 Owner: Rico  
-Status: Draft baseline committed in Phase 4 Slice A
+Status: Baseline refreshed (2026-04-10)
 
-## Baseline Summary Snapshot (Issue #19)
-- Pass: 6
-- Gap: 8
-- Priority remediations: headers policy, dependency/secret scanning in CI, API/rate-limit template, deployment hardening + key rotation runbook.
+## Baseline Audit Snapshot (2026-04-10)
+
+| Control area | Current state | Evidence | Status |
+|---|---|---|---|
+| Web security headers | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and CSP are configured in Next.js headers middleware | `apps/web/next.config.js` | ✅ Pass |
+| HSTS enforcement | Not set in app headers; must be enforced at Vercel edge/proxy | No HSTS config committed in repo | ⚠️ Gap |
+| API rate limiting | No concrete limiter implementation found in web/ingestor routes yet | Repo grep only returns checklist text; no runtime limiter module | ⚠️ Gap |
+| Dependency audit gates | CI workflow enforces `npm audit --omit=dev --audit-level=high` and `pip-audit --strict` | `.github/workflows/security-gates.yml` | ✅ Pass |
+| Secret hygiene controls | Policy documented, but no CI secret scanning workflow detected (gitleaks/trufflehog equivalent missing) | No secret-scan workflow under `.github/workflows` | ⚠️ Gap |
+| Supabase least-privilege/RLS verification | Checklist exists, but no current audit evidence attached for policy/table review | Docs only; no latest evidence artifact in `docs/evidence` | ⚠️ Gap |
+
+### Totals
+- Pass: 2
+- Gap: 4
+
+### Priority follow-ups
+1. Add edge-level HSTS config and verification evidence.
+2. Implement API/ingestor rate-limiter guardrails and 429 telemetry.
+3. Add CI secret scanning gate.
+4. Capture Supabase RLS/policy audit evidence (table-by-table checklist).
