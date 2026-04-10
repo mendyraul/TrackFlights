@@ -6,6 +6,7 @@ Use these as the source of truth:
 - `production-baseline.md` — production readiness baseline
 - `security-hardening-checklist.md` — security controls + release gate
 - `observability-reliability-runbook.md` — monitoring, incident response, reliability checks
+- `observability/alert-matrix.md` — canonical alert thresholds, severities, and trigger test plan
 - `release-checklist.md` — release execution checklist
 - `rollback-runbook.md` — rollback steps
 - `branch-hygiene-policy.md` — branch lifecycle policy
