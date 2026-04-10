@@ -70,8 +70,9 @@ Store evidence under:
 Before closing Issue #2:
 
 - [ ] Performance baseline captured (web + api + ingestor)
-- [ ] p50/p95 latency values posted in issue comment
+- [ ] p50/p95 latency values posted in issue comment (attach `perf:latency:summary` output)
 - [ ] Any out-of-threshold metric has a follow-up issue linked
 
 Owner: Rico  
 Status: Baseline protocol committed; evidence capture pending runtime URL + env
+ine protocol committed; evidence capture pending runtime URL + env

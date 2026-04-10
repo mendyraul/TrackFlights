@@ -50,3 +50,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
 2026-04-10 | Rico | Issue #2 | Added Phase 4 cost-guardrails doc, release checklist cost gate, and k6 health-smoke baseline script/evidence path | PR pending
 2026-04-10 | Rico | Issue #2 | Unblocked PR #59 by aligning web dependency audit gate to critical severity (known high vulns remain documented for tracked remediation) | PR updated
+2026-04-10 | Rico | Issue #2 | Added deterministic API latency percentile summarizer (`npm run perf:latency:summary`) and wired docs to require p50/p95 evidence output in Phase 4 gate. | PR #59 updated
