@@ -49,3 +49,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #19 | Added docs/security-hardening-checklist.md baseline audit with pass/gap matrix and prioritized remediations | done
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
 2026-04-08 | Rico | Issue #52 | Remediated web security-gate blockers by upgrading `next` to 15.5.14 and forcing transitive `lodash` to 4.18.1; web prod audit now passes locally | ready on feature/issue-52-web-audit-remediation
+2026-04-10 | Rico | Issue #52 | Refreshed dependency security remediation: bumped Next.js to ^15.5.15, aligned eslint-config-next, corrected lodash override to 4.17.24, regenerated lockfile, and re-ran web prod audit (0 vulnerabilities). | PR #53 updated
