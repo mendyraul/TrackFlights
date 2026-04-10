@@ -49,3 +49,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #19 | Added docs/security-hardening-checklist.md baseline audit with pass/gap matrix and prioritized remediations | done
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
 2026-04-10 | Rico | Issue #3 | Added Phase 2 readiness summary, structured logging standard, and backup/restore evidence folder template to close remaining observability doc gaps. | PR pending
+2026-04-10 | Rico | Issue #3 | Addressed PR #60 review comments: fixed broken readiness doc references and added UTC timestamp field to ingestor logging example | PR #60 updated (commit 1a03c4c)
