@@ -49,3 +49,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #19 | Added docs/security-hardening-checklist.md baseline audit with pass/gap matrix and prioritized remediations | done
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
 2026-04-08 | Rico | Issue #38 | Added operations health-check contract + incident runbook baseline docs | PR #49 open
+2026-04-10 | Rico | Issue #38 | Addressed PR #49 review nitpicks with concrete metric measurement guidance + tooling appendix for triage/containment commands | PR #49 updated

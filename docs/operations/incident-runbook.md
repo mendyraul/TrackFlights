@@ -15,6 +15,11 @@
 
 ## Triage Checklist
 - Confirm alert source and timestamp.
+  - Dashboards: Vercel project overview, Supabase project health, ingestion logs.
+  - Quick checks:
+    - `curl -sS https://<prod-domain>/api/health | jq`
+    - `curl -sS https://<prod-domain>/api/healthz/web | jq`
+    - `curl -sS https://<prod-domain>/api/healthz/supabase | jq`
 - Identify impacted component(s): web / ingestor / Supabase.
 - Estimate blast radius and data risk.
 - Assign owner and severity.
@@ -22,9 +27,13 @@
 
 ## Containment Checklist
 - Pause risky rollouts/jobs.
+  - Vercel: stop/promote rollback candidate as needed.
+  - Ingestor: pause scheduler/worker trigger path.
 - Enable safe-mode throttling/backoff.
 - Roll back latest deploy when regression is likely.
+  - `vercel rollback <deployment-url-or-id>` (or dashboard rollback action)
 - Isolate affected integration paths.
+  - Disable non-essential API calls / writes if they amplify impact.
 
 ## Recovery Checklist
 - Return all required health checks to green.
@@ -38,6 +47,24 @@
 2. If unresolved after 20m (SEV-1/2), page secondary owner.
 3. If infra/vendor fault suspected, escalate platform + vendor support.
 4. If data integrity risk exists, freeze non-essential writes.
+
+Communication channels (set per environment):
+- Primary incident room/channel (chat + call bridge)
+- Paging rotation (primary/secondary)
+- Vendor escalation ticket links (Vercel/Supabase)
+
+## Tooling & Commands Appendix
+- Health endpoints:
+  - `curl -sS https://<prod-domain>/api/health | jq`
+  - `curl -sS https://<prod-domain>/api/healthz/web | jq`
+  - `curl -sS https://<prod-domain>/api/healthz/supabase | jq`
+- Ingestor snapshot (when available in repo automation):
+  - `npm run ops:health-snapshot` *(if script exists in current branch)*
+- GitHub + deployment context:
+  - `gh pr checks <pr-number> --repo mendyraul/TrackFlights`
+  - `gh run list --repo mendyraul/TrackFlights --limit 10`
+- Rollback:
+  - `vercel rollback <deployment-url-or-id>`
 
 ## On-Call Handoff Notes
 Include current severity, impact, timeline, hypotheses tested, links to logs/dashboards/PRs, and explicit next owner/action.

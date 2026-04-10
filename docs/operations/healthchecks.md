@@ -18,6 +18,14 @@ This document defines the minimum health checks required for TrackFlights to qui
 - Latest production deployment status is READY.
 - Essential env vars present (do not log values).
 
+Measurement guidance (current + gap):
+- **Primary source:** Vercel Observability / Runtime Logs + deployment API state.
+- **Secondary source:** external APM (Datadog/CloudWatch) if enabled.
+- **p95 latency:** derive from route-handler timing metric (for example, `http.server.duration` or equivalent platform latency metric) filtered to `/api/*`; evaluate rolling 5m p95.
+- **5m error rate:** compute `5xx_route_handler_count / total_route_handler_requests` over rolling 5m.
+- **READY deploy state:** verify latest prod deployment status in Vercel dashboard/API before incident close.
+- **Instrumentation gap:** if timing/error counters are not emitted for a route, track as follow-up instrumentation work before enforcing SLO alerts for that route.
+
 Alert triggers:
 - P1: health endpoint down for 3 consecutive checks.
 - P2: error rate > 5% for 10m.
@@ -28,6 +36,12 @@ Alert triggers:
 - Last successful ingestion <= 5m old during active windows.
 - Queue depth below threshold over rolling 10m.
 - Retry/error ratio bounded; no retry storm.
+
+Measurement guidance (current + gap):
+- **Worker heartbeat + last successful ingestion:** currently available via ingestor health snapshot and scheduler timestamps.
+- **Queue depth:** not emitted in current ingestor health snapshot; until implemented, treat as external-monitoring-only signal (queue provider metrics/log-derived estimate).
+- **Retry/error ratio:** not emitted as a first-class health snapshot metric; derive from worker logs or external APM counters where available.
+- **Operator action:** if queue depth/retry ratio cannot be measured from current telemetry stack, open/track a follow-up instrumentation issue before tightening P2/P3 automation.
 
 Alert triggers:
 - P1: no heartbeat for > 3m.
