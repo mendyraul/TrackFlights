@@ -50,3 +50,5 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
 
 2026-04-11 | Rico | Issue #27 | Added canonical Phase 3 queue/retry/idempotency design doc with rollout + metrics plan; indexed in docs | PR open
+
+2026-04-11 | Rico | Issue #27 | Unblocked PR #64 security gate by upgrading Next.js to 15.5.15 and refreshing lockfile to clear lodash audit hit | PR #64 updated
