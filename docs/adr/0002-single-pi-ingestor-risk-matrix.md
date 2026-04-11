@@ -39,7 +39,7 @@ Adopt a **queue-first, multi-worker fetch + single-leader reconcile** topology:
 ## Trade-offs
 
 - Adds queue + lease visibility requirements.
-- Requires disciplined leader promotion process.
+- Requires a disciplined process for promoting leaders.
 - Slightly slower feature velocity while observability hardening is finalized.
 
 ## Implementation notes

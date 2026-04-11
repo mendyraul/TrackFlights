@@ -25,6 +25,6 @@
     "node": ">=18"
   },
   "overrides": {
-    "lodash": "4.17.24"
+    "lodash": "4.17.21"
   }
 }

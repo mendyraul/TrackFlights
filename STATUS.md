@@ -52,3 +52,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-04-10 | Rico | Issue #52 | Refreshed dependency security remediation: bumped Next.js to ^15.5.15, aligned eslint-config-next, corrected lodash override to 4.17.24, regenerated lockfile, and re-ran web prod audit (0 vulnerabilities). | PR #53 updated
 2026-04-11 | Rico | Issue #26 | Added single-Pi ingestor bottleneck/failure risk matrix ADR with recommended queue-first multi-worker + single-leader topology; linked in docs index | PR pending
 2026-04-11 | Rico | Issue #26 | Unblocked PR #63 by applying security-gate path scoping + latest web dependency remediation; security audits now passing on branch | PR #63 checks green (Vercel/CodeRabbit pending)
+2026-04-11 | Rico | Issue #26 | Addressed CodeRabbit follow-ups on PR #63: broadened security path filters, fixed lodash override to published version, and polished ADR wording | PR #63 updated

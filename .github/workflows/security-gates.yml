@@ -20,6 +20,11 @@ jobs:
           filters: |
             web:
               - 'apps/web/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'yarn.lock'
+              - 'pnpm-lock.yaml'
               - '.github/workflows/security-gates.yml'
             ingestor:
               - 'apps/ingestor/**'
