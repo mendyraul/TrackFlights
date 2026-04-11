@@ -89,9 +89,18 @@ export function MapView() {
         return;
       }
 
+      const airportRows = data as Array<{
+        iata_code: string | null;
+        latitude: number | null;
+        longitude: number | null;
+      }>;
+
       const coordsByIata = new Map(
-        data
-          .filter((row) => row.latitude != null && row.longitude != null)
+        airportRows
+          .filter(
+            (row): row is { iata_code: string; latitude: number; longitude: number } =>
+              row.iata_code != null && row.latitude != null && row.longitude != null
+          )
           .map((row) => [row.iata_code, [row.latitude, row.longitude] as [number, number]])
       );
 
