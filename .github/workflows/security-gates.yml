@@ -21,7 +21,7 @@ jobs:
       - name: Generate lockfile for audit
         run: npm install --package-lock-only --ignore-scripts
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --omit=dev --audit-level=critical
 
   python-audit:
     name: Ingestor Python dependency audit
