@@ -50,3 +50,5 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
 
 2026-04-10 | Rico | Issue #19 | Refreshed security hardening baseline with evidence-backed pass/gap audit and concrete remediation priorities | PR pending
+
+2026-04-11 | Rico | Issue #19 | Upgraded web Next.js/eslint-config-next to 15.5.15 and regenerated lockfile to clear high-severity npm audit gate; local web build + prod audit pass | Pushed to PR #58 branch
