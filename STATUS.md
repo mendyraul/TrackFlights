@@ -51,3 +51,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-04-08 | Rico | Issue #47 | Added selected-flight route polyline using airport coordinate lookup with graceful fallback; opened PR #51 | PR #51 open
 2026-04-10 | Rico | Issue #47 | Fixed MapView airport coordinate type narrowing to unblock Next.js/Vercel build; verified with npm ci + npm run build; posted PR update | PR #51 updated
 2026-04-11 | Rico | Issue #47 | Merged origin/main into feature/issue-47-route-line to refresh branch against latest security-gate workflow and dependency baseline before rerunning checks | PR #51 updated
+2026-04-11 | Rico | Issue #47 | Bumped web Next.js to 15.5.15 on route-line PR branch to clear production dependency audit; validated npm audit(web)=0 high/critical. | PR #51 updated
