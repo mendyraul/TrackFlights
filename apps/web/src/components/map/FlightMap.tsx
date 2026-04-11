@@ -21,8 +21,11 @@ interface FlightMapProps {
   flights: Flight[];
   onSelect: (flight: Flight) => void;
   selectedId: string | null;
+  routeLine: {
+    origin: [number, number];
+    destination: [number, number];
+  } | null;
   recentlyChanged: Set<string>;
-  routeLine: { from: [number, number]; to: [number, number] } | null;
 }
 
 // ── Aircraft Icon ──────────────────────────────────────────────────────
@@ -175,8 +178,8 @@ function FlightMapInner({
   flights,
   onSelect,
   selectedId,
-  recentlyChanged,
   routeLine,
+  recentlyChanged,
 }: FlightMapProps) {
   return (
     <MapContainer
@@ -197,10 +200,9 @@ function FlightMapInner({
         </Popup>
       </Marker>
 
-
       {routeLine && (
         <Polyline
-          positions={[routeLine.from, routeLine.to]}
+          positions={[routeLine.origin, routeLine.destination]}
           pathOptions={{
             color: "#22d3ee",
             weight: 3,

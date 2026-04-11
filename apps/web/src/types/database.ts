@@ -55,6 +55,18 @@ export interface Airline {
   country: string | null;
 }
 
+export interface Airport {
+  id: string;
+  iata_code: string;
+  icao_code: string | null;
+  name: string;
+  city: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  timezone: string | null;
+}
+
 export interface AnalyticsHourly {
   id: string;
   hour: string;
@@ -174,6 +186,11 @@ export interface Database {
         Row: Airline;
         Insert: Partial<Airline> & { iata_code: string; name: string };
         Update: Partial<Airline>;
+      };
+      airports: {
+        Row: Airport;
+        Insert: Partial<Airport> & { iata_code: string; name: string };
+        Update: Partial<Airport>;
       };
       analytics_hourly: {
         Row: AnalyticsHourly;

@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useFlights } from "@/hooks/useFlights";
+import { supabase } from "@/lib/supabase";
 import type { Flight, FlightDirection } from "@/types/database";
 import { FlightDetailSidebar } from "@/components/map/FlightDetailSidebar";
 import { MapFilters } from "@/components/map/MapFilters";
 import { ConnectionBadge } from "@/components/ui/ConnectionBadge";
-import { supabase } from "@/lib/supabase";
 
 const FlightMap = dynamic(() => import("@/components/map/FlightMap"), {
   ssr: false,
@@ -21,11 +21,10 @@ const FlightMap = dynamic(() => import("@/components/map/FlightMap"), {
   ),
 });
 
-
-interface RouteLine {
-  from: [number, number];
-  to: [number, number];
-}
+type RouteLine = {
+  origin: [number, number];
+  destination: [number, number];
+};
 
 export interface MapFilterState {
   direction: FlightDirection | "all";
@@ -38,13 +37,13 @@ export function MapView() {
   const { flights, loading, error, connectionStatus, lastUpdate, recentlyChanged } =
     useFlights();
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
+  const [routeLine, setRouteLine] = useState<RouteLine | null>(null);
   const [filters, setFilters] = useState<MapFilterState>({
     direction: "all",
     status: "",
     airline: "",
     search: "",
   });
-  const [routeLine, setRouteLine] = useState<RouteLine | null>(null);
 
   const filtered = flights.filter((f) => {
     if (filters.direction !== "all" && f.direction !== filters.direction) return false;
@@ -70,54 +69,53 @@ export function MapView() {
     : null;
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadRouteLine() {
+    async function resolveRoute() {
       if (!syncedSelected?.origin_iata || !syncedSelected.destination_iata) {
         setRouteLine(null);
         return;
       }
 
-      const airportCodes = [syncedSelected.origin_iata, syncedSelected.destination_iata];
-      const { data, error: airportsError } = await supabase
+      const codes = [syncedSelected.origin_iata, syncedSelected.destination_iata];
+      const { data, error: airportError } = await supabase
         .from("airports")
-        .select("iata_code,latitude,longitude")
-        .in("iata_code", airportCodes);
+        .select("iata_code, latitude, longitude")
+        .in("iata_code", codes);
 
-      if (airportsError || !data) {
+      if (airportError || !data) {
         setRouteLine(null);
         return;
       }
 
-      const airportRows = data as Array<{
-        iata_code: string | null;
+      const airports = (data ?? []) as Array<{
+        iata_code: string;
         latitude: number | null;
         longitude: number | null;
       }>;
 
-      const coordsByIata = new Map(
-        airportRows
-          .filter(
-            (row): row is { iata_code: string; latitude: number; longitude: number } =>
-              row.iata_code != null && row.latitude != null && row.longitude != null
-          )
-          .map((row) => [row.iata_code, [row.latitude, row.longitude] as [number, number]])
+      const byCode = new Map(
+        airports.map((airport) => [airport.iata_code, airport] as const)
       );
 
-      const from = coordsByIata.get(syncedSelected.origin_iata);
-      const to = coordsByIata.get(syncedSelected.destination_iata);
+      const origin = byCode.get(syncedSelected.origin_iata);
+      const destination = byCode.get(syncedSelected.destination_iata);
 
-      if (!cancelled && from && to) {
-        setRouteLine({ from, to });
-      } else if (!cancelled) {
+      if (
+        origin?.latitude == null ||
+        origin.longitude == null ||
+        destination?.latitude == null ||
+        destination.longitude == null
+      ) {
         setRouteLine(null);
+        return;
       }
+
+      setRouteLine({
+        origin: [origin.latitude, origin.longitude],
+        destination: [destination.latitude, destination.longitude],
+      });
     }
 
-    loadRouteLine();
-    return () => {
-      cancelled = true;
-    };
+    void resolveRoute();
   }, [syncedSelected?.id, syncedSelected?.origin_iata, syncedSelected?.destination_iata]);
 
   if (loading) {
@@ -171,8 +169,8 @@ export function MapView() {
           flights={mappable}
           onSelect={setSelectedFlight}
           selectedId={syncedSelected?.id ?? null}
-          recentlyChanged={recentlyChanged}
           routeLine={routeLine}
+          recentlyChanged={recentlyChanged}
         />
       </div>
     </div>
