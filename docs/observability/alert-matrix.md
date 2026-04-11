@@ -11,8 +11,8 @@ Define deterministic alerting coverage for TrackFlights web uptime, ingestion pi
 ## Owner + Channel Defaults
 - **Primary owner:** Raul (`@mendyraul`)
 - **Secondary owner:** Rico (automation)
-- **Primary channel:** Telegram alerting channel
-- **Secondary channel:** GitHub issue in `mendyraul/TrackFlights` labeled `priority:high`
+- **Primary channel:** Telegram alerting channel — this is the immediate paging mechanism for **SEV-1** alerts.
+- **Secondary channel:** GitHub issue in `mendyraul/TrackFlights` labeled `priority:high` for timeline tracking and follow-up actions.
 
 ## Alert Matrix
 

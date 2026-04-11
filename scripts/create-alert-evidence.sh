@@ -1,10 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 <signal-name>"
+  echo "Example: $0 health-endpoint-failure"
+  exit 1
+fi
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="$ROOT_DIR/docs/evidence/phase2-alert-tests"
-DATE_UTC="${1:-$(date -u +%F)}"
-OUT_FILE="$OUT_DIR/${DATE_UTC}.md"
+DATE_UTC="$(date -u +%F)"
+RAW_SIGNAL="$1"
+SIGNAL="$(echo "$RAW_SIGNAL" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+
+if [[ -z "$SIGNAL" ]]; then
+  echo "Error: signal-name is required and must contain at least one alphanumeric character"
+  exit 1
+fi
+
+OUT_FILE="$OUT_DIR/${DATE_UTC}-${SIGNAL}-test.md"
 
 mkdir -p "$OUT_DIR"
 
@@ -14,35 +28,39 @@ if [[ -f "$OUT_FILE" ]]; then
 fi
 
 cat > "$OUT_FILE" <<TEMPLATE
-# Phase 2 Alert Test Evidence — ${DATE_UTC}
-
-- Generated (UTC): $(date -u +"%Y-%m-%d %H:%M:%S")
+# Alert Test Evidence — ${SIGNAL}
+- Date: ${DATE_UTC}
+- Environment:
 - Operator:
-- Environment: (prod/staging)
 
-## A) Web health alert
-- Monitor event id:
-- First failure timestamp (UTC):
-- Alert trigger timestamp (UTC):
-- Recovery timestamp (UTC):
-- Evidence links/logs:
+## Trigger
+- Steps:
+- Trigger window:
+- Rollback plan:
 
-## B) Ingestor heartbeat-miss alert
-- Service stop timestamp (UTC):
-- Alert trigger timestamp (UTC):
-- Service restart timestamp (UTC):
-- Recovery timestamp (UTC):
-- Evidence links/logs:
+## Detection
+- Threshold crossed at (UTC):
+- Alert fired evidence (log/screenshot/link):
+- Notification channel confirmation:
 
-## C) Supabase auth failure alert
-- Auth failure log timestamp (UTC):
-- Alert trigger timestamp (UTC):
-- Clear/recovery timestamp (UTC):
-- Evidence links/logs:
+## Acknowledgement
+- Acknowledged by:
+- Acknowledgement timestamp (UTC):
+- First mitigation action timestamp (UTC):
 
-## Gate
-- [ ] All three alert scenarios validated
-- [ ] Evidence linked back to Issue #3
+## Recovery
+- Recovery action:
+- Alert clear timestamp (UTC):
+- Side-effect validation:
+
+## Metrics
+- TTA:
+- TTR:
+
+## Artifacts
+- Logs:
+- Screenshots:
+- Related issue/PR:
 TEMPLATE
 
 echo "Created: $OUT_FILE"

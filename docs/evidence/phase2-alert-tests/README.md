@@ -2,18 +2,20 @@
 
 This folder stores reliability drill evidence for Issue #3 (Observability + reliability hardening).
 
-## Create a dated evidence template
+## Create a signal-specific evidence template
 
 From repo root:
 
 ```bash
-./scripts/create-alert-evidence.sh
+./scripts/create-alert-evidence.sh health-endpoint-failure
 ```
 
-Optional explicit UTC date:
+The script requires a signal name and writes files using this convention:
 
-```bash
-./scripts/create-alert-evidence.sh 2026-03-28
-```
+`YYYY-MM-DD-<signal>-test.md`
+
+Examples:
+- `2026-04-11-cpu-test.md`
+- `2026-04-11-health-endpoint-failure-test.md`
 
 Then fill out the generated markdown file and link it in the Issue #3 thread.
