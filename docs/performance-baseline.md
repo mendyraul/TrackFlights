@@ -53,6 +53,29 @@ Example summary payload:
 }
 ```
 
+## Captured baseline (2026-04-11, local)
+
+Environment: local Next.js runtime on this host (`http://127.0.0.1:3000/api/health`).
+
+Command used:
+
+```bash
+npm run perf:latency:capture -- http://127.0.0.1:3000/api/health 50 docs/evidence/perf/2026-04-11-api-health-local-seconds.txt
+```
+
+Results:
+
+- samples: 50
+- p50: 2.79ms
+- p95: 4.27ms
+- p99: 4.90ms
+- max: 4.90ms
+
+Artifacts:
+
+- `docs/evidence/perf/2026-04-11-api-health-local-seconds.txt`
+- `docs/evidence/perf/2026-04-11-api-health-local-summary.json`
+
 ## Release gate
 
 Before closing #20, post one issue comment with:
