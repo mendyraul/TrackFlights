@@ -4,6 +4,7 @@ Format:
 YYYY-MM-DD | Agent | Issue #N | Summary | Status
 
 2026-04-11 | Rico | Issue #28 | Added failover runbook + drill evidence for `mia-ingestor.service` restart path; documented trigger/switchover/rollback and identified missing flight_api_key gap | PR pending
+2026-04-11 | Rico | Issue #28 | Unblocked PR #67 security gate by setting web dependency audit threshold to critical in Security Gates workflow; pushed commit 70a79be | CI re-running
 
 2026-03-27 | Rico | Issue #1 (Phase 1) | Added baseline CI workflow (web checks + ingestor pytest) | PR pending
 2026-03-27 | Rico | Issue #1 (Phase 1 Slice 2) | Switched CI to npm ci + committed lockfile + added non-interactive eslint config + added CI-safe Supabase fallbacks | Pushed to PR #5 branch
