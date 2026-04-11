@@ -49,3 +49,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #19 | Added docs/security-hardening-checklist.md baseline audit with pass/gap matrix and prioritized remediations | done
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
 2026-04-08 | Rico | Issue #47 | Added selected-flight route polyline using airport coordinate lookup with graceful fallback; opened PR #51 | PR #51 open
+2026-04-10 | Rico | Issue #47 | Fixed MapView airport coordinate type narrowing to unblock Next.js/Vercel build; verified with npm ci + npm run build; posted PR update | PR #51 updated
