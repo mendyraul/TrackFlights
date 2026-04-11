@@ -49,3 +49,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #19 | Added docs/security-hardening-checklist.md baseline audit with pass/gap matrix and prioritized remediations | done
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
 2026-04-11 | Rico | Issue #22 | Added cost guardrails doc with Vercel/Supabase thresholds, alert checklist, and spend-spike triage runbook; linked docs index | PR pending
+2026-04-11 | Rico | Issue #22 | Unblocked PR #65 security gate by upgrading web deps (Next/eslint-config-next) and applying npm audit remediation; web prod audit/build now pass | Pushed to PR #65 branch
