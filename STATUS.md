@@ -48,3 +48,5 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #2 (Phase 4 Slice G proactive) | Added performance baseline protocol doc + release gate linkage for web/API/ingestor metrics evidence capture | ready on branch
 2026-03-29 | Rico | Issue #19 | Added docs/security-hardening-checklist.md baseline audit with pass/gap matrix and prioritized remediations | done
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
+
+2026-04-11 | Rico | Issue #27 | Added canonical Phase 3 queue/retry/idempotency design doc with rollout + metrics plan; indexed in docs | PR open

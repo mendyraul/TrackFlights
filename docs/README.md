@@ -11,5 +11,6 @@ Use these as the source of truth:
 - `branch-hygiene-policy.md` — branch lifecycle policy
 - `database.md` — schema/data model
 - `pipeline.md` — ingestion + processing flow
+- `phase-3-queue-retry-idempotency.md` — queue contract, retry policy, and idempotent write strategy
 
 Historical and slice-specific docs were moved to `docs/archive/`.
