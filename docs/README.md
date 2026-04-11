@@ -11,5 +11,6 @@ Use these as the source of truth:
 - `branch-hygiene-policy.md` — branch lifecycle policy
 - `database.md` — schema/data model
 - `pipeline.md` — ingestion + processing flow
+- `phase-3-failover-runbook.md` — secondary worker failover drill, triggers, switchover, rollback, and evidence links
 
 Historical and slice-specific docs were moved to `docs/archive/`.
