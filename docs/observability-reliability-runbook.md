@@ -28,17 +28,11 @@ Alert triggers:
 
 ## 2) Structured Logging Standard
 
-Required fields for operational logs:
-- `event` (message)
-- `cycle` (where applicable)
-- `provider`
-- `cycle_duration_ms`
-- `service` (`web` or `ingestor`)
-- `severity`
+Canonical spec: `docs/structured-logging-standard.md`
 
 Current baseline:
 - Ingestor emits structured runtime logs via `structlog` with cycle metrics.
-- Web now exposes machine-readable health status at `/api/health`.
+- Web exposes machine-readable health status at `/api/health` and should emit JSON logs with stable `event` keys and `trace_id`.
 
 ## 3) Incident Response (P0/P1)
 
