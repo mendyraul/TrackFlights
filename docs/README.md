@@ -12,5 +12,8 @@ Use these as the source of truth:
 - `branch-hygiene-policy.md` — branch lifecycle policy
 - `database.md` — schema/data model
 - `pipeline.md` — ingestion + processing flow
+- `scale-path.md` — Phase 3 scale/failover contract
+- `realtime-throughput-baseline.md` — realtime throughput assumptions + measurement
+- `phase-3-realtime-fanout-guardrails.md` — realtime fanout limits/degradation policy
 
 Historical and slice-specific docs were moved to `docs/archive/`.
