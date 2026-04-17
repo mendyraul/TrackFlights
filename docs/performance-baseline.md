@@ -1,77 +1,63 @@
-# Performance Baseline (Phase 4 Slice G)
+# Performance/load baseline (Phase 4 Slice B)
 
-Goal: capture repeatable baseline metrics before scale work so regressions are visible.
+Goal: make baseline capture repeatable so latency regressions are visible before release.
 
 ## Scope
 
-- Web performance baseline (Lighthouse: home + map route)
 - API health latency baseline (`/api/health`)
-- API load smoke baseline (k6 short run)
-- Ingestor cycle latency baseline (single poll run)
+- Optional web Lighthouse snapshots for home/map routes
 
-## Baseline capture protocol
+## Commands (runnable)
 
-### 1) Web Lighthouse baseline
-
-Run against Vercel preview or production candidate:
+### 1) Capture API health latency samples
 
 ```bash
-npx lighthouse https://<preview-or-prod-url> --quiet --chrome-flags="--headless" --output=json --output-path=./docs/evidence/perf/lighthouse-home.json
-npx lighthouse https://<preview-or-prod-url>/map --quiet --chrome-flags="--headless" --output=json --output-path=./docs/evidence/perf/lighthouse-map.json
+npm run perf:latency:capture -- https://<preview-or-prod-url>/api/health 50 docs/evidence/perf/api-health-latency-seconds.txt
 ```
 
-Target thresholds (initial gate):
+This writes raw per-request seconds and prints JSON percentiles.
 
-- Performance score >= 70
-- Accessibility score >= 90
-- Best Practices score >= 90
-- SEO score >= 85
-
-### 2) API health latency baseline
+### 2) Recompute summary from an existing sample file
 
 ```bash
-for i in {1..20}; do curl -s -o /dev/null -w "%{time_total}\n" https://<preview-or-prod-url>/api/health; done > ./docs/evidence/perf/api-health-latency-seconds.txt
+npm run perf:latency:summary -- docs/evidence/perf/api-health-latency-seconds.txt
 ```
 
-Record p50/p95 in PR notes.
-
-### 3) API load smoke baseline (k6)
+### 3) Optional Lighthouse snapshots
 
 ```bash
-k6 run -e BASE_URL=https://<preview-or-prod-url> scripts/k6/health-smoke.js
+npx lighthouse https://<preview-or-prod-url> --quiet --chrome-flags="--headless" --output=json --output-path=docs/evidence/perf/lighthouse-home.json
+npx lighthouse https://<preview-or-prod-url>/map --quiet --chrome-flags="--headless" --output=json --output-path=docs/evidence/perf/lighthouse-map.json
 ```
 
-Starter acceptance target:
-- p95 < 800ms on `/api/health`
-- error rate < 1%
+## Baseline evidence contract
 
-### 4) Ingestor cycle latency baseline
+Save artifacts under `docs/evidence/perf/`:
 
-```bash
-python -m apps.ingestor.src.main --once --provider example --airport MIA --log-json | tee ./docs/evidence/perf/ingestor-once.log
+- `api-health-latency-seconds.txt`
+- `api-health-summary.json` (or issue comment paste)
+- optional `lighthouse-home.json`
+- optional `lighthouse-map.json`
+
+Example summary payload:
+
+```json
+{
+  "samples": 50,
+  "minMs": 82.11,
+  "p50Ms": 103.74,
+  "p95Ms": 189.22,
+  "p99Ms": 214.65,
+  "maxMs": 241.13,
+  "avgMs": 117.4
+}
 ```
 
-Extract:
-- cycle start timestamp
-- cycle end timestamp
-- records ingested
+## Release gate
 
-## Evidence files
+Before closing #20, post one issue comment with:
 
-Store evidence under:
-
-- `docs/evidence/perf/<date>-lighthouse-home.json`
-- `docs/evidence/perf/<date>-lighthouse-map.json`
-- `docs/evidence/perf/<date>-api-health-latency-seconds.txt`
-- `docs/evidence/perf/<date>-ingestor-once.log`
-
-## Phase 4 release gate addition
-
-Before closing Issue #2:
-
-- [ ] Performance baseline captured (web + api + ingestor)
-- [ ] p50/p95 latency values posted in issue comment
-- [ ] Any out-of-threshold metric has a follow-up issue linked
-
-Owner: Rico  
-Status: Baseline protocol committed; evidence capture pending runtime URL + env
+- target URL/environment tested
+- sample count
+- p50/p95/p99 values
+- follow-up issue if p95 > 300ms or p99 > 500ms

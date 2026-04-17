@@ -6,6 +6,7 @@ Use these as the source of truth:
 - `production-baseline.md` — production readiness baseline
 - `security-hardening-checklist.md` — security controls + release gate
 - `observability-reliability-runbook.md` — monitoring, incident response, reliability checks
+- `performance-baseline.md` — load-test protocol and API latency baseline capture commands
 - `release-checklist.md` — release execution checklist
 - `cost-guardrails.md` — budget thresholds, alert setup, and spend-spike triage runbook
 - `rollback-runbook.md` — rollback steps

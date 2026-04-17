@@ -19,7 +19,9 @@
     "ops:release-evidence": "./scripts/create-release-evidence.sh",
     "ops:failover-drill": "./scripts/test-ingestor-failover.sh",
     "smoke:schema": "./scripts/smoke-supabase-schema.sh",
-    "smoke:health": "./scripts/smoke-health-endpoints.sh"
+    "smoke:health": "./scripts/smoke-health-endpoints.sh",
+    "perf:latency:capture": "./scripts/perf/capture-health-latency.sh",
+    "perf:latency:summary": "node ./scripts/perf/summarize-latency.mjs"
   },
   "engines": {
     "node": ">=18"
