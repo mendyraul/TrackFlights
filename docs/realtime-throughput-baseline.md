@@ -1,65 +1,59 @@
-# Realtime Throughput Baseline (Phase 3 Slice 3)
+# Supabase Realtime Throughput Baseline + Limits (Phase 3 / Slice D)
 
 Owner: Rico  
-Source issue: `mendyraul/TrackFlights#4`  
-Goal: define explicit throughput assumptions for Supabase Realtime and a repeatable measurement flow before scale cutover work.
+Issue: `#29` (parent `#4`)
 
-## Throughput assumptions (initial baseline)
+## Objective
+Define a repeatable, evidence-backed throughput baseline for realtime updates and establish clear scale-up trigger thresholds.
 
-These are **initial guardrails** and should be updated after each release evidence run.
+## Baseline assumptions
 
-### Write budget (`flights_current`)
-- Normal load target: **<= 2,000 updates/minute** sustained
-- Burst tolerance: **<= 3,500 updates/minute** for <= 5 minutes
-- Hard alert threshold: **> 4,000 updates/minute** for 2 consecutive minutes
+### Write throughput (`flights_current` upserts)
+- Target sustained load: `<= 2,000 updates/min`
+- Burst tolerance (short spikes): `<= 3,500 updates/min` for up to 5 minutes
+- Scale-up trigger: `> 4,000 updates/min` for 2+ consecutive minutes
 
-### Subscriber fanout budget
-- Expected active subscribers per region channel: **<= 150**
-- Expected total concurrent subscribers: **<= 500**
-- Hard alert threshold: **> 750** concurrent subscribers
+### Realtime fanout (subscribers)
+- Target concurrent subscribers: `<= 500`
+- Regional/channel soft cap: `<= 150`
+- Scale-up trigger: `> 750` concurrent subscribers or sustained reconnect churn
 
-### Event lag envelope (write -> client receipt)
-- p50 lag target: **<= 800 ms**
-- p95 lag target: **<= 2,000 ms**
-- p99 lag target: **<= 4,000 ms**
-- Incident threshold: p95 > 4,000 ms for 10+ minutes
+### Event propagation lag (DB write -> client receive)
+- p50 target: `<= 800 ms`
+- p95 target: `<= 2,000 ms`
+- p99 target: `<= 4,000 ms`
+- Scale-up trigger: p95 `> 4,000 ms` for 10+ minutes
 
-## Measurement recipe (repeatable)
+## Measurement protocol (repeatable)
 
-Run this sequence during release preflight and after significant ingestion/realtime changes.
+Run this before release and after significant ingestion/realtime changes.
 
-1. **Record system context**
-   - branch + commit SHA
-   - DB size snapshot
-   - expected active channels
+1. Capture environment metadata
+   - branch name, commit SHA, deployment target, timestamp (UTC)
+   - expected active channels/subscribers
+2. Capture write throughput for 15 minutes
+   - record per-minute updates to `flights_current`
+   - compute min/avg/p95/max
+3. Capture subscriber fanout for 15 minutes
+   - sample concurrent subscribers each minute
+   - capture peak + average
+4. Capture end-to-end realtime lag
+   - mark write time from ingestor
+   - record client receive time for same update marker
+   - compute p50/p95/p99
+5. Classify result
+   - **PASS:** all metrics under target
+   - **WATCH:** target missed but no hard trigger crossed
+   - **FAIL:** any hard trigger crossed
 
-2. **Capture write throughput for 15 minutes**
-   - run ingestor in normal mode
-   - count updates/minute into `flights_current`
-   - record min/avg/p95/max writes/minute
+## Operating envelope guidance
+- Keep default polling at 60s while under target envelope.
+- If in WATCH state for 2+ runs, increase observability sampling and prepare scale plan.
+- If in FAIL state, initiate immediate scale path per incident runbook (degrade optional features and reduce fanout pressure first).
 
-3. **Capture fanout count for 15 minutes**
-   - sample active subscriptions each minute
-   - record peak concurrent subscribers
+## Evidence requirements
+Store each measurement run at:
+- `docs/evidence/realtime/YYYY-MM-DD-realtime-throughput.md`
 
-4. **Capture event lag sample**
-   - choose a known update marker (timestamp/id)
-   - log server write time + first client receive time
-   - compute p50/p95/p99 lag across sample window
-
-5. **Compare to guardrails and classify**
-   - PASS: all metrics under target/threshold
-   - WATCH: targets missed but incident thresholds not crossed
-   - FAIL: any incident threshold crossed
-
-## Evidence template
-
-Use: `docs/evidence/realtime-throughput-template.md`
-
-Store completed evidence in `docs/evidence/realtime/` using filename:
-`YYYY-MM-DD-realtime-throughput.md`
-
-## Exit criteria for this slice
-- [x] Throughput assumptions documented
-- [x] Measurement procedure documented
-- [x] Evidence template linked and naming convention defined
+Use template:
+- `docs/evidence/realtime-throughput-template.md`

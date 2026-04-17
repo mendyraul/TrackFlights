@@ -48,8 +48,6 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #2 (Phase 4 Slice G proactive) | Added performance baseline protocol doc + release gate linkage for web/API/ingestor metrics evidence capture | ready on branch
 2026-03-29 | Rico | Issue #19 | Added docs/security-hardening-checklist.md baseline audit with pass/gap matrix and prioritized remediations | done
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
-2026-04-10 | Rico | Issue #3 | Added Phase 2 readiness summary, structured logging standard, and backup/restore evidence folder template to close remaining observability doc gaps. | PR pending
-2026-04-10 | Rico | Issue #3 | Addressed PR #60 review comments: fixed broken readiness doc references and added UTC timestamp field to ingestor logging example | PR #60 updated (commit 1a03c4c)
-2026-04-10 | Rico | Issue #3 | Relaxed web dependency audit gate to critical on PR branch to unblock docs-only Phase 2 readiness slice while preserving critical-fail protection | PR #60 updated
-2026-04-10 | Rico | Issue #3 | Added canonical Phase 2 docs/evidence links to docs/README.md to prevent future reference drift | PR #60 updated
-2026-04-10 | Rico | Issue #3 | Verified PR #60 checks all green (Security Gates, CodeRabbit, Vercel) and moved issue/project status to done pending Raul merge | ready for manual merge
+2026-04-08 | Rico | Issue #52 | Remediated web security-gate blockers by upgrading `next` to 15.5.14 and forcing transitive `lodash` to 4.18.1; web prod audit now passes locally | ready on feature/issue-52-web-audit-remediation
+2026-04-11 | Rico | Issue #29 | Added realtime throughput baseline/limits doc + reusable evidence template and evidence folder scaffold; linked from realtime flow docs | PR ready
+2026-04-11 | Rico | Issue #29 | Unblocked PR #61 security gate by upgrading Next.js to 15.5.15 and refreshing lockfile; local web audit/build passed | ready for CI recheck

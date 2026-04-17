@@ -1,41 +1,38 @@
 # Realtime Throughput Evidence Template
 
-Date (UTC):  
-Operator:  
-Branch:  
-Commit SHA:  
-Issue/PR:  
+- Date (UTC):
+- Branch / Commit:
+- Environment:
+- Operator:
 
-## Environment snapshot
-- Supabase project:
-- Active channels expected:
-- Ingestor instance count:
-- Observation window:
+## 1) Workload context
+- Poll interval:
+- Airports/regions sampled:
+- Expected concurrent clients:
 
-## Metrics
+## 2) Write throughput (`flights_current`)
+- Duration:
+- Min updates/min:
+- Avg updates/min:
+- p95 updates/min:
+- Max updates/min:
 
-### 1) Write throughput (`flights_current`)
-- min writes/min:
-- avg writes/min:
-- p95 writes/min:
-- max writes/min:
+## 3) Subscriber fanout
+- Avg concurrent subscribers:
+- Peak concurrent subscribers:
+- Reconnect anomalies observed:
 
-### 2) Subscriber fanout
-- avg concurrent subscribers:
-- peak concurrent subscribers:
-
-### 3) Event lag (write -> client)
+## 4) Realtime lag (write -> client receipt)
+- Sample count:
 - p50 lag (ms):
 - p95 lag (ms):
 - p99 lag (ms):
-- max lag (ms):
 
-## Classification
-- Result: PASS | WATCH | FAIL
-- Reason:
+## 5) Classification
+- Result: PASS / WATCH / FAIL
+- Trigger crossed (if any):
+- Recommended next action:
 
-## Notes / anomalies
-- 
-
-## Follow-up actions
-- 
+## 6) Evidence links
+- Dashboard/screenshot links:
+- Raw logs/trace references:

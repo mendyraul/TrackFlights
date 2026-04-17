@@ -157,3 +157,10 @@ FLIGHT_PROVIDER=example     # Use "example" for mock data
 - Batch interval: 200ms (hardcoded in `services/realtime.ts`)
 - Highlight duration: 2s (hardcoded in `hooks/useFlights.ts`)
 - Marker animation: 1s ease-out (hardcoded in `FlightMap.tsx`)
+
+## Throughput Baseline + Limits
+
+For scale-planning thresholds, measurement protocol, and evidence format, see:
+- `docs/realtime-throughput-baseline.md`
+- `docs/evidence/realtime-throughput-template.md`
+- `docs/evidence/realtime/README.md`
