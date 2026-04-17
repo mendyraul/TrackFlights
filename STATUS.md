@@ -3,8 +3,6 @@
 Format:
 YYYY-MM-DD | Agent | Issue #N | Summary | Status
 
-2026-04-11 | Rico | Issue #47 | Added selected-flight route polyline (origin→destination) with airport-coordinate lookup + graceful fallback when route data missing; type-check clean. | Pushed to PR #51 branch
-
 2026-03-27 | Rico | Issue #1 (Phase 1) | Added baseline CI workflow (web checks + ingestor pytest) | PR pending
 2026-03-27 | Rico | Issue #1 (Phase 1 Slice 2) | Switched CI to npm ci + committed lockfile + added non-interactive eslint config + added CI-safe Supabase fallbacks | Pushed to PR #5 branch
 2026-03-28 | Rico | Issue #1 (Phase 1 Slice 3) | Added production-baseline doc (CI/CD + branch protection + env strategy), linked README, and set CI ingestor test env placeholders | Ready on feature/phase1-ci-baseline
@@ -50,8 +48,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #2 (Phase 4 Slice G proactive) | Added performance baseline protocol doc + release gate linkage for web/API/ingestor metrics evidence capture | ready on branch
 2026-03-29 | Rico | Issue #19 | Added docs/security-hardening-checklist.md baseline audit with pass/gap matrix and prioritized remediations | done
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
-2026-04-08 | Rico | Issue #47 | Added selected-flight route polyline using airport coordinate lookup with graceful fallback; opened PR #51 | PR #51 open
-2026-04-10 | Rico | Issue #47 | Fixed MapView airport coordinate type narrowing to unblock Next.js/Vercel build; verified with npm ci + npm run build; posted PR update | PR #51 updated
-2026-04-11 | Rico | Issue #47 | Merged origin/main into feature/issue-47-route-line to refresh branch against latest security-gate workflow and dependency baseline before rerunning checks | PR #51 updated
-2026-04-11 | Rico | Issue #47 | Bumped web Next.js to 15.5.15 on route-line PR branch to clear production dependency audit; validated npm audit(web)=0 high/critical. | PR #51 updated
-2026-04-11 | Rico | Issue #47 | Lane2 closeout pass: verified PR #51 is CLEAN with all required checks green (Schema Smoke, Security Gates, CodeRabbit, Vercel), posted final closeout notes, and marked issue done pending Raul merge. | Closed
+2026-04-08 | Rico | Issue #52 | Remediated web security-gate blockers by upgrading `next` to 15.5.14 and forcing transitive `lodash` to 4.18.1; web prod audit now passes locally | ready on feature/issue-52-web-audit-remediation
