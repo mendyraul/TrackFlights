@@ -9,6 +9,7 @@ Use these as the source of truth:
 - `observability/alert-matrix.md` — canonical alert thresholds, severities, and trigger test plan
 - `release-checklist.md` — release execution checklist
 - `rollback-runbook.md` — rollback steps
+- `cost-guardrails.md` — budget/usage thresholds, alerts, and weekly review gate
 - `branch-hygiene-policy.md` — branch lifecycle policy
 - `database.md` — schema/data model
 - `pipeline.md` — ingestion + processing flow
