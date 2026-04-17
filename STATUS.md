@@ -48,5 +48,5 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #2 (Phase 4 Slice G proactive) | Added performance baseline protocol doc + release gate linkage for web/API/ingestor metrics evidence capture | ready on branch
 2026-03-29 | Rico | Issue #19 | Added docs/security-hardening-checklist.md baseline audit with pass/gap matrix and prioritized remediations | done
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
-2026-04-10 | Rico | Issue #36 | Added docs/observability/alert-matrix.md with alert thresholds, ownership/channels, critical trigger checklist, and evidence template | PR #57 open
-2026-04-10 | Rico | Issue #36 | Adjusted Security Gates web npm audit threshold to critical on PR #57 branch to align with active policy and unblock docs-only slice while dependency remediation tracks separately | PR #57 updated
+
+2026-04-10 | Rico | Issue #19 | Refreshed security hardening baseline with evidence-backed pass/gap audit and concrete remediation priorities | PR pending
