@@ -1,49 +1,49 @@
-# Alert Matrix (Phase 2 / Slice A / Issue #36)
+# Alert Matrix — Web, Ingestor, Supabase
 
-This matrix defines the minimum production alert set for TrackFlights across web, ingestor, and Supabase.
+Parent issue: #3  
+Slice: #36 (Phase 2 / Slice A)
 
-## Alert Inventory
+This matrix defines critical and warning alerts, owners, channels, and test-trigger procedures.
 
-| ID | Surface | Signal | Trigger | Severity | Owner | Channel | Auto-Action |
-|---|---|---|---|---|---|---|---|
-| A1 | Web (Vercel) | `/api/health` synthetic check | 3 consecutive failures (1m interval) | P0 | Rico | Telegram urgent + GitHub issue | Mark release as degraded; block deploys |
-| A2 | Web (Vercel) | P95 latency | `> 2500ms` for 10 minutes | P1 | Rico | Telegram ops | Open perf follow-up issue if sustained >30m |
-| A3 | Web (Vercel) | 5xx rate | `> 2%` over 10 minutes | P1 | Rico | Telegram ops + issue comment on active PR | Roll back latest deploy if tied to release |
-| A4 | Ingestor | Poll heartbeat gap | No `Poll cycle complete` for `> 2x poll interval` | P0 | Rico | Telegram urgent + GitHub issue | Restart worker + capture logs |
-| A5 | Ingestor | Consecutive pipeline errors | 3 consecutive `Error during poll cycle` events | P1 | Rico | Telegram ops | Reduce optional stages; preserve baseline ingestion |
-| A6 | Ingestor | Queue lag | Queue depth above agreed cap for 15 minutes | P1 | Rico | Telegram ops | Pause non-critical enrichment jobs |
-| A7 | Supabase | Auth/write failures | 5+ failed writes in 5 minutes or auth errors for 3 cycles | P0 | Rico | Telegram urgent + issue | Rotate/check secrets; failover to safe mode |
-| A8 | Supabase realtime | Realtime disconnect/staleness | No realtime updates for 10 minutes while ingestor healthy | P1 | Rico | Telegram ops | Switch UI to polling fallback mode |
-| A9 | Data freshness | Flight table freshness SLI | No new flight rows for 2 polling windows | P1 | Rico | Telegram ops | Investigate provider + ingestor sequence |
+## Alert Matrix
 
-## Test-Trigger Procedures (Critical Alerts)
+| Area | Signal | Threshold / Rule | Severity | Owner | Channel | Test Trigger Procedure | Evidence Capture |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Web API | Uptime (`/api/healthz`) | 2 consecutive failures from 2 probes over 5 min | Critical | Backend on-call | Slack `#ops-alerts`, PagerDuty | Point probe URL to known invalid route for one cycle, then restore | Screenshot/JSON probe failures + recovery timestamp |
+| Web API | P95 latency | `p95 > 1200ms` for 10 min | High | Backend on-call | Slack `#ops-alerts` | Run controlled load against search endpoint with debug delay flag in staging | Metrics panel screenshot + request count |
+| Web API | 5xx error rate | `5xx_rate > 2%` for 5 min | Critical | Backend on-call | Slack `#ops-alerts`, PagerDuty | Deploy temporary fault injection to throw on 10% of requests in staging | Error chart screenshot + rollback commit |
+| Ingestor | Job run failure rate | `>= 2 failed runs` in 30 min | High | Data pipeline owner | Slack `#ops-alerts` | Run ingestor with intentionally bad API key in staging secret scope | Job logs + alert notification screenshot |
+| Ingestor | Queue lag / backlog age | `oldest_job_age > 10 min` or backlog > 500 jobs for 15 min | Critical | Data pipeline owner | Slack `#ops-alerts`, PagerDuty | Pause consumer process for 15 min in staging, then resume | Backlog chart before/after + resume timestamp |
+| Supabase | DB error rate | `db_error_rate > 1%` for 10 min | High | Backend on-call | Slack `#ops-alerts` | Run migration smoke test with known failing query in staging | Supabase logs export + query id |
+| Supabase | Auth failures | auth failures spike `> 3x` baseline for 10 min | Warning | Backend on-call | Slack `#ops-alerts` | Replay invalid JWT batch against staging endpoint | Auth dashboard screenshot + sample request IDs |
+| Supabase Realtime | Realtime disconnect rate | disconnect/reconnect churn `> 15%` for 10 min | High | Backend + frontend on-call | Slack `#ops-alerts` | Restart realtime client pods in staging during synthetic listener test | Client error logs + reconnect metrics |
 
-### A1 — Web health endpoint failure
-1. Temporarily return HTTP 500 from `/api/health` in preview env.
-2. Run synthetic probe for 3 intervals.
-3. Capture alert event timestamp, channel post, and recovery timestamp.
+## Critical Alert Test-Trigger Checklist
 
-### A4 — Ingestor heartbeat miss
-1. Stop ingestor process for >2 poll intervals.
-2. Confirm heartbeat-miss alert appears.
-3. Restart process and confirm auto-recovery signal.
+Use this checklist for each **Critical** alert before marking Phase 2 Slice A complete.
 
-### A7 — Supabase auth/write failure
-1. Run ingestor with intentionally invalid Supabase service key in non-prod.
-2. Observe repeated write/auth failures.
-3. Confirm P0 alert and attached failure evidence.
+- [ ] Test executed in non-production environment (staging/dev only)
+- [ ] Trigger procedure followed exactly as documented in matrix
+- [ ] Alert fired in expected channel(s)
+- [ ] Timestamp of trigger and timestamp of alert captured
+- [ ] Evidence artifacts stored (logs/screenshots/links)
+- [ ] Recovery performed and validated
+- [ ] Post-test note added to issue with evidence links
 
-## Evidence Capture Checklist
+## Evidence Capture Template
 
-Store evidence in `docs/evidence/phase2-alert-tests/`.
+Copy/paste into issue comments:
 
-- [ ] Alert screenshot/log for each critical alert (A1, A4, A7)
-- [ ] Trigger command(s) used
-- [ ] Detection latency (time-to-alert)
-- [ ] Recovery command(s) + time-to-recover
-- [ ] Linked follow-up issue (if any)
-
-## Notes
-
-- Thresholds are intentionally conservative for current scale; tune after 2 weeks of telemetry.
-- Alert policy should be reviewed after major infra changes (provider, queue model, or Supabase tier changes).
+```md
+### Alert Trigger Evidence
+- Alert: <name>
+- Environment: <staging/dev>
+- Trigger start (UTC): <time>
+- Alert received (UTC): <time>
+- Channel(s): <#ops-alerts / PagerDuty>
+- Evidence:
+  - Dashboard screenshot: <link>
+  - Logs/query ids: <link or snippet>
+- Recovery action: <what was restored>
+- Recovery complete (UTC): <time>
+```
