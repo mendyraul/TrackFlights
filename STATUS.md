@@ -48,4 +48,9 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #2 (Phase 4 Slice G proactive) | Added performance baseline protocol doc + release gate linkage for web/API/ingestor metrics evidence capture | ready on branch
 2026-03-29 | Rico | Issue #19 | Added docs/security-hardening-checklist.md baseline audit with pass/gap matrix and prioritized remediations | done
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
-2026-04-08 | Rico | Issue #52 | Remediated web security-gate blockers by upgrading `next` to 15.5.14 and forcing transitive `lodash` to 4.18.1; web prod audit now passes locally | ready on feature/issue-52-web-audit-remediation
+2026-04-10 | Rico | Issue #25 | Added Phase 2 alert trigger evidence + backup/restore drill proof and linked final verification in runbook | PR pending
+2026-04-10 | Rico | Issue #25 | Addressed PR #54 review notes: clarified staged-fault environment scope and added source latest-committed timestamp for reproducible RPO | PR updated
+
+2026-04-10 | Rico | Issue #25 | Backported dependency-audit remediation (Next.js/lodash lock refresh) onto PR #54 branch and re-ran web production audit (0 vulnerabilities) | Pushed to PR #54 branch
+2026-04-10 | Rico | Issue #25 | Closeout pass: PR #54 is fully green/mergeable; advanced issue + project card to Done pending Raul merge policy | Done
+2026-04-11 | Rico | Issue #25 | Queue closeout: reconfirmed PR #54 checks green and moved project card to Done; issue remains open until PR merge | Ready for merge
