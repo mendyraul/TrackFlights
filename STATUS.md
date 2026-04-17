@@ -48,6 +48,4 @@ YYYY-MM-DD | Agent | Issue #N | Summary | Status
 2026-03-29 | Rico | Issue #2 (Phase 4 Slice G proactive) | Added performance baseline protocol doc + release gate linkage for web/API/ingestor metrics evidence capture | ready on branch
 2026-03-29 | Rico | Issue #19 | Added docs/security-hardening-checklist.md baseline audit with pass/gap matrix and prioritized remediations | done
 2026-03-29 | Rico | Issue #21 | Added release checklist + rollback runbook and linked runbooks in README | PR pending
-2026-04-08 | Rico | Issue #52 | Remediated web security-gate blockers by upgrading `next` to 15.5.14 and forcing transitive `lodash` to 4.18.1; web prod audit now passes locally | ready on feature/issue-52-web-audit-remediation
-2026-04-11 | Rico | Issue #29 | Added realtime throughput baseline/limits doc + reusable evidence template and evidence folder scaffold; linked from realtime flow docs | PR ready
-2026-04-11 | Rico | Issue #29 | Unblocked PR #61 security gate by upgrading Next.js to 15.5.15 and refreshing lockfile; local web audit/build passed | ready for CI recheck
+2026-04-10 | Rico | Issue #36 | Added observability alert matrix + synthetic test evidence checklist docs and indexed them in docs/README.md | Ready on lane2-issue36-alert-matrix

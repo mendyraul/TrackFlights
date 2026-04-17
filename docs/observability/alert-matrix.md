@@ -1,49 +1,39 @@
-# Alert Matrix — Web, Ingestor, Supabase
+# Alert Matrix — Phase 2 / Slice A (Issue #36)
 
-Parent issue: #3  
-Slice: #36 (Phase 2 / Slice A)
+## Purpose
+Define deterministic alerting coverage for TrackFlights web uptime, ingestion pipeline health, and Supabase dependency failures.
 
-This matrix defines critical and warning alerts, owners, channels, and test-trigger procedures.
+## Severity Model
+- **SEV-1**: User-visible outage or data pipeline stop. Immediate action.
+- **SEV-2**: Partial degradation with material user risk. Action in same hour.
+- **SEV-3**: Early warning / drift. Action within business day.
+
+## Owner + Channel Defaults
+- **Primary owner:** Raul (`@mendyraul`)
+- **Secondary owner:** Rico (automation)
+- **Primary channel:** Telegram alerting channel
+- **Secondary channel:** GitHub issue in `mendyraul/TrackFlights` labeled `priority:high`
 
 ## Alert Matrix
 
-| Area | Signal | Threshold / Rule | Severity | Owner | Channel | Test Trigger Procedure | Evidence Capture |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Web API | Uptime (`/api/healthz`) | 2 consecutive failures from 2 probes over 5 min | Critical | Backend on-call | Slack `#ops-alerts`, PagerDuty | Point probe URL to known invalid route for one cycle, then restore | Screenshot/JSON probe failures + recovery timestamp |
-| Web API | P95 latency | `p95 > 1200ms` for 10 min | High | Backend on-call | Slack `#ops-alerts` | Run controlled load against search endpoint with debug delay flag in staging | Metrics panel screenshot + request count |
-| Web API | 5xx error rate | `5xx_rate > 2%` for 5 min | Critical | Backend on-call | Slack `#ops-alerts`, PagerDuty | Deploy temporary fault injection to throw on 10% of requests in staging | Error chart screenshot + rollback commit |
-| Ingestor | Job run failure rate | `>= 2 failed runs` in 30 min | High | Data pipeline owner | Slack `#ops-alerts` | Run ingestor with intentionally bad API key in staging secret scope | Job logs + alert notification screenshot |
-| Ingestor | Queue lag / backlog age | `oldest_job_age > 10 min` or backlog > 500 jobs for 15 min | Critical | Data pipeline owner | Slack `#ops-alerts`, PagerDuty | Pause consumer process for 15 min in staging, then resume | Backlog chart before/after + resume timestamp |
-| Supabase | DB error rate | `db_error_rate > 1%` for 10 min | High | Backend on-call | Slack `#ops-alerts` | Run migration smoke test with known failing query in staging | Supabase logs export + query id |
-| Supabase | Auth failures | auth failures spike `> 3x` baseline for 10 min | Warning | Backend on-call | Slack `#ops-alerts` | Replay invalid JWT batch against staging endpoint | Auth dashboard screenshot + sample request IDs |
-| Supabase Realtime | Realtime disconnect rate | disconnect/reconnect churn `> 15%` for 10 min | High | Backend + frontend on-call | Slack `#ops-alerts` | Restart realtime client pods in staging during synthetic listener test | Client error logs + reconnect metrics |
+| Domain | Signal | Threshold | Severity | Owner | Channel | Synthetic Trigger Test |
+|---|---|---:|---|---|---|---|
+| Web availability | Health endpoint failure (`/api/healthz/live`) | 3 consecutive failures (1m cadence) | SEV-1 | Raul | Telegram + GitHub issue | Temporarily force health route to return 503 in preview; verify alert + recovery clear event |
+| Web latency | p95 request latency | > 2500ms for 10 minutes | SEV-2 | Raul | Telegram | Deploy controlled slow-path in preview for one endpoint; confirm threshold breach then rollback |
+| Web errors | 5xx rate | > 3% over 10 minutes | SEV-2 | Raul | Telegram + GitHub issue | Inject a guarded failing route in preview; send burst traffic and confirm error-rate alert |
+| Ingestor freshness | Time since last successful poll | > 15 minutes | SEV-1 | Raul | Telegram + GitHub issue | Stop ingestor process for >15m in non-prod and confirm stale-poll alarm |
+| Ingestor throughput | Rows upserted per poll | 0 rows for 3 consecutive polls during expected traffic window | SEV-2 | Raul | Telegram | Configure provider mock to return empty payload; confirm no-upsert alert |
+| Ingestor failures | Consecutive ingestion errors | >= 3 consecutive failures | SEV-1 | Raul | Telegram + GitHub issue | Inject invalid API key in preview env; confirm failure streak alert |
+| Queue lag / backlog | Pending jobs older than threshold | > 5 min lag for 10 min | SEV-2 | Raul | Telegram | Pause worker, keep producer active, verify lag threshold breach |
+| Supabase REST health | REST API error rate | > 2% 5xx/429 over 10 min | SEV-2 | Raul | Telegram | Run controlled rate-limit stress in staging; verify alert + cooldown behavior |
+| Supabase DB health | Connection / query error spike | > 5 query failures in 5 min | SEV-2 | Raul | Telegram + GitHub issue | Apply temporary wrong DB URL in staging worker; verify error spike alert |
+| Supabase Realtime | Realtime disconnect/reconnect churn | > 5 disconnects in 10 min | SEV-3 | Raul | Telegram | Force websocket disconnect loop in preview client; verify churn alert |
+| Data integrity | `flights_current` stale snapshot | No row updates for > 20 min | SEV-1 | Raul | Telegram + GitHub issue | Pause ingest writes while app running; confirm stale-data alert |
 
-## Critical Alert Test-Trigger Checklist
+## Escalation Policy
+1. SEV-1: page immediately, open high-priority issue with timeline stub.
+2. SEV-2: notify immediately, owner acknowledges within 60 minutes.
+3. SEV-3: daily triage bucket unless repeated 3x/day, then upgrade to SEV-2.
 
-Use this checklist for each **Critical** alert before marking Phase 2 Slice A complete.
-
-- [ ] Test executed in non-production environment (staging/dev only)
-- [ ] Trigger procedure followed exactly as documented in matrix
-- [ ] Alert fired in expected channel(s)
-- [ ] Timestamp of trigger and timestamp of alert captured
-- [ ] Evidence artifacts stored (logs/screenshots/links)
-- [ ] Recovery performed and validated
-- [ ] Post-test note added to issue with evidence links
-
-## Evidence Capture Template
-
-Copy/paste into issue comments:
-
-```md
-### Alert Trigger Evidence
-- Alert: <name>
-- Environment: <staging/dev>
-- Trigger start (UTC): <time>
-- Alert received (UTC): <time>
-- Channel(s): <#ops-alerts / PagerDuty>
-- Evidence:
-  - Dashboard screenshot: <link>
-  - Logs/query ids: <link or snippet>
-- Recovery action: <what was restored>
-- Recovery complete (UTC): <time>
-```
+## Evidence Requirement
+Every alert test must generate an evidence record under `docs/evidence/phase2-alert-tests/` using the checklist in `docs/observability/alert-test-checklist.md`.
