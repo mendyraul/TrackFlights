@@ -6,8 +6,29 @@ on:
     branches: [dev, main]
 
 jobs:
+  changed-paths:
+    name: Detect security-relevant path changes
+    runs-on: ubuntu-latest
+    outputs:
+      web_changed: ${{ steps.filter.outputs.web }}
+      ingestor_changed: ${{ steps.filter.outputs.ingestor }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            web:
+              - 'apps/web/**'
+              - '.github/workflows/security-gates.yml'
+            ingestor:
+              - 'apps/ingestor/**'
+              - '.github/workflows/security-gates.yml'
+
   node-audit:
     name: Web production dependency audit
+    needs: changed-paths
+    if: needs.changed-paths.outputs.web_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -25,6 +46,8 @@ jobs:
 
   python-audit:
     name: Ingestor Python dependency audit
+    needs: changed-paths
+    if: needs.changed-paths.outputs.ingestor_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:

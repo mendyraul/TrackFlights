@@ -13,5 +13,6 @@ Use these as the source of truth:
 - `branch-hygiene-policy.md` — branch lifecycle policy
 - `database.md` — schema/data model
 - `pipeline.md` — ingestion + processing flow
+- `adr/0002-single-pi-ingestor-risk-matrix.md` — single-node ingestor risk matrix + scale topology decision (Issue #26)
 
 Historical and slice-specific docs were moved to `docs/archive/`.
