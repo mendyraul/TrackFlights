@@ -1,65 +1,85 @@
-# Cost Guardrails & Alerts (Phase 4)
+# Cost Guardrails + Alerting Runbook (Vercel + Supabase)
 
-Goal: prevent surprise spend while preserving reliability as traffic grows.
+## 1) Budget thresholds and owners
 
-## Guardrail Targets
+Set monthly hard/soft thresholds and route alerts to one owner channel.
+
+- **Primary owner:** Raul
+- **Primary channel:** GitHub issue + Telegram DM
+- **Escalation window:** immediate for critical spend spikes, same-day for warning threshold
+
+### Suggested thresholds
+
+#### Vercel
+- **Warning:** 60% of monthly budget consumed
+- **Critical:** 85% of monthly budget consumed
+- **Hard-stop review:** 95%+ (freeze non-essential preview builds)
+
+#### Supabase
+- **Warning:** 60% of plan quota (DB egress/storage/compute)
+- **Critical:** 85% of quota or projected overage before cycle end
+- **Hard-stop review:** sustained anomaly for >2 hours or projected 100% exhaustion
+
+## 2) Alert setup checklist
 
 ### Vercel
-
-- **Spend cap**: set monthly project budget in Vercel billing settings.
-- **Alerts**:
-  - 50% budget consumed (warning)
-  - 80% budget consumed (high)
-  - 95% budget consumed (critical, freeze non-essential deploys)
-- **Runtime controls**:
-  - Keep edge/function timeout limits explicit per route.
-  - Disable unnecessary preview deployments for bulk doc-only branches when possible.
+- [ ] Enable usage alerts in Vercel billing settings
+- [ ] Add warning + critical thresholds (60/85)
+- [ ] Ensure owner email/notification route is active
+- [ ] Verify first test alert delivery path
 
 ### Supabase
+- [ ] Enable org/project usage alerts
+- [ ] Add warning + critical quota thresholds
+- [ ] Confirm notification recipients
+- [ ] Validate quota metrics visible in project usage dashboard
 
-- **Usage monitors**:
-  - Database egress
-  - Realtime connections/messages
-  - Storage egress
-  - Compute/add-on usage
-- **Alerts**:
-  - 60% plan quota (warning)
-  - 85% plan quota (high)
-  - 95% plan quota (critical, activate traffic-reduction playbook)
+### Cross-platform anomaly detection
+- [ ] Daily check: spend trend vs previous 7-day average
+- [ ] Flag anomaly if daily spend >1.8x rolling 7-day average
+- [ ] Flag anomaly if API/egress growth >2x day-over-day without deploy note
+- [ ] Log anomaly in `docs/evidence/cost/` with timestamp + source chart
 
-### Raspberry Pi ingestor host
+## 3) Cost spike triage runbook
 
-- **Capacity constraints**:
-  - CPU sustained > 80% for 15m
-  - Memory > 85% for 15m
-  - Disk usage > 80%
-- **Action**: on trigger, reduce polling fanout and defer non-critical processing until stable.
+When a warning/critical alert fires:
 
-## Weekly Cost Review Checklist
+1. **Confirm source**
+   - Identify platform (Vercel/Supabase) and current threshold crossed
+   - Capture evidence screenshot + timestamp
 
-- [ ] Export Vercel spend + usage snapshot
-- [ ] Export Supabase usage dashboard snapshot
-- [ ] Compare week-over-week change by component (web, realtime, db, ingestor)
-- [ ] Record top growth driver and mitigation action
-- [ ] Create follow-up issue if any component grows >25% WoW without product justification
+2. **Correlate with recent changes**
+   - Check deploys in last 24h (preview/prod)
+   - Check PR merge history and traffic anomalies
 
-## Release Gate (Cost)
+3. **Find top driver**
+   - Vercel: build minutes, function invocations/duration, bandwidth
+   - Supabase: DB egress, storage growth, realtime fanout, auth spikes
 
-Before promoting a release to production:
+4. **Apply immediate containment (if critical)**
+   - Pause non-essential preview deployments
+   - Throttle/reduce polling intervals for ingestor jobs
+   - Disable high-cardinality debug logging if active
+   - Temporarily reduce expensive background jobs
 
-- [ ] Vercel budget alerts verified (50/80/95)
-- [ ] Supabase quota alerts verified (60/85/95)
-- [ ] Ingestor host capacity alerts active
-- [ ] Cost escalation contact/channel confirmed
-- [ ] Rollback trigger includes cost spike condition (see `rollback-runbook.md`)
+5. **Stabilize and verify**
+   - Re-check spend/usage after 30-60 minutes
+   - Confirm trend is flattening
+   - Open/update incident issue with root cause + mitigation
 
-## Evidence Path
+6. **Post-incident hardening**
+   - Add one guardrail automation or budget alarm if missing
+   - Document preventive action in release checklist
 
-Store evidence under `docs/evidence/cost/`:
+## 4) Verification log template
 
-- `YYYY-MM-DD-vercel-usage.md`
-- `YYYY-MM-DD-supabase-usage.md`
-- `YYYY-MM-DD-weekly-cost-review.md`
+Use this for each alert test or real incident:
 
-Owner: Rico  
-Status: Baseline guardrails defined; dashboard alert wiring pending operator setup
+- Date/time (UTC):
+- Platform:
+- Threshold crossed:
+- Evidence link:
+- Suspected driver:
+- Mitigation applied:
+- Result after 60 min:
+- Follow-up action:

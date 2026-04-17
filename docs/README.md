@@ -7,6 +7,7 @@ Use these as the source of truth:
 - `security-hardening-checklist.md` — security controls + release gate
 - `observability-reliability-runbook.md` — monitoring, incident response, reliability checks
 - `release-checklist.md` — release execution checklist
+- `cost-guardrails.md` — budget thresholds, alert setup, and spend-spike triage runbook
 - `rollback-runbook.md` — rollback steps
 - `branch-hygiene-policy.md` — branch lifecycle policy
 - `database.md` — schema/data model
