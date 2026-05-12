@@ -32,8 +32,8 @@ export function usePredictions(): UsePredictionsReturn {
 
     fetch();
 
-    // Refresh every 2 minutes
-    const interval = setInterval(fetch, 2 * 60 * 1000);
+    // Temporary cost-control mode: refresh every 60 minutes
+    const interval = setInterval(fetch, 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 

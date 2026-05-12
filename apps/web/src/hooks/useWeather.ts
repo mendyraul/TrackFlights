@@ -48,8 +48,8 @@ export function useWeather(): UseWeatherReturn {
 
     fetch();
 
-    // Refresh every 5 minutes
-    const interval = setInterval(fetch, 5 * 60 * 1000);
+    // Temporary cost-control mode: refresh every 60 minutes
+    const interval = setInterval(fetch, 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 

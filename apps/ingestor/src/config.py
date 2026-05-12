@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
 
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 VALID_FLIGHT_PROVIDERS = {"aviationstack", "example"}
 VALID_WEATHER_PROVIDERS = {"openmeteo"}
@@ -18,14 +21,14 @@ class Settings(BaseSettings):
     flight_provider: str = "aviationstack"
 
     # Ingestion
-    poll_interval_seconds: int = 60
+    poll_interval_seconds: int = 3600
     mia_iata_code: str = "MIA"
     mia_icao_code: str = "KMIA"
 
     # Weather
     weather_enabled: bool = True
     weather_provider: str = "openmeteo"
-    weather_poll_interval_seconds: int = 300  # Every 5 minutes
+    weather_poll_interval_seconds: int = 3600  # Temporary cost-control mode: every 60 minutes
 
     # ML / Predictions
     predictions_enabled: bool = True
@@ -41,7 +44,7 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": str(_PROJECT_ROOT / ".env"), "env_file_encoding": "utf-8"}
 
 
 settings = Settings()  # type: ignore[call-arg]
