@@ -31,7 +31,7 @@ class SupabaseFlightClient:
 
     def get_current_flights(self) -> list[dict[str, Any]]:
         """Fetch all rows from flights_current."""
-        result = self.client.table("flights_current").select("*").execute()
+        result = self.client.table("flights_current").select("id,flight_iata,status,updated_at").execute()
         return result.data or []
 
     def upsert_flights(self, flights: list[dict[str, Any]]) -> int:
@@ -92,52 +92,44 @@ class SupabaseFlightClient:
         return len(stale_ids)
 
     def archive_completed_flights(self) -> int:
-        """Move completed flights older than ARCHIVE_AGE_HOURS
-        from flights_current to flights_history.
+        """Archival is disabled in free-tier mode to avoid write amplification.
 
-        Returns the count of archived flights.
+        Keeping only flights_current + short retention pruning is cheaper and avoids
+        schema drift issues between current/history tables.
         """
-        cutoff = (
-            datetime.now(timezone.utc) - timedelta(hours=ARCHIVE_AGE_HOURS)
-        ).isoformat()
+        return 0
 
-        # Find completed flights past the cutoff
-        result = (
-            self.client.table("flights_current")
-            .select("*")
-            .in_("status", COMPLETED_STATUSES)
-            .lt("updated_at", cutoff)
+    def prune_old_data(self) -> dict[str, int]:
+        """Prune old high-volume tables to stay within free-tier storage."""
+        now = datetime.now(timezone.utc)
+        pruned: dict[str, int] = {
+            "history_pruned": 0,
+            "weather_pruned": 0,
+            "anomalies_pruned": 0,
+        }
+
+        # flights_history
+        history_cutoff = (now - timedelta(days=settings.flights_history_retention_days)).isoformat()
+        hist = self.client.table("flights_history").delete().lt("archived_at", history_cutoff).execute()
+        pruned["history_pruned"] = len(hist.data or [])
+
+        # weather_snapshots
+        weather_cutoff = (now - timedelta(days=settings.weather_retention_days)).isoformat()
+        w = self.client.table("weather_snapshots").delete().lt("observed_at", weather_cutoff).execute()
+        pruned["weather_pruned"] = len(w.data or [])
+
+        # resolved/old anomalies
+        anomaly_cutoff = (now - timedelta(days=settings.anomalies_retention_days)).isoformat()
+        a = (
+            self.client.table("traffic_anomalies")
+            .delete()
+            .eq("is_active", False)
+            .lt("resolved_at", anomaly_cutoff)
             .execute()
         )
+        pruned["anomalies_pruned"] = len(a.data or [])
 
-        rows = result.data or []
-        if not rows:
-            return 0
-
-        # Insert into history (batch)
-        history_rows = []
-        for row in rows:
-            history_row = {k: v for k, v in row.items() if k != "raw_data"}
-            history_row.pop("id", None)  # Let history generate its own ID
-            history_rows.append(history_row)
-
-        batch_size = 50
-        for i in range(0, len(history_rows), batch_size):
-            batch = history_rows[i : i + batch_size]
-            self.client.table("flights_history").insert(batch).execute()
-
-        # Delete from current
-        ids = [row["id"] for row in rows]
-        for i in range(0, len(ids), batch_size):
-            batch = ids[i : i + batch_size]
-            self.client.table("flights_current").delete().in_("id", batch).execute()
-
-        logger.info(
-            "Archived flights to history",
-            count=len(rows),
-            sample=[r.get("flight_iata") for r in rows[:5]],
-        )
-        return len(rows)
+        return pruned
 
     def get_flight_stats(self) -> dict[str, int]:
         """Get counts by status for logging."""

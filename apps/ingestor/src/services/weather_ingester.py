@@ -9,9 +9,9 @@ from src.providers.weather.base_weather_provider import BaseWeatherProvider
 
 logger = structlog.get_logger()
 
-# MIA coordinates
 MIA_LAT = 25.7959
 MIA_LON = -80.2870
+WEATHER_COLUMNS = "airport_iata,observed_at,temperature_c,dewpoint_c,humidity_pct,pressure_hpa,wind_speed_knots,wind_gust_knots,wind_direction_deg,visibility_km,cloud_cover_pct,weather_code,weather_description,is_thunderstorm,is_fog,precipitation_mm"
 
 
 class WeatherIngester:
@@ -22,7 +22,6 @@ class WeatherIngester:
         self.db = db
 
     async def ingest_current(self) -> dict[str, Any]:
-        """Fetch current weather and store snapshot."""
         raw = await self.provider.fetch_current(MIA_LAT, MIA_LON)
         normalized = self.provider.normalize(raw)
 
@@ -42,14 +41,12 @@ class WeatherIngester:
         return normalized
 
     async def ingest_forecast(self, hours: int = 12) -> int:
-        """Fetch hourly forecast and store snapshots."""
         raw_hours = await self.provider.fetch_forecast(MIA_LAT, MIA_LON, hours)
 
-        snapshots = []
-        for hour_data in raw_hours:
-            snapshots.append(
-                self.provider.normalize_forecast_hour(hour_data)  # type: ignore[attr-defined]
-            )
+        snapshots = [
+            self.provider.normalize_forecast_hour(hour_data)  # type: ignore[attr-defined]
+            for hour_data in raw_hours
+        ]
 
         if snapshots:
             self.db.table("weather_snapshots").upsert(
@@ -61,10 +58,9 @@ class WeatherIngester:
         return len(snapshots)
 
     def get_latest(self) -> dict[str, Any] | None:
-        """Get the most recent weather snapshot."""
         result = (
             self.db.table("weather_snapshots")
-            .select("*")
+            .select(WEATHER_COLUMNS)
             .eq("airport_iata", "MIA")
             .order("observed_at", desc=True)
             .limit(1)
@@ -74,17 +70,17 @@ class WeatherIngester:
         return rows[0] if rows else None
 
     def get_recent(self, hours: int = 12) -> list[dict[str, Any]]:
-        """Get recent weather snapshots for trend analysis."""
         from datetime import datetime, timedelta, timezone
 
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
 
         result = (
             self.db.table("weather_snapshots")
-            .select("*")
+            .select(WEATHER_COLUMNS)
             .eq("airport_iata", "MIA")
             .gte("observed_at", cutoff)
             .order("observed_at", desc=False)
+            .limit(max(12, hours + 6))
             .execute()
         )
         return result.data or []

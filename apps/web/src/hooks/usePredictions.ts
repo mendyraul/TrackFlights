@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { DelayPrediction } from "@/types/database";
 
+const PREDICTION_COLUMNS = "flight_iata,prediction_type,predicted_value,confidence,model_version,generated_at,expires_at";
+
 interface UsePredictionsReturn {
   predictions: DelayPrediction[];
   highRiskFlights: DelayPrediction[];
@@ -20,24 +22,20 @@ export function usePredictions(): UsePredictionsReturn {
 
       const { data } = await supabase
         .from("delay_predictions")
-        .select("*")
+        .select(PREDICTION_COLUMNS)
         .gte("expires_at", now)
-        .order("predicted_value", { ascending: false });
+        .order("predicted_value", { ascending: false })
+        .limit(500);
 
-      if (data) {
-        setPredictions(data as DelayPrediction[]);
-      }
+      if (data) setPredictions(data as DelayPrediction[]);
       setLoading(false);
     }
 
     fetch();
-
-    // Temporary cost-control mode: refresh every 60 minutes
-    const interval = setInterval(fetch, 60 * 60 * 1000);
+    const interval = setInterval(fetch, 2 * 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // High-risk flights: delay_risk > 0.5
   const highRiskFlights = predictions.filter(
     (p) => p.prediction_type === "delay_risk" && p.predicted_value > 0.5
   );
@@ -45,7 +43,6 @@ export function usePredictions(): UsePredictionsReturn {
   return { predictions, highRiskFlights, loading };
 }
 
-/** Get predictions for a specific flight. */
 export function getPredictionsForFlight(
   predictions: DelayPrediction[],
   flightIata: string

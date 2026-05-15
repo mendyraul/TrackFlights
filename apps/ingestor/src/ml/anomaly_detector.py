@@ -164,7 +164,7 @@ class AnomalyDetector:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
         result = (
             self.db.table("analytics_hourly")
-            .select("*")
+            .select("hour,direction,total_flights,avg_delay_minutes")
             .gte("hour", cutoff)
             .execute()
         )
