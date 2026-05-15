@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Flight } from "@/types/database";
 import type { ConnectionStatus } from "@/services/realtime";
+
+const FLIGHT_COLUMNS = "id,flight_iata,airline_iata,departure_airport_iata,arrival_airport_iata,scheduled_departure,scheduled_arrival,estimated_departure,estimated_arrival,actual_departure,actual_arrival,status,terminal,gate,baggage_claim,delay_minutes,latitude,longitude,altitude_ft,speed_knots,heading,updated_at";
 
 interface UseFlightsReturn {
   flights: Flight[];
@@ -31,12 +33,17 @@ export function useFlights(): UseFlightsReturn {
 
 
   useEffect(() => {
-    // Temporary cost-control mode: no realtime socket, hourly polling only.
+    // Cost-control mode: no realtime socket, projected columns, capped rows, slower polling.
     async function fetchFlights() {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
+
       const { data, error: fetchError } = await supabase
         .from("flights_current")
-        .select("*")
-        .order("updated_at", { ascending: false });
+        .select(FLIGHT_COLUMNS)
+        .order("updated_at", { ascending: false })
+        .limit(250);
 
       if (fetchError) {
         setError(fetchError.message);
@@ -51,7 +58,7 @@ export function useFlights(): UseFlightsReturn {
     }
 
     void fetchFlights();
-    const interval = setInterval(fetchFlights, 60 * 60 * 1000);
+    const interval = setInterval(fetchFlights, 2 * 60 * 60 * 1000);
 
     return () => {
       clearInterval(interval);
