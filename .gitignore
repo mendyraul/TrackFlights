@@ -50,3 +50,5 @@ logs/
 coverage/
 htmlcov/
 .coverage
+STATUS.md
+apps/web/.vercel/
