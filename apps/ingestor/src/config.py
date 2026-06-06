@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     flight_provider: str = "aviationstack"
 
     # Ingestion
-    poll_interval_seconds: int = 3600
+    poll_interval_seconds: int = 10800  # cost-control default: every 3 hours
     mia_iata_code: str = "MIA"
     mia_icao_code: str = "KMIA"
 
@@ -30,9 +30,14 @@ class Settings(BaseSettings):
     weather_provider: str = "openmeteo"
     weather_poll_interval_seconds: int = 3600  # Temporary cost-control mode: every 60 minutes
 
-    # ML / Predictions
-    predictions_enabled: bool = True
-    anomaly_detection_enabled: bool = True
+    # ML / Predictions (write-heavy; disabled by default for free-tier cost control)
+    predictions_enabled: bool = False
+    anomaly_detection_enabled: bool = False
+
+    # Data retention (days)
+    flights_history_retention_days: int = 7
+    weather_retention_days: int = 3
+    anomalies_retention_days: int = 7
 
     # Capacity alerting thresholds (Phase 3 Slice D1)
     capacity_cycle_lag_warn_seconds: float = 15.0

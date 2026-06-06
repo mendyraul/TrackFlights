@@ -42,6 +42,7 @@ class Poller:
         self._cycle_count = 0
         self._last_weather_time = 0.0
         self._last_successful_cycle_time = 0.0
+        self._last_prune_time = 0.0
 
         # Lazy-init ML services (only if enabled)
         self._weather_ingester = None
@@ -115,6 +116,15 @@ class Poller:
         # ── 9. Anomaly detection ─────────────────────────────────────
         if settings.anomaly_detection_enabled:
             self._run_anomaly_detection(current_flights, weather_data, stats)
+
+        # Periodic pruning (once/day)
+        if (time.time() - self._last_prune_time) >= 86400:
+            try:
+                prune_stats = self.db.prune_old_data()
+                stats.update(prune_stats)
+                self._last_prune_time = time.time()
+            except Exception:
+                logger.exception("Retention pruning failed")
 
         # ── 10. Log ──────────────────────────────────────────────────
         cycle_duration_seconds = time.monotonic() - cycle_started
