@@ -11,15 +11,8 @@ interface Props {
   mappableCount: number;
 }
 
-export function MapFilters({
-  filters,
-  onChange,
-  airlines,
-  totalCount,
-  mappableCount,
-}: Props) {
-  const update = (patch: Partial<MapFilterState>) =>
-    onChange({ ...filters, ...patch });
+export function MapFilters({ filters, onChange, airlines, totalCount, mappableCount }: Props) {
+  const update = (patch: Partial<MapFilterState>) => onChange({ ...filters, ...patch });
 
   return (
     <div className="absolute left-4 top-4 z-[1000] flex flex-col gap-2">
@@ -27,9 +20,7 @@ export function MapFilters({
         {/* Direction */}
         <select
           value={filters.direction}
-          onChange={(e) =>
-            update({ direction: e.target.value as FlightDirection | "all" })
-          }
+          onChange={(e) => update({ direction: e.target.value as FlightDirection | "all" })}
           className="rounded border border-gray-700 bg-mia-dark px-2 py-1 text-xs text-gray-200"
         >
           <option value="all">All Flights</option>

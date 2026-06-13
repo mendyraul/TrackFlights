@@ -3,7 +3,7 @@
 API docs: https://open-meteo.com/en/docs
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -61,18 +61,20 @@ class OpenMeteoProvider(BaseWeatherProvider):
         params = {
             "latitude": lat,
             "longitude": lon,
-            "current": ",".join([
-                "temperature_2m",
-                "apparent_temperature",
-                "relative_humidity_2m",
-                "precipitation",
-                "weather_code",
-                "cloud_cover",
-                "pressure_msl",
-                "wind_speed_10m",
-                "wind_direction_10m",
-                "wind_gusts_10m",
-            ]),
+            "current": ",".join(
+                [
+                    "temperature_2m",
+                    "apparent_temperature",
+                    "relative_humidity_2m",
+                    "precipitation",
+                    "weather_code",
+                    "cloud_cover",
+                    "pressure_msl",
+                    "wind_speed_10m",
+                    "wind_direction_10m",
+                    "wind_gusts_10m",
+                ]
+            ),
             "wind_speed_unit": "kn",
             "timezone": "UTC",
         }
@@ -83,27 +85,27 @@ class OpenMeteoProvider(BaseWeatherProvider):
             return resp.json()
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=15))
-    async def fetch_forecast(
-        self, lat: float, lon: float, hours: int = 12
-    ) -> list[dict[str, Any]]:
+    async def fetch_forecast(self, lat: float, lon: float, hours: int = 12) -> list[dict[str, Any]]:
         """Fetch hourly forecast."""
         params = {
             "latitude": lat,
             "longitude": lon,
-            "hourly": ",".join([
-                "temperature_2m",
-                "apparent_temperature",
-                "relative_humidity_2m",
-                "precipitation_probability",
-                "precipitation",
-                "weather_code",
-                "cloud_cover",
-                "visibility",
-                "wind_speed_10m",
-                "wind_direction_10m",
-                "wind_gusts_10m",
-                "pressure_msl",
-            ]),
+            "hourly": ",".join(
+                [
+                    "temperature_2m",
+                    "apparent_temperature",
+                    "relative_humidity_2m",
+                    "precipitation_probability",
+                    "precipitation",
+                    "weather_code",
+                    "cloud_cover",
+                    "visibility",
+                    "wind_speed_10m",
+                    "wind_direction_10m",
+                    "wind_gusts_10m",
+                    "pressure_msl",
+                ]
+            ),
             "wind_speed_unit": "kn",
             "timezone": "UTC",
             "forecast_hours": hours,
@@ -119,21 +121,23 @@ class OpenMeteoProvider(BaseWeatherProvider):
         snapshots = []
 
         for i, time_str in enumerate(times[:hours]):
-            snapshots.append({
-                "time": time_str,
-                "temperature_2m": hourly.get("temperature_2m", [None])[i],
-                "apparent_temperature": hourly.get("apparent_temperature", [None])[i],
-                "relative_humidity_2m": hourly.get("relative_humidity_2m", [None])[i],
-                "precipitation_probability": hourly.get("precipitation_probability", [None])[i],
-                "precipitation": hourly.get("precipitation", [None])[i],
-                "weather_code": hourly.get("weather_code", [None])[i],
-                "cloud_cover": hourly.get("cloud_cover", [None])[i],
-                "visibility": hourly.get("visibility", [None])[i],
-                "wind_speed_10m": hourly.get("wind_speed_10m", [None])[i],
-                "wind_direction_10m": hourly.get("wind_direction_10m", [None])[i],
-                "wind_gusts_10m": hourly.get("wind_gusts_10m", [None])[i],
-                "pressure_msl": hourly.get("pressure_msl", [None])[i],
-            })
+            snapshots.append(
+                {
+                    "time": time_str,
+                    "temperature_2m": hourly.get("temperature_2m", [None])[i],
+                    "apparent_temperature": hourly.get("apparent_temperature", [None])[i],
+                    "relative_humidity_2m": hourly.get("relative_humidity_2m", [None])[i],
+                    "precipitation_probability": hourly.get("precipitation_probability", [None])[i],
+                    "precipitation": hourly.get("precipitation", [None])[i],
+                    "weather_code": hourly.get("weather_code", [None])[i],
+                    "cloud_cover": hourly.get("cloud_cover", [None])[i],
+                    "visibility": hourly.get("visibility", [None])[i],
+                    "wind_speed_10m": hourly.get("wind_speed_10m", [None])[i],
+                    "wind_direction_10m": hourly.get("wind_direction_10m", [None])[i],
+                    "wind_gusts_10m": hourly.get("wind_gusts_10m", [None])[i],
+                    "pressure_msl": hourly.get("pressure_msl", [None])[i],
+                }
+            )
 
         return snapshots
 
@@ -144,7 +148,7 @@ class OpenMeteoProvider(BaseWeatherProvider):
 
         return {
             "airport_iata": "MIA",
-            "observed_at": current.get("time", datetime.now(timezone.utc).isoformat()),
+            "observed_at": current.get("time", datetime.now(UTC).isoformat()),
             "temperature_c": current.get("temperature_2m"),
             "feels_like_c": current.get("apparent_temperature"),
             "wind_speed_knots": current.get("wind_speed_10m"),

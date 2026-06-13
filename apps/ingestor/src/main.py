@@ -10,8 +10,9 @@ from src.config import (
     settings,
     validate_runtime_settings,
 )
-from src.providers.base_provider import BaseFlightProvider
+from src.providers.adsb1090_provider import Adsb1090Provider
 from src.providers.aviationstack_provider import AviationStackProvider
+from src.providers.base_provider import BaseFlightProvider
 from src.providers.example_provider import ExampleProvider
 from src.worker.poller import Poller
 
@@ -20,6 +21,7 @@ logger = structlog.get_logger()
 PROVIDERS: dict[str, type[BaseFlightProvider]] = {
     "aviationstack": AviationStackProvider,
     "example": ExampleProvider,
+    "adsb1090": Adsb1090Provider,
 }
 
 
@@ -28,9 +30,7 @@ def get_provider() -> BaseFlightProvider:
     name = settings.flight_provider
     cls = PROVIDERS.get(name)
     if cls is None:
-        raise ValueError(
-            f"Unknown provider '{name}'. Available: {list(PROVIDERS.keys())}"
-        )
+        raise ValueError(f"Unknown provider '{name}'. Available: {list(PROVIDERS.keys())}")
     return cls()
 
 
@@ -66,10 +66,8 @@ async def main() -> None:
             logger.exception("Error during poll cycle")
 
         try:
-            await asyncio.wait_for(
-                shutdown.wait(), timeout=settings.poll_interval_seconds
-            )
-        except asyncio.TimeoutError:
+            await asyncio.wait_for(shutdown.wait(), timeout=settings.poll_interval_seconds)
+        except TimeoutError:
             pass  # Normal: time to poll again
 
     logger.info("Ingestor shutdown complete")

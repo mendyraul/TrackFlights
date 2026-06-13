@@ -34,8 +34,7 @@ export interface MapFilterState {
 }
 
 export function MapView() {
-  const { flights, loading, error, connectionStatus, lastUpdate, recentlyChanged } =
-    useFlights();
+  const { flights, loading, error, connectionStatus, lastUpdate, recentlyChanged } = useFlights();
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
   const [routeLine, setRouteLine] = useState<RouteLine | null>(null);
   const [filters, setFilters] = useState<MapFilterState>({
@@ -49,10 +48,7 @@ export function MapView() {
     if (filters.direction !== "all" && f.direction !== filters.direction) return false;
     if (filters.status && f.status !== filters.status) return false;
     if (filters.airline && f.airline_iata !== filters.airline) return false;
-    if (
-      filters.search &&
-      !f.flight_iata.toLowerCase().includes(filters.search.toLowerCase())
-    )
+    if (filters.search && !f.flight_iata.toLowerCase().includes(filters.search.toLowerCase()))
       return false;
     return true;
   });
@@ -65,7 +61,7 @@ export function MapView() {
 
   // Keep selected flight in sync with realtime updates
   const syncedSelected = selectedFlight
-    ? flights.find((f) => f.id === selectedFlight.id) ?? selectedFlight
+    ? (flights.find((f) => f.id === selectedFlight.id) ?? selectedFlight)
     : null;
 
   useEffect(() => {
@@ -92,9 +88,7 @@ export function MapView() {
         longitude: number | null;
       }>;
 
-      const byCode = new Map(
-        airports.map((airport) => [airport.iata_code, airport] as const)
-      );
+      const byCode = new Map(airports.map((airport) => [airport.iata_code, airport] as const));
 
       const origin = byCode.get(syncedSelected.origin_iata);
       const destination = byCode.get(syncedSelected.destination_iata);

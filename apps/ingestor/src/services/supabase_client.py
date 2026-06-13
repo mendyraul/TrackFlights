@@ -1,10 +1,10 @@
 """Supabase client wrapper for flight data operations."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
-from supabase import create_client, Client
+from supabase import Client, create_client
 
 from src.config import settings
 
@@ -31,7 +31,11 @@ class SupabaseFlightClient:
 
     def get_current_flights(self) -> list[dict[str, Any]]:
         """Fetch all rows from flights_current."""
-        result = self.client.table("flights_current").select("id,flight_iata,status,updated_at").execute()
+        result = (
+            self.client.table("flights_current")
+            .select("id,flight_iata,status,updated_at")
+            .execute()
+        )
         return result.data or []
 
     def upsert_flights(self, flights: list[dict[str, Any]]) -> int:
@@ -66,16 +70,13 @@ class SupabaseFlightClient:
         if not removed:
             return 0
 
-        cutoff = (
-            datetime.now(timezone.utc) - timedelta(minutes=STALE_THRESHOLD_MINUTES)
-        ).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(minutes=STALE_THRESHOLD_MINUTES)).isoformat()
 
         # Only mark flights that haven't been updated recently
         stale_ids = [
             row["id"]
             for row in removed
-            if row.get("updated_at", "") < cutoff
-            and row.get("status") not in COMPLETED_STATUSES
+            if row.get("updated_at", "") < cutoff and row.get("status") not in COMPLETED_STATUSES
         ]
 
         if not stale_ids:
@@ -101,7 +102,7 @@ class SupabaseFlightClient:
 
     def prune_old_data(self) -> dict[str, int]:
         """Prune old high-volume tables to stay within free-tier storage."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         pruned: dict[str, int] = {
             "history_pruned": 0,
             "weather_pruned": 0,
@@ -110,12 +111,22 @@ class SupabaseFlightClient:
 
         # flights_history
         history_cutoff = (now - timedelta(days=settings.flights_history_retention_days)).isoformat()
-        hist = self.client.table("flights_history").delete().lt("archived_at", history_cutoff).execute()
+        hist = (
+            self.client.table("flights_history")
+            .delete()
+            .lt("archived_at", history_cutoff)
+            .execute()
+        )
         pruned["history_pruned"] = len(hist.data or [])
 
         # weather_snapshots
         weather_cutoff = (now - timedelta(days=settings.weather_retention_days)).isoformat()
-        w = self.client.table("weather_snapshots").delete().lt("observed_at", weather_cutoff).execute()
+        w = (
+            self.client.table("weather_snapshots")
+            .delete()
+            .lt("observed_at", weather_cutoff)
+            .execute()
+        )
         pruned["weather_pruned"] = len(w.data or [])
 
         # resolved/old anomalies

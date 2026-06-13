@@ -17,13 +17,10 @@ import { TrafficVolumeChart } from "@/components/analytics/TrafficVolumeChart";
 
 export function Dashboard() {
   const { hourly, daily, loading: analyticsLoading } = useAnalytics();
-  const { flights, loading: flightsLoading, connectionStatus, lastUpdate } =
-    useFlights();
+  const { flights, loading: flightsLoading, connectionStatus, lastUpdate } = useFlights();
   const { current: weather, loading: weatherLoading } = useWeather();
-  const { predictions, highRiskFlights, loading: predictionsLoading } =
-    usePredictions();
-  const { activeAnomalies, highSeverity, loading: anomaliesLoading } =
-    useAnomalies();
+  const { predictions, highRiskFlights, loading: predictionsLoading } = usePredictions();
+  const { activeAnomalies, highSeverity, loading: anomaliesLoading } = useAnomalies();
 
   const loading =
     analyticsLoading || flightsLoading || weatherLoading || predictionsLoading || anomaliesLoading;
@@ -43,16 +40,12 @@ export function Dashboard() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-200">
-          Operations Dashboard
-        </h2>
+        <h2 className="text-xl font-semibold text-gray-200">Operations Dashboard</h2>
         <ConnectionBadge status={connectionStatus} lastUpdate={lastUpdate} />
       </div>
 
       {/* Anomaly alerts (top priority) */}
-      {activeAnomalies.length > 0 && (
-        <AnomalyAlerts anomalies={activeAnomalies} />
-      )}
+      {activeAnomalies.length > 0 && <AnomalyAlerts anomalies={activeAnomalies} />}
 
       {/* Weather + KPIs */}
       <WeatherCard weather={weather} />

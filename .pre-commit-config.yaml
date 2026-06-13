@@ -1,0 +1,27 @@
+# Pre-commit hooks for TrackFlights.
+#   Setup:   pip install pre-commit && pre-commit install
+#   Run all: pre-commit run --all-files
+#   Bump:    pre-commit autoupdate
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.17
+    hooks:
+      - id: ruff
+        name: ruff (ingestor)
+        args: [--fix]
+        files: ^apps/ingestor/.*\.py$
+
+  - repo: https://github.com/psf/black
+    rev: 26.5.1
+    hooks:
+      - id: black
+        name: black (ingestor)
+        files: ^apps/ingestor/.*\.py$
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier (web)
+        entry: npx --no-install prettier --write
+        language: system
+        files: ^apps/web/src/.*\.(ts|tsx|css)$

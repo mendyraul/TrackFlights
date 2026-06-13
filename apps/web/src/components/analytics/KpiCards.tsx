@@ -15,19 +15,11 @@ export function KpiCards({ daily, flights }: Props) {
   const totalCancelled = daily.reduce((s, d) => s + d.cancelled, 0);
   const totalDiverted = daily.reduce((s, d) => s + d.diverted, 0);
 
-  const onTimeRate =
-    totalFlights > 0
-      ? ((totalOnTime / totalFlights) * 100).toFixed(1)
-      : "--";
-  const cancelRate =
-    totalFlights > 0
-      ? ((totalCancelled / totalFlights) * 100).toFixed(1)
-      : "--";
+  const onTimeRate = totalFlights > 0 ? ((totalOnTime / totalFlights) * 100).toFixed(1) : "--";
+  const cancelRate = totalFlights > 0 ? ((totalCancelled / totalFlights) * 100).toFixed(1) : "--";
   const avgDelay =
     daily.length > 0
-      ? (
-          daily.reduce((s, d) => s + d.avg_delay_minutes, 0) / daily.length
-        ).toFixed(1)
+      ? (daily.reduce((s, d) => s + d.avg_delay_minutes, 0) / daily.length).toFixed(1)
       : "--";
 
   // Live counts
@@ -76,16 +68,9 @@ export function KpiCards({ daily, flights }: Props) {
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
       {cards.map((card) => (
-        <div
-          key={card.label}
-          className="rounded-lg border border-gray-800 bg-mia-panel p-4"
-        >
-          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
-            {card.label}
-          </p>
-          <p className={`mt-1 text-2xl font-bold ${card.color}`}>
-            {card.value}
-          </p>
+        <div key={card.label} className="rounded-lg border border-gray-800 bg-mia-panel p-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">{card.label}</p>
+          <p className={`mt-1 text-2xl font-bold ${card.color}`}>{card.value}</p>
           <p className="mt-0.5 text-xs text-gray-500">{card.sub}</p>
         </div>
       ))}

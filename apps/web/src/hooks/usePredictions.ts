@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { DelayPrediction } from "@/types/database";
 
-const PREDICTION_COLUMNS = "flight_iata,prediction_type,predicted_value,confidence,model_version,generated_at,expires_at";
+const PREDICTION_COLUMNS =
+  "flight_iata,prediction_type,predicted_value,confidence,model_version,generated_at,expires_at";
 
 interface UsePredictionsReturn {
   predictions: DelayPrediction[];
@@ -55,7 +56,6 @@ export function getPredictionsForFlight(
   return {
     delayRisk: forFlight.find((p) => p.prediction_type === "delay_risk") ?? null,
     delayMinutes: forFlight.find((p) => p.prediction_type === "delay_minutes") ?? null,
-    onTimeProbability:
-      forFlight.find((p) => p.prediction_type === "on_time_probability") ?? null,
+    onTimeProbability: forFlight.find((p) => p.prediction_type === "on_time_probability") ?? null,
   };
 }

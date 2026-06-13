@@ -57,25 +57,17 @@ function statusBadge(status: Flight["status"]) {
   );
 }
 
-function getSortValue(
-  flight: Flight,
-  field: SortField,
-  direction: FlightDirection
-): string {
+function getSortValue(flight: Flight, field: SortField, direction: FlightDirection): string {
   switch (field) {
     case "flight_iata":
       return flight.flight_iata;
     case "airline_name":
       return flight.airline_name || "";
     case "route":
-      return direction === "arrival"
-        ? flight.origin_iata || ""
-        : flight.destination_iata || "";
+      return direction === "arrival" ? flight.origin_iata || "" : flight.destination_iata || "";
     case "scheduled":
       return (
-        (direction === "arrival"
-          ? flight.scheduled_arrival
-          : flight.scheduled_departure) || ""
+        (direction === "arrival" ? flight.scheduled_arrival : flight.scheduled_departure) || ""
       );
     case "estimated":
       return (
@@ -86,25 +78,14 @@ function getSortValue(
     case "status":
       return flight.status;
     case "gate":
-      return (
-        (direction === "arrival"
-          ? flight.arrival_gate
-          : flight.departure_gate) || ""
-      );
+      return (direction === "arrival" ? flight.arrival_gate : flight.departure_gate) || "";
     default:
       return "";
   }
 }
 
 export function FlightBoard() {
-  const {
-    flights,
-    loading,
-    error,
-    connectionStatus,
-    lastUpdate,
-    recentlyChanged,
-  } = useFlights();
+  const { flights, loading, error, connectionStatus, lastUpdate, recentlyChanged } = useFlights();
   const [direction, setDirection] = useState<FlightDirection>("arrival");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<FlightStatus | "">("");
@@ -123,13 +104,8 @@ export function FlightBoard() {
   };
 
   const sortIndicator = (field: SortField) => {
-    if (sort.field !== field)
-      return <span className="ml-1 text-gray-600">↕</span>;
-    return (
-      <span className="ml-1 text-mia-accent">
-        {sort.dir === "asc" ? "↑" : "↓"}
-      </span>
-    );
+    if (sort.field !== field) return <span className="ml-1 text-gray-600">↕</span>;
+    return <span className="ml-1 text-mia-accent">{sort.dir === "asc" ? "↑" : "↓"}</span>;
   };
 
   // Unique airlines for filter
@@ -258,9 +234,7 @@ export function FlightBoard() {
       </div>
 
       {error && (
-        <p className="mb-4 rounded bg-red-900/20 px-3 py-2 text-sm text-red-400">
-          {error}
-        </p>
+        <p className="mb-4 rounded bg-red-900/20 px-3 py-2 text-sm text-red-400">{error}</p>
       )}
 
       {/* Table */}
@@ -284,8 +258,7 @@ export function FlightBoard() {
                 className="cursor-pointer px-4 py-3 text-left hover:text-gray-200"
                 onClick={() => toggleSort("route")}
               >
-                {direction === "arrival" ? "Origin" : "Destination"}{" "}
-                {sortIndicator("route")}
+                {direction === "arrival" ? "Origin" : "Destination"} {sortIndicator("route")}
               </th>
               <th
                 className="cursor-pointer px-4 py-3 text-left hover:text-gray-200"
@@ -297,8 +270,7 @@ export function FlightBoard() {
                 className="cursor-pointer px-4 py-3 text-left hover:text-gray-200"
                 onClick={() => toggleSort("estimated")}
               >
-                {direction === "arrival" ? "ETA" : "Actual"}{" "}
-                {sortIndicator("estimated")}
+                {direction === "arrival" ? "ETA" : "Actual"} {sortIndicator("estimated")}
               </th>
               <th
                 className="cursor-pointer px-4 py-3 text-left hover:text-gray-200"
@@ -342,9 +314,7 @@ export function FlightBoard() {
                         : flight.destination_iata || "--"}
                     </span>
                     <span className="ml-2 text-xs text-gray-500">
-                      {direction === "arrival"
-                        ? flight.origin_name
-                        : flight.destination_name}
+                      {direction === "arrival" ? flight.origin_name : flight.destination_name}
                     </span>
                   </td>
                   <td className="px-4 py-3 font-mono">
@@ -356,9 +326,7 @@ export function FlightBoard() {
                   </td>
                   <td className="px-4 py-3 font-mono">
                     {direction === "arrival"
-                      ? formatTime(
-                          flight.estimated_arrival || flight.actual_arrival
-                        )
+                      ? formatTime(flight.estimated_arrival || flight.actual_arrival)
                       : formatTime(flight.actual_departure)}
                     {flight.delay_minutes > 0 && (
                       <span className="ml-1.5 text-xs text-yellow-400">
@@ -368,19 +336,15 @@ export function FlightBoard() {
                   </td>
                   <td className="px-4 py-3">{statusBadge(flight.status)}</td>
                   <td className="px-4 py-3 font-mono text-gray-300">
-                    {(direction === "arrival"
-                      ? flight.arrival_gate
-                      : flight.departure_gate) || "--"}
+                    {(direction === "arrival" ? flight.arrival_gate : flight.departure_gate) ||
+                      "--"}
                   </td>
                 </tr>
               );
             })}
             {filtered.length === 0 && (
               <tr>
-                <td
-                  colSpan={7}
-                  className="px-4 py-12 text-center text-gray-500"
-                >
+                <td colSpan={7} className="px-4 py-12 text-center text-gray-500">
                   {search || statusFilter || airlineFilter
                     ? "No flights match your filters"
                     : "No flights found"}

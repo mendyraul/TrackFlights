@@ -9,7 +9,7 @@ Produces:
   - on_time_probability: probability of arriving on time (0.0–1.0)
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
@@ -43,7 +43,7 @@ class DelayPredictor:
         Returns list of prediction records ready for DB upsert.
         """
         predictions: list[dict[str, Any]] = []
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires = now + timedelta(hours=1)
 
         for flight in flights:
@@ -60,31 +60,37 @@ class DelayPredictor:
             }
 
             # delay_risk prediction
-            predictions.append({
-                **base_record,
-                "prediction_type": "delay_risk",
-                "predicted_value": scores["delay_risk"],
-                "confidence": scores["confidence"],
-                "factors": scores["factors"],
-            })
+            predictions.append(
+                {
+                    **base_record,
+                    "prediction_type": "delay_risk",
+                    "predicted_value": scores["delay_risk"],
+                    "confidence": scores["confidence"],
+                    "factors": scores["factors"],
+                }
+            )
 
             # delay_minutes prediction
-            predictions.append({
-                **base_record,
-                "prediction_type": "delay_minutes",
-                "predicted_value": scores["expected_delay_minutes"],
-                "confidence": scores["confidence"],
-                "factors": scores["factors"],
-            })
+            predictions.append(
+                {
+                    **base_record,
+                    "prediction_type": "delay_minutes",
+                    "predicted_value": scores["expected_delay_minutes"],
+                    "confidence": scores["confidence"],
+                    "factors": scores["factors"],
+                }
+            )
 
             # on_time_probability
-            predictions.append({
-                **base_record,
-                "prediction_type": "on_time_probability",
-                "predicted_value": scores["on_time_probability"],
-                "confidence": scores["confidence"],
-                "factors": scores["factors"],
-            })
+            predictions.append(
+                {
+                    **base_record,
+                    "prediction_type": "on_time_probability",
+                    "predicted_value": scores["on_time_probability"],
+                    "confidence": scores["confidence"],
+                    "factors": scores["factors"],
+                }
+            )
 
         return predictions
 
@@ -108,13 +114,8 @@ class DelayPredictor:
 
     def cleanup_expired(self) -> int:
         """Remove expired predictions."""
-        now = datetime.now(timezone.utc).isoformat()
-        result = (
-            self.db.table("delay_predictions")
-            .delete()
-            .lt("expires_at", now)
-            .execute()
-        )
+        now = datetime.now(UTC).isoformat()
+        result = self.db.table("delay_predictions").delete().lt("expires_at", now).execute()
         count = len(result.data or [])
         if count:
             logger.info("Cleaned up expired predictions", count=count)

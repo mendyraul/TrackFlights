@@ -29,9 +29,7 @@ export function HighRiskFlights({ predictions }: Props) {
 
   // Get corresponding delay_minutes predictions
   const minutesPredictions = new Map(
-    predictions
-      .filter((p) => p.prediction_type === "delay_minutes")
-      .map((p) => [p.flight_iata, p])
+    predictions.filter((p) => p.prediction_type === "delay_minutes").map((p) => [p.flight_iata, p])
   );
 
   if (riskPredictions.length === 0) {
@@ -40,9 +38,7 @@ export function HighRiskFlights({ predictions }: Props) {
         <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">
           High-Risk Flights
         </h3>
-        <p className="mt-4 text-center text-sm text-gray-600">
-          No high-risk flights detected
-        </p>
+        <p className="mt-4 text-center text-sm text-gray-600">No high-risk flights detected</p>
       </div>
     );
   }
@@ -64,9 +60,7 @@ export function HighRiskFlights({ predictions }: Props) {
             >
               {/* Risk score */}
               <div className="text-center">
-                <p
-                  className={`text-lg font-bold ${riskColor(pred.predicted_value)}`}
-                >
+                <p className={`text-lg font-bold ${riskColor(pred.predicted_value)}`}>
                   {Math.round(pred.predicted_value * 100)}%
                 </p>
                 <p className="text-xs text-gray-500">risk</p>
@@ -75,12 +69,8 @@ export function HighRiskFlights({ predictions }: Props) {
               {/* Flight info */}
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-semibold text-white">
-                    {pred.flight_iata}
-                  </span>
-                  <span className="text-xs text-gray-400 capitalize">
-                    {pred.direction}
-                  </span>
+                  <span className="font-mono font-semibold text-white">{pred.flight_iata}</span>
+                  <span className="text-xs text-gray-400 capitalize">{pred.direction}</span>
                   {minutesPred && (
                     <span className="text-xs text-yellow-400">
                       ~{Math.round(minutesPred.predicted_value)}min delay

@@ -1,0 +1,7 @@
+# Development tooling for the ingestor (not needed at runtime).
+#   pip install -r requirements.txt -r requirements-dev.txt
+-r requirements.txt
+ruff==0.15.17
+black==26.5.1
+pytest==8.3.5
+pre-commit

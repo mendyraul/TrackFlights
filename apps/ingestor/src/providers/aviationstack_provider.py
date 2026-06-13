@@ -6,8 +6,8 @@ import httpx
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from src.providers.base_provider import BaseFlightProvider
 from src.config import settings
+from src.providers.base_provider import BaseFlightProvider
 
 logger = structlog.get_logger()
 
@@ -91,9 +91,7 @@ class AviationStackProvider(BaseFlightProvider):
             "scheduled_arrival": arr.get("scheduled"),
             "actual_arrival": arr.get("actual"),
             "estimated_arrival": arr.get("estimated"),
-            "status": STATUS_MAP.get(
-                raw.get("flight_status", "unknown").lower(), "unknown"
-            ),
+            "status": STATUS_MAP.get(raw.get("flight_status", "unknown").lower(), "unknown"),
             "delay_minutes": dep.get("delay") or arr.get("delay") or 0,
             "latitude": live.get("latitude"),
             "longitude": live.get("longitude"),

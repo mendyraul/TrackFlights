@@ -1,14 +1,7 @@
 "use client";
 
 import { memo, useEffect, useRef } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  Polyline,
-  useMap,
-} from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import type { Flight } from "@/types/database";
@@ -38,7 +31,9 @@ function createAircraftIcon(
   const rotation = heading ?? 0;
   const color = isSelected ? "#00d4ff" : isChanged ? "#f97316" : "#facc15";
   const size = isSelected ? 28 : 22;
-  const glow = isChanged ? "drop-shadow(0 0 6px #f97316)" : "drop-shadow(0 1px 2px rgba(0,0,0,0.6))";
+  const glow = isChanged
+    ? "drop-shadow(0 0 6px #f97316)"
+    : "drop-shadow(0 1px 2px rgba(0,0,0,0.6))";
 
   return L.divIcon({
     className: "",
@@ -196,7 +191,9 @@ function FlightMapInner({
       {/* MIA airport marker */}
       <Marker position={MIA_CENTER} icon={MIA_ICON}>
         <Popup>
-          <strong>MIA</strong><br />Miami International Airport
+          <strong>MIA</strong>
+          <br />
+          Miami International Airport
         </Popup>
       </Marker>
 

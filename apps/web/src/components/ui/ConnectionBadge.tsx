@@ -7,10 +7,7 @@ interface Props {
   lastUpdate: number | null;
 }
 
-const STATUS_CONFIG: Record<
-  ConnectionStatus,
-  { color: string; pulse: boolean; label: string }
-> = {
+const STATUS_CONFIG: Record<ConnectionStatus, { color: string; pulse: boolean; label: string }> = {
   connected: { color: "bg-green-400", pulse: true, label: "Live" },
   connecting: { color: "bg-yellow-400", pulse: true, label: "Reconnecting..." },
   disconnected: { color: "bg-red-400", pulse: false, label: "Disconnected" },
@@ -30,15 +27,11 @@ export function ConnectionBadge({ status, lastUpdate }: Props) {
   return (
     <div className="flex items-center gap-2">
       <div className="flex items-center gap-1.5">
-        <span
-          className={`h-2 w-2 rounded-full ${cfg.color} ${cfg.pulse ? "animate-pulse" : ""}`}
-        />
+        <span className={`h-2 w-2 rounded-full ${cfg.color} ${cfg.pulse ? "animate-pulse" : ""}`} />
         <span className="text-xs text-gray-400">{cfg.label}</span>
       </div>
       {lastUpdate && status === "connected" && (
-        <span className="text-xs text-gray-600">
-          Updated {timeAgo(lastUpdate)}
-        </span>
+        <span className="text-xs text-gray-600">Updated {timeAgo(lastUpdate)}</span>
       )}
     </div>
   );

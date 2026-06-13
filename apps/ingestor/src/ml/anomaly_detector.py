@@ -12,7 +12,7 @@ Anomaly types:
   - weather_impact: weather-correlated disruptions
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
@@ -113,13 +113,11 @@ class AnomalyDetector:
 
     def resolve_stale_anomalies(self, hours: int = 2) -> int:
         """Mark old active anomalies as resolved."""
-        cutoff = (
-            datetime.now(timezone.utc) - timedelta(hours=hours)
-        ).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
 
         result = (
             self.db.table("traffic_anomalies")
-            .update({"is_active": False, "resolved_at": datetime.now(timezone.utc).isoformat()})
+            .update({"is_active": False, "resolved_at": datetime.now(UTC).isoformat()})
             .eq("is_active", True)
             .lt("detected_at", cutoff)
             .execute()
@@ -159,9 +157,9 @@ class AnomalyDetector:
 
     def _load_baseline(self) -> dict[str, Any]:
         """Load baseline statistics from analytics_hourly (last 7 days)."""
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(days=7)).isoformat()
         result = (
             self.db.table("analytics_hourly")
             .select("hour,direction,total_flights,avg_delay_minutes")
@@ -192,9 +190,7 @@ class AnomalyDetector:
 
     # ── Detection rules ──────────────────────────────────────────────
 
-    def _check_volume_spikes(
-        self, stats: dict, baseline: dict
-    ) -> list[dict[str, Any]]:
+    def _check_volume_spikes(self, stats: dict, baseline: dict) -> list[dict[str, Any]]:
         anomalies = []
         for direction, key, spike_z, anom_type in [
             ("arrivals", "avg_hourly_arrivals", ARRIVAL_SPIKE_Z, "arrival_spike"),
@@ -220,9 +216,7 @@ class AnomalyDetector:
                 )
         return anomalies
 
-    def _check_mass_delay(
-        self, flights: list[dict], stats: dict
-    ) -> list[dict[str, Any]]:
+    def _check_mass_delay(self, flights: list[dict], stats: dict) -> list[dict[str, Any]]:
         delayed_count = stats["delayed_count"]
         delayed_pct = stats["delayed_pct"]
 
@@ -233,74 +227,78 @@ class AnomalyDetector:
                     al = f.get("airline_iata", "??")
                     airlines[al] = airlines.get(al, 0) + 1
 
-            return [self._make_anomaly(
-                anomaly_type="mass_delay",
-                title=f"Mass delay: {delayed_count} flights ({delayed_pct:.0%})",
-                description=f"{delayed_count} of {stats['total']} flights delayed. Airlines: {airlines}",
-                metric_name="delayed_flight_count",
-                metric_value=float(delayed_count),
-                baseline_value=float(stats["total"]) * 0.15,
-                deviation_pct=(delayed_pct - 0.15) / 0.15 * 100,
-                severity_score=min(delayed_pct / 0.5, 1.0),
-                affected_flights=stats["delayed_flights"][:20],
-                affected_airlines=list(airlines.keys()),
-                affected_count=delayed_count,
-            )]
+            return [
+                self._make_anomaly(
+                    anomaly_type="mass_delay",
+                    title=f"Mass delay: {delayed_count} flights ({delayed_pct:.0%})",
+                    description=f"{delayed_count} of {stats['total']} flights delayed. Airlines: {airlines}",
+                    metric_name="delayed_flight_count",
+                    metric_value=float(delayed_count),
+                    baseline_value=float(stats["total"]) * 0.15,
+                    deviation_pct=(delayed_pct - 0.15) / 0.15 * 100,
+                    severity_score=min(delayed_pct / 0.5, 1.0),
+                    affected_flights=stats["delayed_flights"][:20],
+                    affected_airlines=list(airlines.keys()),
+                    affected_count=delayed_count,
+                )
+            ]
         return []
 
-    def _check_delay_distribution(
-        self, stats: dict, baseline: dict
-    ) -> list[dict[str, Any]]:
+    def _check_delay_distribution(self, stats: dict, baseline: dict) -> list[dict[str, Any]]:
         avg_delay = stats["avg_delay_minutes"]
         baseline_delay = baseline.get("avg_delay_minutes", 10.0)
 
         if avg_delay > AVG_DELAY_THRESHOLD_MINUTES and avg_delay > baseline_delay * 1.5:
-            return [self._make_anomaly(
-                anomaly_type="delay_distribution_shift",
-                title=f"Avg delay {avg_delay:.0f}min (baseline {baseline_delay:.0f}min)",
-                description=f"Average delay shifted to {avg_delay:.1f} min, {avg_delay/baseline_delay:.1f}x baseline",
-                metric_name="avg_delay_minutes",
-                metric_value=avg_delay,
-                baseline_value=baseline_delay,
-                deviation_pct=(avg_delay - baseline_delay) / baseline_delay * 100,
-                severity_score=min((avg_delay - baseline_delay) / 30, 1.0),
-            )]
+            return [
+                self._make_anomaly(
+                    anomaly_type="delay_distribution_shift",
+                    title=f"Avg delay {avg_delay:.0f}min (baseline {baseline_delay:.0f}min)",
+                    description=f"Average delay shifted to {avg_delay:.1f} min, {avg_delay/baseline_delay:.1f}x baseline",
+                    metric_name="avg_delay_minutes",
+                    metric_value=avg_delay,
+                    baseline_value=baseline_delay,
+                    deviation_pct=(avg_delay - baseline_delay) / baseline_delay * 100,
+                    severity_score=min((avg_delay - baseline_delay) / 30, 1.0),
+                )
+            ]
         return []
 
-    def _check_cancellation_spike(
-        self, flights: list[dict], stats: dict
-    ) -> list[dict[str, Any]]:
+    def _check_cancellation_spike(self, flights: list[dict], stats: dict) -> list[dict[str, Any]]:
         if (
             stats["cancelled_count"] >= CANCELLATION_MIN_FLIGHTS
             and stats["cancelled_pct"] >= CANCELLATION_SPIKE_THRESHOLD
         ):
-            return [self._make_anomaly(
-                anomaly_type="unusual_cancellations",
-                title=f"Cancellation spike: {stats['cancelled_count']} flights ({stats['cancelled_pct']:.0%})",
-                description=f"{stats['cancelled_count']} cancellations out of {stats['total']} flights",
-                metric_name="cancellation_rate",
-                metric_value=stats["cancelled_pct"],
-                baseline_value=0.03,
-                deviation_pct=(stats["cancelled_pct"] - 0.03) / 0.03 * 100,
-                severity_score=min(stats["cancelled_pct"] / 0.20, 1.0),
-                affected_flights=stats["cancelled_flights"][:20],
-                affected_count=stats["cancelled_count"],
-            )]
+            return [
+                self._make_anomaly(
+                    anomaly_type="unusual_cancellations",
+                    title=f"Cancellation spike: {stats['cancelled_count']} flights ({stats['cancelled_pct']:.0%})",
+                    description=f"{stats['cancelled_count']} cancellations out of {stats['total']} flights",
+                    metric_name="cancellation_rate",
+                    metric_value=stats["cancelled_pct"],
+                    baseline_value=0.03,
+                    deviation_pct=(stats["cancelled_pct"] - 0.03) / 0.03 * 100,
+                    severity_score=min(stats["cancelled_pct"] / 0.20, 1.0),
+                    affected_flights=stats["cancelled_flights"][:20],
+                    affected_count=stats["cancelled_count"],
+                )
+            ]
         return []
 
     def _check_congestion(self, stats: dict) -> list[dict[str, Any]]:
         total = stats["total"]
         if total >= CONGESTION_THRESHOLD:
-            return [self._make_anomaly(
-                anomaly_type="congestion",
-                title=f"High traffic: {total} active flights",
-                description=f"{total} flights in system (threshold: {CONGESTION_THRESHOLD})",
-                metric_name="total_active_flights",
-                metric_value=float(total),
-                baseline_value=float(CONGESTION_THRESHOLD) * 0.7,
-                deviation_pct=(total - CONGESTION_THRESHOLD) / CONGESTION_THRESHOLD * 100,
-                severity_score=min((total - CONGESTION_THRESHOLD) / 40, 1.0),
-            )]
+            return [
+                self._make_anomaly(
+                    anomaly_type="congestion",
+                    title=f"High traffic: {total} active flights",
+                    description=f"{total} flights in system (threshold: {CONGESTION_THRESHOLD})",
+                    metric_name="total_active_flights",
+                    metric_value=float(total),
+                    baseline_value=float(CONGESTION_THRESHOLD) * 0.7,
+                    deviation_pct=(total - CONGESTION_THRESHOLD) / CONGESTION_THRESHOLD * 100,
+                    severity_score=min((total - CONGESTION_THRESHOLD) / 40, 1.0),
+                )
+            ]
         return []
 
     def _check_weather_impact(
@@ -339,20 +337,22 @@ class AnomalyDetector:
             if precip > 2:
                 desc_parts.append(f"rain ({precip:.1f}mm)")
 
-            return [self._make_anomaly(
-                anomaly_type="weather_impact",
-                title=f"Weather disruption: {', '.join(desc_parts)}",
-                description=(
-                    f"Weather severity {severity:.1f}/1.0 with avg delay "
-                    f"{current_delay:.0f}min ({current_delay/baseline_delay:.1f}x baseline). "
-                    f"Conditions: {weather.get('weather_description', 'unknown')}"
-                ),
-                metric_name="weather_severity",
-                metric_value=severity,
-                baseline_value=0.0,
-                deviation_pct=severity * 100,
-                severity_score=severity,
-            )]
+            return [
+                self._make_anomaly(
+                    anomaly_type="weather_impact",
+                    title=f"Weather disruption: {', '.join(desc_parts)}",
+                    description=(
+                        f"Weather severity {severity:.1f}/1.0 with avg delay "
+                        f"{current_delay:.0f}min ({current_delay/baseline_delay:.1f}x baseline). "
+                        f"Conditions: {weather.get('weather_description', 'unknown')}"
+                    ),
+                    metric_name="weather_severity",
+                    metric_value=severity,
+                    baseline_value=0.0,
+                    deviation_pct=severity * 100,
+                    severity_score=severity,
+                )
+            ]
         return []
 
     # ── Helpers ───────────────────────────────────────────────────────
@@ -402,4 +402,4 @@ def _std(values: list[float]) -> float:
         return 0.0
     m = _mean(values)
     variance = sum((x - m) ** 2 for x in values) / (len(values) - 1)
-    return variance ** 0.5
+    return variance**0.5

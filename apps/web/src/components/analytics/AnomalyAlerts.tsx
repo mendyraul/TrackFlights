@@ -6,10 +6,23 @@ interface Props {
   anomalies: TrafficAnomaly[];
 }
 
-const SEVERITY_STYLES: Record<AnomalySeverity, { bg: string; border: string; text: string; icon: string }> = {
+const SEVERITY_STYLES: Record<
+  AnomalySeverity,
+  { bg: string; border: string; text: string; icon: string }
+> = {
   critical: { bg: "bg-red-500/10", border: "border-red-500/40", text: "text-red-400", icon: "!!" },
-  high: { bg: "bg-orange-500/10", border: "border-orange-500/40", text: "text-orange-400", icon: "!" },
-  medium: { bg: "bg-yellow-500/10", border: "border-yellow-500/30", text: "text-yellow-400", icon: "~" },
+  high: {
+    bg: "bg-orange-500/10",
+    border: "border-orange-500/40",
+    text: "text-orange-400",
+    icon: "!",
+  },
+  medium: {
+    bg: "bg-yellow-500/10",
+    border: "border-yellow-500/30",
+    text: "text-yellow-400",
+    icon: "~",
+  },
   low: { bg: "bg-blue-500/10", border: "border-blue-500/30", text: "text-blue-400", icon: "i" },
 };
 
@@ -49,9 +62,7 @@ export function AnomalyAlerts({ anomalies }: Props) {
                   >
                     {style.icon}
                   </span>
-                  <span className={`text-sm font-medium ${style.text}`}>
-                    {anomaly.title}
-                  </span>
+                  <span className={`text-sm font-medium ${style.text}`}>{anomaly.title}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span
@@ -59,15 +70,11 @@ export function AnomalyAlerts({ anomalies }: Props) {
                   >
                     {anomaly.severity}
                   </span>
-                  <span className="text-xs text-gray-600">
-                    {timeAgo(anomaly.detected_at)}
-                  </span>
+                  <span className="text-xs text-gray-600">{timeAgo(anomaly.detected_at)}</span>
                 </div>
               </div>
               {anomaly.description && (
-                <p className="mt-1.5 text-xs text-gray-400">
-                  {anomaly.description}
-                </p>
+                <p className="mt-1.5 text-xs text-gray-400">{anomaly.description}</p>
               )}
               {anomaly.affected_count > 0 && (
                 <p className="mt-1 text-xs text-gray-500">

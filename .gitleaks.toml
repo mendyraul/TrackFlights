@@ -1,0 +1,12 @@
+title = "TrackFlights gitleaks config"
+
+# Build on gitleaks' bundled rules, plus a small allowlist for known-safe files.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore placeholder env templates and dependency lockfiles"
+paths = [
+  '''\.env\.example$''',
+  '''package-lock\.json$''',
+]

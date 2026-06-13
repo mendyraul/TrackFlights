@@ -45,3 +45,26 @@ class BaseFlightProvider(ABC):
     @abstractmethod
     def name(self) -> str:
         """Human-readable provider name for logging."""
+
+    # ------------------------------------------------------------------
+    # Live position feeds (e.g. ADS-B) — optional capability
+    # ------------------------------------------------------------------
+    @property
+    def is_live_position_feed(self) -> bool:
+        """Whether this provider emits a single live snapshot of in-range aircraft.
+
+        Schedule providers (AviationStack) return arrival/departure boards and
+        leave this False. Position feeds (ADS-B/readsb) override it to True so
+        the poller fetches one snapshot instead of two board queries.
+        """
+        return False
+
+    async def fetch_live_positions(self, airport_iata: str) -> list[dict[str, Any]]:
+        """Fetch all in-range aircraft as a single snapshot.
+
+        Default implementation combines arrivals + departures so existing
+        providers keep working; live-feed providers override it.
+        """
+        arrivals = await self.fetch_arrivals(airport_iata)
+        departures = await self.fetch_departures(airport_iata)
+        return arrivals + departures

@@ -54,9 +54,7 @@ export function DelayPredictionChart({ predictions }: Props) {
         <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">
           Delay Risk Distribution
         </h3>
-        <span className="text-xs text-gray-600">
-          {riskScores.length} flights scored
-        </span>
+        <span className="text-xs text-gray-600">{riskScores.length} flights scored</span>
       </div>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={data}>

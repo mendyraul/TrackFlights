@@ -21,9 +21,7 @@ class BaseWeatherProvider(ABC):
         """
 
     @abstractmethod
-    async def fetch_forecast(
-        self, lat: float, lon: float, hours: int = 12
-    ) -> list[dict[str, Any]]:
+    async def fetch_forecast(self, lat: float, lon: float, hours: int = 12) -> list[dict[str, Any]]:
         """Fetch hourly forecast for the next N hours.
 
         Returns list of hourly snapshots in raw format.
