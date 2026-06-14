@@ -3,6 +3,7 @@
 Use these as the source of truth:
 
 - `deployment.md` — deployment steps (Vercel, Supabase, Pi ingestor)
+- `production-readiness.md` — go-live source of truth: current green status + remaining owner action list
 - `production-baseline.md` — production readiness baseline
 - `security-hardening-checklist.md` — security controls + release gate
 - `observability-reliability-runbook.md` — monitoring, incident response, reliability checks
