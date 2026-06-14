@@ -60,18 +60,21 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
       <div className="sticky top-0 z-10 border-b border-gray-800 bg-mia-panel px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-bold text-mia-accent">
-              {flight.flight_iata}
-            </span>
-            {isUpdating && (
-              <span className="h-2 w-2 rounded-full bg-orange-400 animate-ping" />
-            )}
+            <span className="text-xl font-bold text-mia-accent">{flight.flight_iata}</span>
+            {isUpdating && <span className="h-2 w-2 rounded-full bg-orange-400 animate-ping" />}
           </div>
           <button
             onClick={onClose}
             className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -81,9 +84,7 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
 
       <div className="space-y-4 p-4">
         {/* Status */}
-        <div
-          className={`rounded-lg border p-3 text-center ${statusBg(flight.status)}`}
-        >
+        <div className={`rounded-lg border p-3 text-center ${statusBg(flight.status)}`}>
           <span
             className={`text-sm font-semibold uppercase tracking-wider ${statusColor(flight.status)}`}
           >
@@ -115,9 +116,7 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
               </div>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold">
-                {flight.destination_iata || "---"}
-              </p>
+              <p className="text-2xl font-bold">{flight.destination_iata || "---"}</p>
               <p className="mt-0.5 text-xs text-gray-500 max-w-[90px] truncate">
                 {flight.destination_name}
               </p>
@@ -136,10 +135,7 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
               value={formatTime(flight.scheduled_departure)}
               sub={formatDate(flight.scheduled_departure)}
             />
-            <InfoField
-              label="Actual Departure"
-              value={formatTime(flight.actual_departure)}
-            />
+            <InfoField label="Actual Departure" value={formatTime(flight.actual_departure)} />
             <InfoField
               label="Sched. Arrival"
               value={formatTime(flight.scheduled_arrival)}
@@ -147,9 +143,7 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
             />
             <InfoField
               label={flight.actual_arrival ? "Actual Arrival" : "ETA"}
-              value={formatTime(
-                flight.actual_arrival || flight.estimated_arrival
-              )}
+              value={formatTime(flight.actual_arrival || flight.estimated_arrival)}
             />
           </div>
         </div>
@@ -163,11 +157,7 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
             <div className="grid grid-cols-3 gap-2 rounded-lg border border-gray-800 bg-mia-dark/50 p-3">
               <PositionField
                 label="Altitude"
-                value={
-                  flight.altitude_ft
-                    ? `${flight.altitude_ft.toLocaleString()}`
-                    : "--"
-                }
+                value={flight.altitude_ft ? `${flight.altitude_ft.toLocaleString()}` : "--"}
                 unit="ft"
               />
               <PositionField
@@ -177,11 +167,7 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
               />
               <PositionField
                 label="Heading"
-                value={
-                  flight.heading != null
-                    ? `${Math.round(flight.heading)}`
-                    : "--"
-                }
+                value={flight.heading != null ? `${Math.round(flight.heading)}` : "--"}
                 unit="°"
               />
             </div>
@@ -191,8 +177,8 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
               </span>
               {flight.vertical_speed_fpm != null && (
                 <span>
-                  {flight.vertical_speed_fpm > 0 ? "↑" : "↓"}{" "}
-                  {Math.abs(flight.vertical_speed_fpm)} fpm
+                  {flight.vertical_speed_fpm > 0 ? "↑" : "↓"} {Math.abs(flight.vertical_speed_fpm)}{" "}
+                  fpm
                 </span>
               )}
             </div>
@@ -200,9 +186,7 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
         )}
 
         {/* Gate & Terminal */}
-        {(flight.departure_gate ||
-          flight.arrival_gate ||
-          flight.baggage_belt) && (
+        {(flight.departure_gate || flight.arrival_gate || flight.baggage_belt) && (
           <div>
             <h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">
               Gate Information
@@ -221,10 +205,7 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
                 />
               )}
               {flight.baggage_belt && (
-                <InfoField
-                  label="Baggage Belt"
-                  value={`Belt ${flight.baggage_belt}`}
-                />
+                <InfoField label="Baggage Belt" value={`Belt ${flight.baggage_belt}`} />
               )}
             </div>
           </div>
@@ -239,9 +220,7 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
             <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-mia-dark/50 px-3 py-2 text-sm">
               <span className="text-gray-300">{flight.aircraft_icao}</span>
               {flight.aircraft_registration && (
-                <span className="font-mono text-gray-500">
-                  {flight.aircraft_registration}
-                </span>
+                <span className="font-mono text-gray-500">{flight.aircraft_registration}</span>
               )}
             </div>
           </div>
@@ -261,15 +240,7 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
   );
 }
 
-function InfoField({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-}) {
+function InfoField({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div>
       <p className="text-xs text-gray-500">{label}</p>
@@ -279,15 +250,7 @@ function InfoField({
   );
 }
 
-function PositionField({
-  label,
-  value,
-  unit,
-}: {
-  label: string;
-  value: string;
-  unit: string;
-}) {
+function PositionField({ label, value, unit }: { label: string; value: string; unit: string }) {
   return (
     <div className="text-center">
       <p className="text-xs text-gray-500">{label}</p>

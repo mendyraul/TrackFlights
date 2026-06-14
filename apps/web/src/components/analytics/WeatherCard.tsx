@@ -19,9 +19,7 @@ export function WeatherCard({ weather }: Props) {
         <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">
           Current Weather — MIA
         </h3>
-        <p className="mt-4 text-center text-sm text-gray-600">
-          No weather data available
-        </p>
+        <p className="mt-4 text-center text-sm text-gray-600">No weather data available</p>
       </div>
     );
   }
@@ -69,9 +67,7 @@ export function WeatherCard({ weather }: Props) {
         <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">
           Current Weather — MIA
         </h3>
-        <span className="text-xs text-gray-600">
-          {weather.weather_description}
-        </span>
+        <span className="text-xs text-gray-600">{weather.weather_description}</span>
       </div>
 
       {alerts.length > 0 && (
@@ -92,9 +88,7 @@ export function WeatherCard({ weather }: Props) {
           <div key={item.label}>
             <p className="text-xs text-gray-500">{item.label}</p>
             <p className="text-sm font-semibold text-gray-200">{item.value}</p>
-            {item.sub && (
-              <p className="text-xs text-gray-600">{item.sub}</p>
-            )}
+            {item.sub && <p className="text-xs text-gray-600">{item.sub}</p>}
           </div>
         ))}
       </div>

@@ -128,9 +128,7 @@ def _flight_key(flight: dict[str, Any]) -> str:
     return f"{flight.get('flight_iata', '')}|{flight.get('scheduled_departure', '')}"
 
 
-def _get_changed_fields(
-    new: dict[str, Any], old: dict[str, Any]
-) -> dict[str, dict[str, Any]]:
+def _get_changed_fields(new: dict[str, Any], old: dict[str, Any]) -> dict[str, dict[str, Any]]:
     """Return dict of changed fields with old and new values.
 
     Only checks tracked fields. Returns empty dict if nothing changed.

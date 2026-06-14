@@ -52,3 +52,6 @@ htmlcov/
 .coverage
 STATUS.md
 apps/web/.vercel/
+
+# Local performance evidence captures (machine-specific, not source of truth)
+docs/evidence/perf-*local*.json

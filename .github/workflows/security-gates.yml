@@ -25,6 +25,19 @@ jobs:
               - 'apps/ingestor/**'
               - '.github/workflows/security-gates.yml'
 
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so leaked-then-removed secrets are still caught
+      - name: Run gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --source=/repo --config=/repo/.gitleaks.toml --redact --no-banner --verbose
+
   node-audit:
     name: Web production dependency audit
     needs: changed-paths

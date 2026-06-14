@@ -5,7 +5,7 @@ a real API key.
 """
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from src.providers.base_provider import BaseFlightProvider
@@ -65,13 +65,13 @@ class ExampleProvider(BaseFlightProvider):
         return raw
 
     def _generate_flight(self, direction: str, seed: int) -> dict[str, Any]:
-        rng = random.Random(seed + int(datetime.now(timezone.utc).timestamp()) // 300)
+        rng = random.Random(seed + int(datetime.now(UTC).timestamp()) // 300)
         airline_iata, airline_name = rng.choice(_AIRLINES)
         origin_iata, origin_name = rng.choice(_ORIGIN_AIRPORTS)
         flight_num = rng.randint(100, 9999)
         flight_iata = f"{airline_iata}{flight_num}"
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         sched_dep = now - timedelta(hours=rng.uniform(0.5, 6))
         sched_arr = sched_dep + timedelta(hours=rng.uniform(1.5, 10))
         delay = rng.choice([0, 0, 0, 5, 10, 15, 25, 45, 90])
@@ -96,12 +96,22 @@ class ExampleProvider(BaseFlightProvider):
             "origin_iata": origin_iata if direction == "arrival" else "MIA",
             "origin_name": origin_name if direction == "arrival" else "Miami International Airport",
             "destination_iata": "MIA" if direction == "arrival" else origin_iata,
-            "destination_name": "Miami International Airport" if direction == "arrival" else origin_name,
+            "destination_name": (
+                "Miami International Airport" if direction == "arrival" else origin_name
+            ),
             "scheduled_departure": sched_dep.isoformat(),
-            "actual_departure": (sched_dep + timedelta(minutes=delay)).isoformat() if status != "scheduled" else None,
+            "actual_departure": (
+                (sched_dep + timedelta(minutes=delay)).isoformat()
+                if status != "scheduled"
+                else None
+            ),
             "scheduled_arrival": sched_arr.isoformat(),
-            "actual_arrival": (sched_arr + timedelta(minutes=delay)).isoformat() if status == "landed" else None,
-            "estimated_arrival": (sched_arr + timedelta(minutes=delay)).isoformat() if status == "en_route" else None,
+            "actual_arrival": (
+                (sched_arr + timedelta(minutes=delay)).isoformat() if status == "landed" else None
+            ),
+            "estimated_arrival": (
+                (sched_arr + timedelta(minutes=delay)).isoformat() if status == "en_route" else None
+            ),
             "status": status,
             "delay_minutes": delay,
             "latitude": lat,

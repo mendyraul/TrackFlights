@@ -53,8 +53,16 @@ def test_aviationstack_normalize_arrival():
 
 def test_diff_engine_new_flights():
     incoming = [
-        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "en_route"},
-        {"flight_iata": "DL200", "scheduled_departure": "2024-01-01T11:00:00", "status": "scheduled"},
+        {
+            "flight_iata": "AA100",
+            "scheduled_departure": "2024-01-01T10:00:00",
+            "status": "en_route",
+        },
+        {
+            "flight_iata": "DL200",
+            "scheduled_departure": "2024-01-01T11:00:00",
+            "status": "scheduled",
+        },
     ]
 
     diff = compute_diff(incoming, [])
@@ -65,10 +73,20 @@ def test_diff_engine_new_flights():
 
 def test_diff_engine_detects_changes():
     incoming = [
-        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "landed", "latitude": None},
+        {
+            "flight_iata": "AA100",
+            "scheduled_departure": "2024-01-01T10:00:00",
+            "status": "landed",
+            "latitude": None,
+        },
     ]
     current_db = [
-        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "en_route", "latitude": 28.5},
+        {
+            "flight_iata": "AA100",
+            "scheduled_departure": "2024-01-01T10:00:00",
+            "status": "en_route",
+            "latitude": 28.5,
+        },
     ]
 
     diff = compute_diff(incoming, current_db)
@@ -95,10 +113,18 @@ def test_diff_engine_unchanged():
 
 def test_diff_engine_detects_removed():
     incoming = [
-        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "en_route"},
+        {
+            "flight_iata": "AA100",
+            "scheduled_departure": "2024-01-01T10:00:00",
+            "status": "en_route",
+        },
     ]
     current_db = [
-        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "en_route"},
+        {
+            "flight_iata": "AA100",
+            "scheduled_departure": "2024-01-01T10:00:00",
+            "status": "en_route",
+        },
         {"flight_iata": "DL200", "scheduled_departure": "2024-01-01T11:00:00", "status": "landed"},
     ]
 
@@ -110,7 +136,11 @@ def test_diff_engine_detects_removed():
 def test_diff_engine_deduplicates_incoming():
     """When incoming has duplicate keys, keep the last occurrence."""
     incoming = [
-        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "en_route"},
+        {
+            "flight_iata": "AA100",
+            "scheduled_departure": "2024-01-01T10:00:00",
+            "status": "en_route",
+        },
         {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "landed"},
     ]
 
@@ -122,10 +152,18 @@ def test_diff_engine_deduplicates_incoming():
 def test_to_upsert_combines_new_and_updated():
     incoming = [
         {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "landed"},
-        {"flight_iata": "DL200", "scheduled_departure": "2024-01-01T11:00:00", "status": "scheduled"},
+        {
+            "flight_iata": "DL200",
+            "scheduled_departure": "2024-01-01T11:00:00",
+            "status": "scheduled",
+        },
     ]
     current_db = [
-        {"flight_iata": "AA100", "scheduled_departure": "2024-01-01T10:00:00", "status": "en_route"},
+        {
+            "flight_iata": "AA100",
+            "scheduled_departure": "2024-01-01T10:00:00",
+            "status": "en_route",
+        },
     ]
 
     diff = compute_diff(incoming, current_db)

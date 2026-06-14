@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
-VALID_FLIGHT_PROVIDERS = {"aviationstack", "example"}
+VALID_FLIGHT_PROVIDERS = {"aviationstack", "example", "adsb1090"}
 VALID_WEATHER_PROVIDERS = {"openmeteo"}
 
 
@@ -17,8 +17,14 @@ class Settings(BaseSettings):
     flight_api_key: str = ""
     flight_api_base_url: str = "https://api.aviationstack.com/v1"
 
-    # Provider: "aviationstack" or "example" (mock data for dev)
+    # Provider: "aviationstack", "example" (mock), or "adsb1090" (self-hosted ADS-B)
     flight_provider: str = "aviationstack"
+
+    # ADS-B (self-hosted readsb/dump1090 feed on the local Pi)
+    adsb_json_url: str = "http://127.0.0.1:8080/data/aircraft.json"
+    adsb_max_range_km: float = 200.0  # drop aircraft farther than this from MIA
+    adsb_min_move_meters: float = 150.0  # skip writes for aircraft that barely moved
+    adsb_max_seen_seconds: float = 60.0  # drop stale tracks (no recent position)
 
     # Ingestion
     poll_interval_seconds: int = 10800  # cost-control default: every 3 hours
@@ -87,9 +93,7 @@ def validate_runtime_settings() -> None:
     errors: list[str] = []
 
     if settings.flight_provider not in VALID_FLIGHT_PROVIDERS:
-        errors.append(
-            f"flight_provider must be one of {sorted(VALID_FLIGHT_PROVIDERS)}"
-        )
+        errors.append(f"flight_provider must be one of {sorted(VALID_FLIGHT_PROVIDERS)}")
 
     if settings.weather_enabled and settings.weather_provider not in VALID_WEATHER_PROVIDERS:
         errors.append(
@@ -104,6 +108,12 @@ def validate_runtime_settings() -> None:
 
     if settings.flight_provider == "aviationstack" and not settings.flight_api_key:
         errors.append("flight_api_key is required when flight_provider=aviationstack")
+
+    if settings.flight_provider == "adsb1090":
+        if not settings.adsb_json_url:
+            errors.append("adsb_json_url is required when flight_provider=adsb1090")
+        if settings.adsb_max_range_km <= 0:
+            errors.append("adsb_max_range_km must be > 0 when flight_provider=adsb1090")
 
     if errors:
         joined = "; ".join(errors)

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { TrafficAnomaly } from "@/types/database";
 
-const ANOMALY_COLUMNS = "id,anomaly_type,severity,title,description,metric_name,metric_value,baseline_value,deviation_pct,affected_flights,affected_airlines,affected_count,is_active,detected_at,resolved_at,detection_model";
+const ANOMALY_COLUMNS =
+  "id,anomaly_type,severity,title,description,metric_name,metric_value,baseline_value,deviation_pct,affected_flights,affected_airlines,affected_count,is_active,detected_at,resolved_at,detection_model";
 
 interface UseAnomaliesReturn {
   anomalies: TrafficAnomaly[];

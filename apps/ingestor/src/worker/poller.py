@@ -8,9 +8,9 @@ from supabase import create_client
 
 from src.config import settings
 from src.providers.base_provider import BaseFlightProvider
-from src.services.supabase_client import SupabaseFlightClient
-from src.services.flight_normalizer import normalize_batch
 from src.services.flight_diff_engine import compute_diff
+from src.services.flight_normalizer import normalize_batch
+from src.services.supabase_client import SupabaseFlightClient
 from src.worker.capacity import (
     CapacityThresholds,
     build_capacity_snapshot,
@@ -66,20 +66,21 @@ class Poller:
         if self._weather_ingester is None:
             from src.providers.weather import OpenMeteoProvider
             from src.services.weather_ingester import WeatherIngester
-            self._weather_ingester = WeatherIngester(
-                OpenMeteoProvider(), self._supabase
-            )
+
+            self._weather_ingester = WeatherIngester(OpenMeteoProvider(), self._supabase)
         return self._weather_ingester
 
     def _get_delay_predictor(self):
         if self._delay_predictor is None:
             from src.ml.delay_predictor import DelayPredictor
+
             self._delay_predictor = DelayPredictor(self._supabase)
         return self._delay_predictor
 
     def _get_anomaly_detector(self):
         if self._anomaly_detector is None:
             from src.ml.anomaly_detector import AnomalyDetector
+
             self._anomaly_detector = AnomalyDetector(self._supabase)
         return self._anomaly_detector
 
@@ -176,18 +177,24 @@ class Poller:
 
     async def _ingest_flights(self, airport: str) -> dict[str, int]:
         """Core flight ingestion pipeline."""
-        raw_arrivals = await self.provider.fetch_arrivals(airport)
-        raw_departures = await self.provider.fetch_departures(airport)
+        if self.provider.is_live_position_feed:
+            # Position feeds (ADS-B) return one snapshot; direction is inferred
+            # per-aircraft inside the provider's normalize().
+            raw_live = await self.provider.fetch_live_positions(airport)
+            raw_arrivals, raw_departures = raw_live, []
+            all_normalized = normalize_batch(self.provider, raw_live, "live")
+        else:
+            raw_arrivals = await self.provider.fetch_arrivals(airport)
+            raw_departures = await self.provider.fetch_departures(airport)
+            arrivals = normalize_batch(self.provider, raw_arrivals, "arrival")
+            departures = normalize_batch(self.provider, raw_departures, "departure")
+            all_normalized = arrivals + departures
 
         logger.info(
             "Fetched raw flights",
             arrivals=len(raw_arrivals),
             departures=len(raw_departures),
         )
-
-        arrivals = normalize_batch(self.provider, raw_arrivals, "arrival")
-        departures = normalize_batch(self.provider, raw_departures, "departure")
-        all_normalized = arrivals + departures
 
         current_db = self.db.get_current_flights()
         diff = compute_diff(all_normalized, current_db)
@@ -247,8 +254,7 @@ class Poller:
 
             # Only predict for upcoming flights (not landed/cancelled)
             active_flights = [
-                f for f in flights
-                if f.get("status") in ("scheduled", "en_route", "delayed")
+                f for f in flights if f.get("status") in ("scheduled", "en_route", "delayed")
             ]
 
             if not active_flights:
@@ -257,8 +263,9 @@ class Poller:
             traffic_stats = {
                 "total_active": len(flights),
                 "delayed_pct": (
-                    len([f for f in flights if f.get("status") == "delayed"])
-                    / len(flights) if flights else 0.0
+                    len([f for f in flights if f.get("status") == "delayed"]) / len(flights)
+                    if flights
+                    else 0.0
                 ),
             }
 

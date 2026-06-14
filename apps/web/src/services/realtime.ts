@@ -115,9 +115,7 @@ export class FlightRealtimeService {
   private handlePayload(payload: any): void {
     const event: RealtimeEvent = {
       type: payload.eventType as RealtimeEvent["type"],
-      flight: (payload.eventType === "DELETE"
-        ? payload.old
-        : payload.new) as Flight,
+      flight: (payload.eventType === "DELETE" ? payload.old : payload.new) as Flight,
       old: payload.eventType === "UPDATE" ? payload.old : undefined,
       timestamp: Date.now(),
     };

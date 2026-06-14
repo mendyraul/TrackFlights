@@ -71,6 +71,36 @@ When a warning/critical alert fires:
    - Add one guardrail automation or budget alarm if missing
    - Document preventive action in release checklist
 
+## 3a) Supabase egress budget (ADS-B mode)
+
+The binding free-tier limit for a live tracker is **egress**, not storage. Supabase Free (verified
+June 2026): **5 GB uncached egress/mo** (+5 GB cached), 500 MB DB, 1 GB storage, 200 concurrent
+realtime connections, 2M realtime messages/mo. Projects pause after 7 days with no DB request.
+
+**Key fact:** the Pi → Supabase ingest is *writes = ingress*, which is **not** metered against the
+egress cap. Egress is burned only by **reads out** of Supabase — i.e. the browser. So the egress
+controls live entirely on the web read path.
+
+**Why direct browser reads blow the budget:** 5 GB/mo ≈ 167 MB/day ≈ ~6.9 MB/hr. A single browser
+reading `flights_current` directly every 5 s at ~35 KB/snapshot burns ~25 MB/hr — **one viewer
+exhausts the month in ~8 days.** (This is why realtime was disabled and polling slowed.)
+
+**The fix — decouple viewers from Supabase reads.** `apps/web/src/app/api/flights/snapshot/route.ts`
+reads the snapshot from Supabase **once per `SNAPSHOT_REFRESH_SECONDS`**, and is edge-cached
+(`Cache-Control: s-maxage=…`). Every browser is served from Vercel's CDN (Hobby = 100 GB/mo,
+separate pool), so Supabase egress depends on the *server* refresh rate, not viewer count. The
+client (`useFlights`) polls the route every 10 s — those hits land on the CDN, not Supabase.
+
+| Server refresh (`SNAPSHOT_REFRESH_SECONDS`) | Supabase egress/mo (~35 KB snapshot) | Verdict |
+|---|---|---|
+| 30 s | ~3.0 GB | ✅ headroom under 5 GB |
+| 60 s | ~1.5 GB | ✅ recommended default (safest) |
+| ≤10 s | >9 GB | ❌ over budget |
+
+**Guardrails:** keep **realtime OFF** (the 2M-msg/mo cap + per-client fan-out blow up with
+broadcasts). Keep `flights_current` an UPSERT (bounded rows) and `flights_history` off/downsampled
+to stay under 500 MB. If egress alerts fire, **raise** `SNAPSHOT_REFRESH_SECONDS` first.
+
 ## 4) Verification log template
 
 Use this for each alert test or real incident:

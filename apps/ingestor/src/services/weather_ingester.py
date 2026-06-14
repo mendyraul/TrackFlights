@@ -1,5 +1,6 @@
 """Weather ingestion service — fetches and stores weather data."""
 
+from datetime import UTC
 from typing import Any
 
 import structlog
@@ -70,9 +71,9 @@ class WeatherIngester:
         return rows[0] if rows else None
 
     def get_recent(self, hours: int = 12) -> list[dict[str, Any]]:
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
-        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
 
         result = (
             self.db.table("weather_snapshots")

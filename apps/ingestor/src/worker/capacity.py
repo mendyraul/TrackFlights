@@ -24,14 +24,20 @@ class CapacityThresholds:
     churn_ratio_warn: float
 
 
-def build_capacity_snapshot(stats: dict[str, int], cycle_duration_seconds: float, poll_interval_seconds: int) -> CapacitySnapshot:
+def build_capacity_snapshot(
+    stats: dict[str, int], cycle_duration_seconds: float, poll_interval_seconds: int
+) -> CapacitySnapshot:
     """Build a normalized capacity snapshot from poll stats.
 
     Stats keys are optional to allow gradual rollout while queue/fanout metrics
     are phased in.
     """
     normalized = max(1, int(stats.get("normalized", 0)))
-    churn_count = int(stats.get("new", 0)) + int(stats.get("updated", 0)) + int(stats.get("removed_from_api", 0))
+    churn_count = (
+        int(stats.get("new", 0))
+        + int(stats.get("updated", 0))
+        + int(stats.get("removed_from_api", 0))
+    )
     retries = int(stats.get("retries", 0))
     processed_jobs = max(1, int(stats.get("processed_jobs", normalized)))
 
@@ -45,7 +51,9 @@ def build_capacity_snapshot(stats: dict[str, int], cycle_duration_seconds: float
     )
 
 
-def evaluate_capacity(snapshot: CapacitySnapshot, thresholds: CapacityThresholds) -> dict[str, bool]:
+def evaluate_capacity(
+    snapshot: CapacitySnapshot, thresholds: CapacityThresholds
+) -> dict[str, bool]:
     """Return per-signal breach map for alert routing."""
     return {
         "cycle_lag": snapshot.cycle_lag_seconds >= thresholds.cycle_lag_warn_seconds,

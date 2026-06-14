@@ -18,10 +18,7 @@ interface Props {
 
 export function TrafficVolumeChart({ daily }: Props) {
   // Group by date, merge arrivals + departures
-  const byDate = new Map<
-    string,
-    { date: string; arrivals: number; departures: number }
-  >();
+  const byDate = new Map<string, { date: string; arrivals: number; departures: number }>();
 
   for (const d of daily) {
     const dateStr = new Date(d.date).toLocaleDateString("en-US", {
@@ -41,9 +38,7 @@ export function TrafficVolumeChart({ daily }: Props) {
     byDate.set(d.date, existing);
   }
 
-  const data = [...byDate.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([, v]) => v);
+  const data = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v);
 
   if (data.length === 0) {
     return (
@@ -71,10 +66,7 @@ export function TrafficVolumeChart({ daily }: Props) {
             tick={{ fill: "#6b7280", fontSize: 11 }}
             axisLine={{ stroke: "#374151" }}
           />
-          <YAxis
-            tick={{ fill: "#6b7280", fontSize: 11 }}
-            axisLine={{ stroke: "#374151" }}
-          />
+          <YAxis tick={{ fill: "#6b7280", fontSize: 11 }} axisLine={{ stroke: "#374151" }} />
           <Tooltip
             contentStyle={{
               backgroundColor: "#16213e",
@@ -83,21 +75,9 @@ export function TrafficVolumeChart({ daily }: Props) {
               fontSize: 12,
             }}
           />
-          <Legend
-            wrapperStyle={{ fontSize: 11, color: "#9ca3af" }}
-          />
-          <Bar
-            dataKey="arrivals"
-            fill="#3b82f6"
-            name="Arrivals"
-            radius={[2, 2, 0, 0]}
-          />
-          <Bar
-            dataKey="departures"
-            fill="#00d4ff"
-            name="Departures"
-            radius={[2, 2, 0, 0]}
-          />
+          <Legend wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
+          <Bar dataKey="arrivals" fill="#3b82f6" name="Arrivals" radius={[2, 2, 0, 0]} />
+          <Bar dataKey="departures" fill="#00d4ff" name="Departures" radius={[2, 2, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

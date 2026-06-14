@@ -4,7 +4,7 @@ Generates ML-ready features from flight, weather, and historical data.
 Designed to work with both rule-based scoring and future trained models.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -13,9 +13,21 @@ logger = structlog.get_logger()
 
 # Historical delay rates by carrier (bootstrapped estimates, update with real data)
 CARRIER_DELAY_RATES = {
-    "AA": 0.22, "DL": 0.16, "UA": 0.20, "B6": 0.24, "NK": 0.30,
-    "F9": 0.28, "LA": 0.18, "AV": 0.20, "CM": 0.15, "BA": 0.14,
-    "LH": 0.12, "IB": 0.19, "AF": 0.17, "EK": 0.10, "QR": 0.11,
+    "AA": 0.22,
+    "DL": 0.16,
+    "UA": 0.20,
+    "B6": 0.24,
+    "NK": 0.30,
+    "F9": 0.28,
+    "LA": 0.18,
+    "AV": 0.20,
+    "CM": 0.15,
+    "BA": 0.14,
+    "LH": 0.12,
+    "IB": 0.19,
+    "AF": 0.17,
+    "EK": 0.10,
+    "QR": 0.11,
 }
 
 # Peak hours at MIA (Eastern time)
@@ -23,9 +35,19 @@ PEAK_HOURS = {7, 8, 9, 10, 11, 16, 17, 18, 19, 20}
 
 # Long-haul routes tend to have larger delays
 LONG_HAUL_ORIGINS = {
-    "LHR", "CDG", "MAD", "FCO", "AMS", "FRA",  # Europe
-    "DXB", "DOH",                                 # Middle East
-    "GRU", "EZE", "SCL", "BOG", "LIM",           # South America
+    "LHR",
+    "CDG",
+    "MAD",
+    "FCO",
+    "AMS",
+    "FRA",  # Europe
+    "DXB",
+    "DOH",  # Middle East
+    "GRU",
+    "EZE",
+    "SCL",
+    "BOG",
+    "LIM",  # South America
 }
 
 
@@ -44,7 +66,7 @@ def compute_features(
     Returns:
         Dict of named features with float values.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # ── Time features ────────────────────────────────────────────────
     sched_dep = flight.get("scheduled_departure")
@@ -72,9 +94,9 @@ def compute_features(
     direction = flight.get("direction", "arrival")
 
     route_features = {
-        "is_long_haul": 1.0 if (
-            origin in LONG_HAUL_ORIGINS or destination in LONG_HAUL_ORIGINS
-        ) else 0.0,
+        "is_long_haul": (
+            1.0 if (origin in LONG_HAUL_ORIGINS or destination in LONG_HAUL_ORIGINS) else 0.0
+        ),
         "is_arrival": 1.0 if direction == "arrival" else 0.0,
     }
 
