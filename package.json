@@ -10,6 +10,8 @@
     "build": "npm run build --workspace=apps/web",
     "lint": "npm run lint --workspace=apps/web",
     "type-check": "tsc --noEmit --project apps/web/tsconfig.json",
+    "db:gen-types": "npx --yes supabase@latest gen types typescript --local > apps/web/src/types/database.generated.ts",
+    "db:check-types-drift": "bash scripts/check-types-drift.sh",
     "ci:baseline": "./scripts/verify-phase1-baseline.sh",
     "release:preflight": "./scripts/release-preflight.sh",
     "security:baseline": "./scripts/security-baseline.sh",

@@ -37,6 +37,14 @@ curl -sI https://<prod-domain> | grep -Ei "strict-transport|content-security-pol
 
 ## 2) Rate Limiting + Abuse Protection
 
+> **Status: implemented.** Edge middleware (`apps/web/src/middleware.ts`) enforces a per-IP
+> fixed-window limit across `/api/*` (default 120 req/60 s, env-overridable) and returns `429`
+> with `Retry-After` + `X-RateLimit-*` headers. The limiter is in-memory per instance (Vercel
+> free tier has no KV), so it's a best-effort abuse guard rather than a globally-consistent
+> limit; the primary protection for the hot path is the CDN-cached snapshot route. To tighten
+> per-route thresholds or add cross-instance consistency later, swap the store in
+> `apps/web/src/lib/rate-limit.ts` for a shared backend (e.g. Upstash/Redis).
+
 - Apply per-IP and per-route limits at the edge for API endpoints.
 - Protect expensive endpoints (search/filter/reporting) with stricter thresholds.
 - Return `429` with clear retry hints.
@@ -95,7 +103,7 @@ Checklist:
 Before production release:
 
 - [ ] Header verification pass on production URL
-- [ ] Rate limiting enabled on all API routes
+- [x] Rate limiting enabled on all API routes (edge middleware, per-IP fixed window)
 - [ ] Secret scan clean
 - [ ] `npm audit` and `pip-audit` reviewed
 - [ ] Supabase policy review complete
@@ -109,17 +117,19 @@ Status: Baseline refreshed (2026-04-10)
 |---|---|---|---|
 | Web security headers | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and CSP are configured in Next.js headers middleware | `apps/web/next.config.js` | ✅ Pass |
 | HSTS enforcement | Not set in app headers; must be enforced at Vercel edge/proxy | No HSTS config committed in repo | ⚠️ Gap |
-| API rate limiting | No concrete limiter implementation found in web/ingestor routes yet | Repo grep only returns checklist text; no runtime limiter module | ⚠️ Gap |
+| API rate limiting | Per-IP fixed-window limiter in edge middleware across `/api/*` (default 120 req/60 s), returns `429` + `Retry-After`. In-memory per-instance (no KV on free tier) — basic abuse guard atop the CDN-cached snapshot route | `apps/web/src/middleware.ts`, `apps/web/src/lib/rate-limit.ts` | ✅ Pass |
 | Dependency audit gates | CI workflow enforces `npm audit --omit=dev --audit-level=high` and `pip-audit --strict` | `.github/workflows/security-gates.yml` | ✅ Pass |
 | Secret hygiene controls | Policy documented, but no CI secret scanning workflow detected (gitleaks/trufflehog equivalent missing) | No secret-scan workflow under `.github/workflows` | ⚠️ Gap |
 | Supabase least-privilege/RLS verification | Checklist exists, but no current audit evidence attached for policy/table review | Docs only; no latest evidence artifact in `docs/evidence` | ⚠️ Gap |
 
 ### Totals
-- Pass: 2
-- Gap: 4
+- Pass: 3
+- Gap: 3
 
 ### Priority follow-ups
 1. Add edge-level HSTS config and verification evidence.
-2. Implement API/ingestor rate-limiter guardrails and 429 telemetry.
+2. ~~Implement API/ingestor rate-limiter guardrails and 429 telemetry.~~ ✅ Done — per-IP
+   edge limiter with `429` + `Retry-After` (`apps/web/src/middleware.ts`). Remaining nicety:
+   emit throttle-event telemetry/alerting.
 3. Add CI secret scanning gate.
 4. Capture Supabase RLS/policy audit evidence (table-by-table checklist).

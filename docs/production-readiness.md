@@ -83,17 +83,20 @@ Sourced from `release-checklist.md` and `security-hardening-checklist.md`.
 
 ---
 
-## Known code-level follow-ups (non-blocking)
+## Known code-level follow-ups
 
-These are minor and do **not** block go-live, but should be tracked:
+These were the two non-blocking items tracked at go-live. Both are now **addressed**:
 
-1. **API rate limiting** — `security-hardening-checklist.md` calls for rate limiting on
-   all API routes. The only dynamic route (`/api/flights/snapshot`) is CDN-cached, which
-   largely mitigates abuse, but there is no explicit per-IP rate limit. Add edge
-   middleware or a provider-level rule if the route is ever hit uncached at volume.
-2. **Generated DB types** — `apps/web/src/types/database.ts` carries a hand-maintained
-   "generated types placeholder." Replace with `supabase gen types typescript` output to
-   keep web types in sync with the schema automatically.
+1. **API rate limiting** — ✅ Done. Edge middleware (`apps/web/src/middleware.ts`) applies a
+   per-IP fixed-window limit (default 120 req / 60 s, env-overridable via `RATE_LIMIT_MAX` /
+   `RATE_LIMIT_WINDOW_MS`) across `/api/*`, returning `429` + `Retry-After`. In-memory
+   per-instance (no KV on Vercel free tier) — a basic abuse guard layered on top of the
+   CDN-cached snapshot route. See `security-hardening-checklist.md`.
+2. **Generated DB types** — ✅ Tooling added. `apps/web/src/types/database.ts` remains the
+   source of truth, but `npm run db:gen-types` regenerates types from the local schema and a
+   CI/pre-commit drift guard (`scripts/check-types-drift.sh`) fails when a migration changes
+   without a corresponding types update. See "Regenerating types after a migration" in
+   `docs/database.md`.
 
 ---
 

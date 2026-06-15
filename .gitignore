@@ -1,3 +1,7 @@
+# Generated DB types (build artifact from `npm run db:gen-types`; the
+# hand-maintained apps/web/src/types/database.ts remains the source of truth)
+apps/web/src/types/database.generated.ts
+
 # Dependencies
 node_modules/
 .pnp
