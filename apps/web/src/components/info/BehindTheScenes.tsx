@@ -76,6 +76,36 @@ function BenchTable({ rows }: { rows: [string, string][] }) {
   );
 }
 
+function CodeBlock({ children }: { children: React.ReactNode }) {
+  return (
+    <pre className="overflow-x-auto rounded-md border border-gray-800 bg-mia-dark/70 p-3 text-xs leading-relaxed text-gray-200">
+      <code>{children}</code>
+    </pre>
+  );
+}
+
+function BuildStep({
+  n,
+  title,
+  children,
+}: {
+  n: number;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex gap-4">
+      <div className="flex h-7 w-7 flex-none items-center justify-center rounded-full border border-mia-accent/40 bg-mia-accent/10 text-sm font-semibold text-mia-accent">
+        {n}
+      </div>
+      <div className="min-w-0 space-y-2">
+        <h3 className="text-sm font-semibold text-gray-100">{title}</h3>
+        <div className="space-y-2 text-sm leading-relaxed text-gray-300">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export function BehindTheScenes() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
@@ -83,8 +113,8 @@ export function BehindTheScenes() {
         <h1 className="text-2xl font-bold text-gray-100">Behind the Scenes</h1>
         <p className="text-sm text-gray-400">
           How a real antenna on my roof puts live planes on this map — built end to end on a
-          Raspberry Pi. This page is a work in progress; photos and a full build tutorial are on the
-          way.
+          Raspberry Pi. Below: how the pipeline works, a step-by-step guide to building your own,
+          and the benchmarks behind it. Photos and my exact setup details are on the way.
         </p>
       </header>
 
@@ -213,6 +243,110 @@ export function BehindTheScenes() {
         <PhotoPlaceholder caption="A close-up of the live map with the plane icons and a selected flight's detail panel." />
       </Section>
 
+      <section className="rounded-lg border border-mia-accent/30 bg-mia-panel p-6">
+        <div className="mb-4 space-y-2">
+          <h2 className="text-lg font-semibold text-gray-100">Build it yourself</h2>
+          <p className="text-sm leading-relaxed text-gray-400">
+            Want your own feed? Here&apos;s the end-to-end path I followed, start to finish. These
+            are the general steps that work for most setups — treat them as a draft starting point
+            and check each tool&apos;s current docs, since package names and install scripts change
+            over time.
+          </p>
+        </div>
+
+        <div className="space-y-6">
+          <BuildStep n={1} title="Gather the hardware">
+            <p>
+              Start with the bill of materials above: a 1090&nbsp;MHz antenna, an RTL-SDR receiver
+              (a FlightAware Pro Stick Plus has the filter and amp built in), a 1090&nbsp;MHz
+              bandpass filter if your SDR doesn&apos;t include one, a Raspberry Pi 4, and a short
+              run of low-loss coax. Shorter coax and a higher, clearer antenna location matter more
+              than almost anything else.
+            </p>
+          </BuildStep>
+
+          <BuildStep n={2} title="Flash and prep the Raspberry Pi">
+            <p>
+              Use the official Raspberry Pi Imager to write Raspberry Pi OS (Lite is plenty — no
+              desktop needed) to a microSD card. In the Imager&apos;s settings, enable SSH and set
+              your Wi-Fi/credentials so it&apos;s headless from first boot. Then update it:
+            </p>
+            <CodeBlock>{`ssh pi@raspberrypi.local
+sudo apt update && sudo apt full-upgrade -y
+sudo reboot`}</CodeBlock>
+          </BuildStep>
+
+          <BuildStep n={3} title="Install the decoder + a local map">
+            <p>
+              Install a Mode S decoder (<code className="text-mia-sky">readsb</code> or{" "}
+              <code className="text-mia-sky">dump1090-fa</code>) plus{" "}
+              <code className="text-mia-sky">tar1090</code> for a live local map. The
+              community&apos;s install scripts are the quickest route — confirm the current URLs on
+              the projects&apos; pages first:
+            </p>
+            <CodeBlock>{`# Decoder (readsb)
+sudo bash -c "$(wget -nv -O - https://github.com/wiedehopf/adsb-scripts/raw/master/readsb-install.sh)"
+
+# Local map UI (tar1090)
+sudo bash -c "$(wget -nv -O - https://github.com/wiedehopf/tar1090/raw/master/install.sh)"`}</CodeBlock>
+            <p>
+              Prefer the all-in-one path instead? FlightAware&apos;s PiAware image bundles the
+              decoder and a map and also feeds their network — either works as the data source.
+            </p>
+          </BuildStep>
+
+          <BuildStep n={4} title="Connect the SDR and confirm reception">
+            <p>
+              Plug the SDR into the Pi, attach the antenna through the filter, and open the local
+              map in a browser at <code className="text-mia-sky">http://&lt;pi-ip&gt;:8080</code>.
+              You should see aircraft appear within a minute or two. The decoder publishes the same
+              data as JSON at the path the ingestor reads:
+            </p>
+            <CodeBlock>{`http://<pi-ip>:8080/data/aircraft.json`}</CodeBlock>
+          </BuildStep>
+
+          <BuildStep n={5} title="Tune for range">
+            <p>
+              Mount the antenna as high and clear of obstructions as you safely can — line-of-sight
+              is everything at 1090&nbsp;MHz. Add the bandpass filter to cut nearby cellular/pager
+              noise, and adjust the SDR gain until your message rate and range peak without the
+              receiver overloading. Watch the message-rate and range stats in tar1090 as you
+              experiment; a good rooftop setup reaches <strong>150–250&nbsp;km</strong>.
+            </p>
+          </BuildStep>
+
+          <BuildStep n={6} title="Point the ingestor at your feed">
+            <p>
+              Run this project&apos;s Python ingestor on the Pi (or any machine on the same network)
+              and aim it at your decoder&apos;s <code className="text-mia-sky">aircraft.json</code>.
+              The defaults already match a local tar1090; set your Supabase credentials and the
+              center/range you want to keep:
+            </p>
+            <CodeBlock>{`ADSB_JSON_URL=http://127.0.0.1:8080/data/aircraft.json
+ADSB_MAX_RANGE_KM=200        # gate to your local area
+ADSB_MAX_SEEN_SECONDS=60     # drop stale aircraft
+ADSB_MIN_MOVE_METERS=150     # skip tiny position changes
+SUPABASE_URL=...             # your project URL
+SUPABASE_SERVICE_ROLE_KEY=...# write (ingress) key`}</CodeBlock>
+          </BuildStep>
+
+          <BuildStep n={7} title="Verify the data flows through">
+            <p>
+              Confirm rows are landing in the <code className="text-mia-sky">flights_current</code>{" "}
+              table, then load the map — within a refresh cycle your real traffic should appear. To
+              keep it running unattended, supervise the ingestor with a{" "}
+              <code className="text-mia-sky">systemd</code> service so it restarts on reboot or
+              error.
+            </p>
+          </BuildStep>
+        </div>
+
+        <p className="mt-5 text-xs text-gray-500">
+          📝 Draft walkthrough — I&apos;ll replace the generic steps with my exact commands, gain
+          settings, and photos from my own install.
+        </p>
+      </section>
+
       <Section title="Benchmarks at a glance">
         <p>The key numbers that define this pipeline:</p>
         <BenchTable
@@ -230,8 +364,8 @@ export function BehindTheScenes() {
           ]}
         />
         <p className="text-xs text-gray-500">
-          A full hardware walkthrough — with photos of the antenna install, the Pi setup, and the
-          coverage I get from my location — is coming soon.
+          Photos of the antenna install, the Pi setup, and the coverage I get from my location are
+          coming soon to fill in the placeholders above.
         </p>
       </Section>
     </div>

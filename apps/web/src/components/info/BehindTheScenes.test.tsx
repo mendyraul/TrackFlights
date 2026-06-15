@@ -18,4 +18,13 @@ describe("BehindTheScenes", () => {
     const placeholders = screen.getAllByRole("img", { name: /Photo placeholder/i });
     expect(placeholders.length).toBeGreaterThanOrEqual(4);
   });
+
+  it("renders the build-it-yourself guide with setup commands", () => {
+    render(<BehindTheScenes />);
+    expect(
+      screen.getByRole("heading", { level: 2, name: /Build it yourself/i })
+    ).toBeInTheDocument();
+    // The ingestor env knob appears in the guide's code block.
+    expect(screen.getByText(/ADSB_JSON_URL/)).toBeInTheDocument();
+  });
 });
