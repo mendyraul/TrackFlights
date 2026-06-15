@@ -7,6 +7,7 @@ const tabs = [
   { href: "/", label: "Map" },
   { href: "/table", label: "Flights" },
   { href: "/analytics", label: "Analytics" },
+  { href: "/behind-the-scenes", label: "Behind the Scenes" },
 ];
 
 export function TabNav() {

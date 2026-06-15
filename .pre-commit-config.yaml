@@ -25,3 +25,10 @@ repos:
         entry: npx --no-install prettier --write
         language: system
         files: ^apps/web/src/.*\.(ts|tsx|css)$
+
+      - id: db-types-drift
+        name: db types drift (migrations vs database.ts)
+        entry: bash scripts/check-types-drift.sh
+        language: system
+        pass_filenames: false
+        files: ^(supabase/migrations/|apps/web/src/types/database\.ts)

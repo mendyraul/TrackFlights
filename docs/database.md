@@ -108,3 +108,37 @@ The web app makes these primary queries:
 3. **Analytics daily**: `SELECT * FROM analytics_daily ORDER BY date DESC LIMIT 30`
 
 All subsequent updates come through the realtime subscription — no polling needed.
+
+## Regenerating types after a migration
+
+The web app's TypeScript types live in `apps/web/src/types/database.ts` and are the **source of
+truth** consumed across the app. When you add or change a migration under
+`supabase/migrations/`, keep the types in sync:
+
+1. Bring up the local schema (applies all migrations):
+
+   ```bash
+   npx supabase start
+   ```
+
+2. Generate types from the local database into a build artifact (gitignored):
+
+   ```bash
+   npm run db:gen-types   # → apps/web/src/types/database.generated.ts
+   ```
+
+3. Reconcile the changes into `apps/web/src/types/database.ts` and commit it.
+
+### Drift guard
+
+`scripts/check-types-drift.sh` (wired into CI as the `db / types-drift` job and into
+pre-commit) fails if a commit touches `supabase/migrations/**` **without** updating
+`apps/web/src/types/database.ts`. It is a pure git-diff check — no database required — so it
+runs cheaply everywhere. Run it manually with:
+
+```bash
+npm run db:check-types-drift
+```
+
+> The hand-maintained `database.ts` stays authoritative because no remote Supabase project is
+> linked in this repo; `db:gen-types` is the helper for keeping it accurate, not a replacement.
