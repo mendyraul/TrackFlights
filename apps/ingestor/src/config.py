@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
-VALID_FLIGHT_PROVIDERS = {"aviationstack", "example", "adsb1090"}
+VALID_FLIGHT_PROVIDERS = {"aviationstack", "flightaware", "example", "adsb1090"}
 VALID_WEATHER_PROVIDERS = {"openmeteo"}
 
 
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     flight_api_key: str = ""
     flight_api_base_url: str = "https://api.aviationstack.com/v1"
 
-    # Provider: "aviationstack", "example" (mock), or "adsb1090" (self-hosted ADS-B)
+    # Provider: "aviationstack", "flightaware", "example" (mock), or "adsb1090" (self-hosted ADS-B)
     flight_provider: str = "aviationstack"
 
     # ADS-B (self-hosted readsb/dump1090 feed on the local Pi)
@@ -106,8 +106,10 @@ def validate_runtime_settings() -> None:
     if settings.weather_enabled and settings.weather_poll_interval_seconds <= 0:
         errors.append("weather_poll_interval_seconds must be > 0 when weather_enabled=true")
 
-    if settings.flight_provider == "aviationstack" and not settings.flight_api_key:
-        errors.append("flight_api_key is required when flight_provider=aviationstack")
+    if settings.flight_provider in {"aviationstack", "flightaware"} and not settings.flight_api_key:
+        errors.append(
+            "flight_api_key is required when flight_provider is aviationstack or flightaware"
+        )
 
     if settings.flight_provider == "adsb1090":
         if not settings.adsb_json_url:

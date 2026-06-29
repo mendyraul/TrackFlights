@@ -56,9 +56,12 @@ class BaseFlightProvider(ABC):
 | Provider | Module | API Key Required | Notes |
 |----------|--------|-----------------|-------|
 | AviationStack | `aviationstack_provider.py` | Yes | Production provider |
+| FlightAware AeroAPI | `flightaware_provider.py` | Yes | Recommended hosted replacement for Pi-dependent ingest |
 | Example | `example_provider.py` | No | Generates mock data for development |
 
 Set `FLIGHT_PROVIDER=example` in `.env` to use mock data without an API key.
+Set `FLIGHT_PROVIDER=flightaware` and `FLIGHT_API_BASE_URL=https://aeroapi.flightaware.com/aeroapi`
+to use FlightAware's airport boards instead of the Raspberry Pi path.
 
 ## Diff Engine
 
@@ -94,7 +97,7 @@ Use `journalctl -u mia-ingestor -f` on the Raspberry Pi to monitor.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `FLIGHT_PROVIDER` | `aviationstack` | Provider to use |
-| `FLIGHT_API_KEY` | (required for aviationstack) | API key |
+| `FLIGHT_API_KEY` | (required for aviationstack/flightaware) | API key |
 | `FLIGHT_API_BASE_URL` | `https://api.aviationstack.com/v1` | API base URL |
 | `POLL_INTERVAL_SECONDS` | `60` | Seconds between poll cycles |
 | `SUPABASE_URL` | (required) | Supabase project URL |

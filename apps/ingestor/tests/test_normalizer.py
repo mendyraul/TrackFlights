@@ -1,6 +1,7 @@
 """Tests for flight data normalization and diff engine."""
 
 from src.providers.aviationstack_provider import AviationStackProvider
+from src.providers.flightaware_provider import FlightAwareProvider
 from src.services.flight_diff_engine import compute_diff
 
 
@@ -69,6 +70,53 @@ def test_diff_engine_new_flights():
     assert len(diff.new) == 2
     assert len(diff.updated) == 0
     assert len(diff.removed) == 0
+
+
+def test_flightaware_normalize_departure():
+    provider = FlightAwareProvider.__new__(FlightAwareProvider)
+    raw = {
+        "ident_iata": "AA123",
+        "ident_icao": "AAL123",
+        "operator_iata": "AA",
+        "operator": "American Airlines",
+        "aircraft_type": "B738",
+        "registration": "N123AA",
+        "origin": {"code_iata": "MIA", "name": "Miami International"},
+        "destination": {"code_iata": "JFK", "name": "John F. Kennedy International"},
+        "scheduled_out": "2026-06-29T14:00:00Z",
+        "actual_out": "2026-06-29T14:12:00Z",
+        "scheduled_in": "2026-06-29T17:05:00Z",
+        "estimated_in": "2026-06-29T17:21:00Z",
+        "status": "En Route",
+        "terminal_origin": "D",
+        "gate_origin": "D32",
+        "terminal_destination": "8",
+        "gate_destination": "31",
+        "baggage_claim": "4",
+        "last_position": {
+            "latitude": 27.8,
+            "longitude": -79.9,
+            "altitude": 36000,
+            "heading": 28,
+            "groundspeed": 451,
+            "vertical_speed": 0,
+        },
+    }
+
+    result = provider.normalize(raw, "departure")
+
+    assert result["flight_iata"] == "AA123"
+    assert result["flight_icao"] == "AAL123"
+    assert result["flight_number"] == "123"
+    assert result["direction"] == "departure"
+    assert result["status"] == "en_route"
+    assert result["delay_minutes"] == 16
+    assert result["origin_iata"] == "MIA"
+    assert result["destination_iata"] == "JFK"
+    assert result["departure_gate"] == "D32"
+    assert result["arrival_gate"] == "31"
+    assert result["ground_speed_knots"] == 451
+    assert result["data_source"] == "flightaware"
 
 
 def test_diff_engine_detects_changes():

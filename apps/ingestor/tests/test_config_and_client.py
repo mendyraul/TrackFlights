@@ -4,6 +4,7 @@ import pytest
 from src import config, main
 from src.providers.adsb1090_provider import Adsb1090Provider
 from src.providers.example_provider import ExampleProvider
+from src.providers.flightaware_provider import FlightAwareProvider
 from src.services.supabase_client import SupabaseFlightClient
 
 
@@ -25,9 +26,19 @@ def test_validate_passes_for_example_provider(monkeypatch):
     config.validate_runtime_settings()  # must not raise
 
 
+def test_validate_flightaware_requires_api_key(monkeypatch):
+    monkeypatch.setattr(config.settings, "flight_provider", "flightaware")
+    monkeypatch.setattr(config.settings, "flight_api_key", "")
+    with pytest.raises(ValueError, match="flight_api_key"):
+        config.validate_runtime_settings()
+
+
 def test_get_provider_returns_configured_instance(monkeypatch):
     monkeypatch.setattr(config.settings, "flight_provider", "example")
     assert isinstance(main.get_provider(), ExampleProvider)
+
+    monkeypatch.setattr(config.settings, "flight_provider", "flightaware")
+    assert isinstance(main.get_provider(), FlightAwareProvider)
 
     monkeypatch.setattr(config.settings, "flight_provider", "adsb1090")
     assert isinstance(main.get_provider(), Adsb1090Provider)

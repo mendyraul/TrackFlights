@@ -14,6 +14,7 @@ Use these as the source of truth:
 - `branch-hygiene-policy.md` — branch lifecycle policy
 - `database.md` — schema/data model
 - `pipeline.md` — ingestion + processing flow
+- `flightaware-migration.md` — hosted FlightAware migration path and Raspberry Pi decommissioning notes
 - `hardware-adsb-ingest.md` — self-hosted ADS-B receiver hardware guide (antenna/SDR/Pi, KMIA 1090 MHz)
 - `etl-pipeline.md` — Pi ADS-B → Supabase ETL, egress-safe (the `adsb1090` provider + cached read path)
 - `phase-3-queue-retry-idempotency.md` — queue contract, retry policy, and idempotent write strategy
