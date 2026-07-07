@@ -33,6 +33,7 @@ Set monthly hard/soft thresholds and route alerts to one owner channel.
 - [ ] Add warning + critical quota thresholds
 - [ ] Confirm notification recipients
 - [ ] Validate quota metrics visible in project usage dashboard
+- [ ] Run `npm run ops:supabase-free-tier` after env or retention changes
 
 ### Cross-platform anomaly detection
 - [ ] Daily check: spend trend vs previous 7-day average
@@ -100,6 +101,45 @@ client (`useFlights`) polls the route every 10 s — those hits land on the CDN,
 **Guardrails:** keep **realtime OFF** (the 2M-msg/mo cap + per-client fan-out blow up with
 broadcasts). Keep `flights_current` an UPSERT (bounded rows) and `flights_history` off/downsampled
 to stay under 500 MB. If egress alerts fire, **raise** `SNAPSHOT_REFRESH_SECONDS` first.
+
+### Repo preflight for issue #75
+
+Run:
+
+```bash
+npm run ops:supabase-free-tier
+```
+
+What it checks:
+
+- `SNAPSHOT_REFRESH_SECONDS` stays at or above 30s so uncached egress remains inside the free-tier budget
+- retention windows remain short enough for the existing prune job to cap DB/storage growth
+- write-heavy features (`PREDICTIONS_ENABLED`, `ANOMALY_DETECTION_ENABLED`) are surfaced as risk multipliers
+- optional planning assumptions in `.env` stay within Supabase Free limits for:
+  - DB size
+  - storage size
+  - MAU
+  - third-party MAU
+  - Realtime peak connections
+  - Realtime messages
+  - Edge Function invocations
+
+Suggested `.env` planning block:
+
+```dotenv
+SUPABASE_SNAPSHOT_PAYLOAD_KB=35
+SUPABASE_EXPECTED_DB_SIZE_MB=120
+SUPABASE_EXPECTED_STORAGE_SIZE_MB=120
+SUPABASE_EXPECTED_MONTHLY_ACTIVE_USERS=1000
+SUPABASE_EXPECTED_MONTHLY_THIRD_PARTY_USERS=0
+SUPABASE_EXPECTED_PEAK_REALTIME_CONNECTIONS=25
+SUPABASE_EXPECTED_REALTIME_MESSAGES_PER_MONTH=0
+SUPABASE_EXPECTED_EDGE_FUNCTION_INVOCATIONS=0
+```
+
+The script is conservative on purpose: it fails when a hard limit is crossed and warns once a metric
+passes 85% of the free-tier quota. It does **not** replace the Supabase usage dashboard; use it as a
+repo-side preflight so risky config changes get caught before deploy.
 
 ## 4) Verification log template
 
