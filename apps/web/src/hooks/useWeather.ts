@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { WEATHER_COLUMNS } from "@/lib/dashboard-selects";
 import type { WeatherSnapshot } from "@/types/database";
-
-const WEATHER_COLUMNS =
-  "airport_iata,observed_at,temperature_c,dewpoint_c,humidity_pct,pressure_hpa,wind_speed_knots,wind_gust_knots,wind_direction_deg,visibility_km,cloud_cover_pct,weather_code,weather_description,is_thunderstorm,is_fog,precipitation_mm";
 
 interface UseWeatherReturn {
   current: WeatherSnapshot | null;
