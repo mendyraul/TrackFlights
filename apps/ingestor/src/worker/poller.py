@@ -109,6 +109,10 @@ class Poller:
         weather_data = None
         if settings.weather_enabled:
             weather_data = await self._maybe_ingest_weather(stats)
+        elif settings.predictions_enabled or settings.anomaly_detection_enabled:
+            # Weather ingestion is owned by the other ingestor process; read
+            # its latest snapshot from the DB (single small row per cycle).
+            weather_data = self._get_latest_weather_from_db()
 
         # ── 8. Predictions ───────────────────────────────────────────
         if settings.predictions_enabled:
@@ -137,7 +141,6 @@ class Poller:
         breaches = evaluate_capacity(capacity_snapshot, self._capacity_thresholds)
         stats.update(asdict(capacity_snapshot))
 
-        db_stats = self.db.get_flight_stats()
         cycle_finished_at = time.time()
         cycle_duration_ms = int((cycle_finished_at - cycle_started_at) * 1000)
         seconds_since_last_success = (
@@ -150,11 +153,12 @@ class Poller:
         logger.info(
             "Poll cycle complete",
             **stats,
-            db_status_counts=db_stats,
             cycle_duration_ms=cycle_duration_ms,
         )
 
         if self._cycle_count == 1 or self._cycle_count % 10 == 0:
+            # Full-table status scan costs egress; only run it on heartbeats.
+            db_stats = self.db.get_flight_stats()
             logger.info(
                 "Ingestor runtime heartbeat",
                 cycle=self._cycle_count,
@@ -164,6 +168,7 @@ class Poller:
                 predictions_enabled=settings.predictions_enabled,
                 anomaly_detection_enabled=settings.anomaly_detection_enabled,
                 seconds_since_last_success=seconds_since_last_success,
+                db_status_counts=db_stats,
             )
 
         if any(breaches.values()):
@@ -200,7 +205,13 @@ class Poller:
         diff = compute_diff(all_normalized, current_db)
 
         upserted = self.db.upsert_flights(diff.to_upsert)
-        stale_marked = self.db.mark_stale_flights(diff.removed) if diff.removed else 0
+        # Only treat rows this provider wrote as "removed" — with two ingestor
+        # processes sharing flights_current, rows owned by the other data
+        # source are always absent from this provider's feed.
+        removed_own = [
+            row for row in diff.removed if row.get("data_source") == self.provider.name
+        ]
+        stale_marked = self.db.mark_stale_flights(removed_own) if removed_own else 0
         archived = self.db.archive_completed_flights()
 
         for detail in diff.change_details:
@@ -213,11 +224,28 @@ class Poller:
             "new": len(diff.new),
             "updated": len(diff.updated),
             "unchanged": len(diff.unchanged),
-            "removed_from_api": len(diff.removed),
+            "removed_from_api": len(removed_own),
             "stale_marked": stale_marked,
             "upserted": upserted,
             "archived": archived,
         }
+
+    def _get_latest_weather_from_db(self) -> dict | None:
+        """Read the most recent weather snapshot written by the other process."""
+        try:
+            result = (
+                self._supabase.table("weather_snapshots")
+                .select("*")
+                .eq("airport_iata", settings.mia_iata_code)
+                .order("observed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            rows = result.data or []
+            return rows[0] if rows else None
+        except Exception:
+            logger.exception("Failed to read latest weather snapshot")
+            return None
 
     async def _maybe_ingest_weather(self, stats: dict) -> dict | None:
         """Fetch weather if enough time has elapsed since last fetch."""

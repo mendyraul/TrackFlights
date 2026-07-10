@@ -13,6 +13,8 @@ logger = structlog.get_logger()
 TRACKED_FIELDS = [
     "status",
     "delay_minutes",
+    "scheduled_departure",
+    "scheduled_arrival",
     "latitude",
     "longitude",
     "altitude_ft",
@@ -123,9 +125,33 @@ def compute_diff(
     return result
 
 
+# Timestamp fields need equality across ISO-8601 spellings ("Z" vs "+00:00"),
+# otherwise DB reads never compare equal to provider output and every row
+# re-upserts each cycle.
+_TIMESTAMP_FIELDS = {
+    "scheduled_departure",
+    "scheduled_arrival",
+    "actual_departure",
+    "actual_arrival",
+    "estimated_arrival",
+}
+
+
 def _flight_key(flight: dict[str, Any]) -> str:
-    """Generate a unique key for diffing."""
-    return f"{flight.get('flight_iata', '')}|{flight.get('scheduled_departure', '')}"
+    """Generate a unique key for diffing.
+
+    Must match the DB unique constraint on flights_current (flight_iata alone),
+    so that rows from different data sources merge instead of duplicating.
+    """
+    return str(flight.get("flight_iata", ""))
+
+
+def _comparable(field: str, value: Any) -> Any:
+    if value is None:
+        return None
+    if field in _TIMESTAMP_FIELDS and isinstance(value, str):
+        return value.replace("Z", "+00:00")
+    return value
 
 
 def _get_changed_fields(new: dict[str, Any], old: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -135,8 +161,13 @@ def _get_changed_fields(new: dict[str, Any], old: dict[str, Any]) -> dict[str, d
     """
     changes: dict[str, dict[str, Any]] = {}
     for field in TRACKED_FIELDS:
+        # Fields omitted from the incoming record are owned by another data
+        # source (e.g. ADS-B never sends schedule fields) and must not count
+        # as changes — the upsert leaves omitted columns untouched.
+        if field not in new:
+            continue
         new_val = new.get(field)
         old_val = old.get(field)
-        if new_val != old_val:
+        if _comparable(field, new_val) != _comparable(field, old_val):
             changes[field] = {"old": old_val, "new": new_val}
     return changes

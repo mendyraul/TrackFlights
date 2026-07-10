@@ -28,6 +28,9 @@ class Settings(BaseSettings):
 
     # Ingestion
     poll_interval_seconds: int = 10800  # cost-control default: every 3 hours
+    # How long the in-process flights_current cache serves reads before
+    # reconciling from the DB (Pi reads count against Supabase egress).
+    current_cache_refresh_seconds: int = 600
     mia_iata_code: str = "MIA"
     mia_icao_code: str = "KMIA"
 
