@@ -216,3 +216,43 @@ def test_watermark_windows_advance(tmp_path, monkeypatch):
     # Second window must start near the first window's end (15 min overlap),
     # not at the default lookback.
     assert windows[1]["start"] >= windows[0]["start"]
+
+
+# ── Airline auto-registration ────────────────────────────────────
+
+
+def test_ensure_airlines_registers_unknown_codes_once():
+    from src.services.supabase_client import SupabaseFlightClient
+
+    upserted_batches: list[list[dict]] = []
+
+    class FakeTable:
+        def upsert(self, rows, on_conflict=None, ignore_duplicates=None):
+            assert on_conflict == "iata_code"
+            assert ignore_duplicates is True
+            upserted_batches.append(rows)
+            return self
+
+        def execute(self):
+            return None
+
+    class FakeClient:
+        def table(self, name):
+            assert name == "airlines"
+            return FakeTable()
+
+    client = SupabaseFlightClient.__new__(SupabaseFlightClient)
+    client.client = FakeClient()
+    client._known_airlines = set()
+
+    flights = [
+        {"flight_iata": "LA502", "airline_iata": "LA", "airline_name": "LATAM"},
+        {"flight_iata": "AA1", "airline_iata": "AA", "airline_name": "American Airlines"},
+        {"flight_iata": "AA2", "airline_iata": "AA", "airline_name": "American Airlines"},
+        {"flight_iata": "N123", "airline_iata": None},
+    ]
+
+    assert client.ensure_airlines(flights) == 2
+    # Second call with the same codes must be a no-op (no repeated writes).
+    assert client.ensure_airlines(flights) == 0
+    assert len(upserted_batches) == 1
