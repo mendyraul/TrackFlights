@@ -56,6 +56,7 @@ class BaseFlightProvider(ABC):
 | Provider | Module | API Key Required | Notes |
 |----------|--------|-----------------|-------|
 | AviationStack | `aviationstack_provider.py` | Yes | Production provider |
+| AeroAPI (planning scaffold) | config + `aeroapi_guardrails.py` | Yes | South Florida bbox/cost sizing scaffold for issue `#77` before wiring a live provider |
 | Example | `example_provider.py` | No | Generates mock data for development |
 
 Set `FLIGHT_PROVIDER=example` in `.env` to use mock data without an API key.
@@ -97,5 +98,23 @@ Use `journalctl -u mia-ingestor -f` on the Raspberry Pi to monitor.
 | `FLIGHT_API_KEY` | (required for aviationstack) | API key |
 | `FLIGHT_API_BASE_URL` | `https://api.aviationstack.com/v1` | API base URL |
 | `POLL_INTERVAL_SECONDS` | `60` | Seconds between poll cycles |
+| `AEROAPI_BBOX` | `25.2,-82.0,27.0,-80.0` | South Florida search box (`min_lat,min_lon,max_lat,max_lon`) |
+| `AEROAPI_SEARCH_LIMIT` | `15` | Planned per-page cap; matches AeroAPI Standard page-size ceiling |
+| `AEROAPI_MAX_PAGES_PER_POLL` | `4` | Safety cap for a single poll cycle when region results span multiple pages |
+| `AEROAPI_SNAPSHOT_SIZE_KIB` | `35` | Used for monthly Supabase egress estimation |
+| `AEROAPI_SNAPSHOT_REFRESH_SECONDS` | `60` | Planned server-side snapshot cadence for cached reads |
 | `SUPABASE_URL` | (required) | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | (required) | Service role key (bypasses RLS) |
+
+## AeroAPI planning guardrails
+
+Issue `#77` needs two budgets protected before the live FlightAware provider is enabled:
+
+- **AeroAPI request volume:** the ingestor now computes estimated monthly requests/result rows from
+  `POLL_INTERVAL_SECONDS`, `AEROAPI_MAX_PAGES_PER_POLL`, and `AEROAPI_SEARCH_LIMIT`.
+- **Supabase egress:** the same runtime summary estimates uncached monthly snapshot egress from
+  `AEROAPI_SNAPSHOT_SIZE_KIB` and `AEROAPI_SNAPSHOT_REFRESH_SECONDS` so the public map can stay
+  inside the free-tier read budget.
+
+This scaffold is intentionally planning-only for now: it validates the bbox/env contract and emits
+cost-safe startup numbers before a live AeroAPI fetcher is wired into the ingestor loop.
