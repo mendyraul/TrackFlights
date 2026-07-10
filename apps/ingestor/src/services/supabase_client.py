@@ -50,17 +50,10 @@ class SupabaseFlightClient:
         settings.current_cache_refresh_seconds.
         """
         cache_age = time.monotonic() - self._cache_fetched_at
-        if (
-            self._current_cache is not None
-            and cache_age < settings.current_cache_refresh_seconds
-        ):
+        if self._current_cache is not None and cache_age < settings.current_cache_refresh_seconds:
             return [dict(row) for row in self._current_cache.values()]
 
-        result = (
-            self.client.table("flights_current")
-            .select(CURRENT_FLIGHTS_COLUMNS)
-            .execute()
-        )
+        result = self.client.table("flights_current").select(CURRENT_FLIGHTS_COLUMNS).execute()
         rows = result.data or []
         self._current_cache = {
             row["flight_iata"]: dict(row) for row in rows if row.get("flight_iata")

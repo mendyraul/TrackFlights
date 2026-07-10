@@ -208,9 +208,7 @@ class Poller:
         # Only treat rows this provider wrote as "removed" — with two ingestor
         # processes sharing flights_current, rows owned by the other data
         # source are always absent from this provider's feed.
-        removed_own = [
-            row for row in diff.removed if row.get("data_source") == self.provider.name
-        ]
+        removed_own = [row for row in diff.removed if row.get("data_source") == self.provider.name]
         stale_marked = self.db.mark_stale_flights(removed_own) if removed_own else 0
         archived = self.db.archive_completed_flights()
 
