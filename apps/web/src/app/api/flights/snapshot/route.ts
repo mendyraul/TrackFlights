@@ -1,9 +1,5 @@
 import { supabase } from "@/lib/supabase";
-
-// Same projection the client used to query directly. Kept here so the only
-// Supabase read happens server-side and is shared across all viewers.
-const FLIGHT_COLUMNS =
-  "id,flight_iata,airline_iata,departure_airport_iata,arrival_airport_iata,scheduled_departure,scheduled_arrival,estimated_departure,estimated_arrival,actual_departure,actual_arrival,status,terminal,gate,baggage_claim,delay_minutes,latitude,longitude,altitude_ft,speed_knots,heading,updated_at";
+import { FLIGHT_SNAPSHOT_COLUMNS } from "@/lib/dashboard-selects";
 
 // Server refresh window. Vercel's CDN serves this response from cache and only
 // re-runs the function (and the Supabase read) about once per window, so
@@ -16,7 +12,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const { data, error } = await supabase
     .from("flights_current")
-    .select(FLIGHT_COLUMNS)
+    .select(FLIGHT_SNAPSHOT_COLUMNS)
     .order("updated_at", { ascending: false })
     .limit(250);
 

@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { PREDICTION_COLUMNS } from "@/lib/dashboard-selects";
 import type { DelayPrediction } from "@/types/database";
-
-const PREDICTION_COLUMNS =
-  "flight_iata,prediction_type,predicted_value,confidence,model_version,generated_at,expires_at";
 
 interface UsePredictionsReturn {
   predictions: DelayPrediction[];
