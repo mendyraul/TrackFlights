@@ -33,7 +33,9 @@ def test_normalize_airborne_arrival():
 
     result = provider.normalize(raw, "live")
 
-    assert result["flight_iata"] == "AAL100"
+    # ICAO callsign converts to the IATA ident so ADS-B contacts share a row
+    # with schedule-feed data.
+    assert result["flight_iata"] == "AA100"
     assert result["direction"] == "arrival"
     assert result["status"] == "en_route"
     assert result["altitude_ft"] == 4000

@@ -1,5 +1,6 @@
 """Supabase client wrapper for flight data operations."""
 
+import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -7,8 +8,15 @@ import structlog
 from supabase import Client, create_client
 
 from src.config import settings
+from src.services.flight_diff_engine import TRACKED_FIELDS
 
 logger = structlog.get_logger()
+
+# Projection for flights_current reads: identity + everything the diff engine
+# compares, so DB rows key and diff correctly against provider output.
+CURRENT_FLIGHTS_COLUMNS = ",".join(
+    ["id", "flight_iata", "updated_at", "data_source", *TRACKED_FIELDS]
+)
 
 # Statuses considered "completed" for archival purposes
 COMPLETED_STATUSES = ["landed", "arrived", "departed", "cancelled"]
@@ -28,15 +36,31 @@ class SupabaseFlightClient:
             settings.supabase_url,
             settings.supabase_service_role_key,
         )
+        # In-process view of flights_current, keyed by flight_iata. Reading the
+        # table from the Pi counts against Supabase egress, so between periodic
+        # reconciles we serve reads from this cache and fold our own upserts
+        # into it.
+        self._current_cache: dict[str, dict[str, Any]] | None = None
+        self._cache_fetched_at = 0.0
 
     def get_current_flights(self) -> list[dict[str, Any]]:
-        """Fetch all rows from flights_current."""
-        result = (
-            self.client.table("flights_current")
-            .select("id,flight_iata,status,updated_at")
-            .execute()
-        )
-        return result.data or []
+        """Return flights_current rows, served from the in-process cache.
+
+        Re-reads the table only when the cache is older than
+        settings.current_cache_refresh_seconds.
+        """
+        cache_age = time.monotonic() - self._cache_fetched_at
+        if self._current_cache is not None and cache_age < settings.current_cache_refresh_seconds:
+            return [dict(row) for row in self._current_cache.values()]
+
+        result = self.client.table("flights_current").select(CURRENT_FLIGHTS_COLUMNS).execute()
+        rows = result.data or []
+        self._current_cache = {
+            row["flight_iata"]: dict(row) for row in rows if row.get("flight_iata")
+        }
+        self._cache_fetched_at = time.monotonic()
+        logger.info("Refreshed flights_current cache", rows=len(rows))
+        return rows
 
     def upsert_flights(self, flights: list[dict[str, Any]]) -> int:
         """Upsert flights into flights_current.
@@ -58,6 +82,21 @@ class SupabaseFlightClient:
             ).execute()
             total += len(batch)
 
+        # Fold our writes into the cache so reads stay accurate between
+        # reconciles. Merge (not replace): the upsert leaves omitted columns
+        # untouched, and another data source may own those fields.
+        if self._current_cache is not None:
+            now_iso = datetime.now(UTC).isoformat()
+            for flight in flights:
+                key = flight.get("flight_iata")
+                if not key:
+                    continue
+                cached = self._current_cache.get(key)
+                if cached is None:
+                    cached = self._current_cache[key] = {}
+                cached.update(flight)
+                cached["updated_at"] = now_iso
+
         logger.info("Upserted flights", count=total)
         return total
 
@@ -72,11 +111,14 @@ class SupabaseFlightClient:
 
         cutoff = (datetime.now(UTC) - timedelta(minutes=STALE_THRESHOLD_MINUTES)).isoformat()
 
-        # Only mark flights that haven't been updated recently
+        # Only mark flights that haven't been updated recently. Rows folded
+        # into the cache from our own upserts may lack an id — skip those.
         stale_ids = [
             row["id"]
             for row in removed
-            if row.get("updated_at", "") < cutoff and row.get("status") not in COMPLETED_STATUSES
+            if row.get("id") is not None
+            and row.get("updated_at", "") < cutoff
+            and row.get("status") not in COMPLETED_STATUSES
         ]
 
         if not stale_ids:

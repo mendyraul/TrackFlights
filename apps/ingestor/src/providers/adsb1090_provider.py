@@ -24,6 +24,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.config import settings
 from src.providers.base_provider import BaseFlightProvider
+from src.services.flight_normalizer import icao_callsign_to_iata
 
 logger = structlog.get_logger()
 
@@ -147,7 +148,9 @@ class Adsb1090Provider(BaseFlightProvider):
         """
         hex_id = str(raw.get("hex", "")).strip().lstrip("~").upper()
         callsign = (raw.get("flight") or "").strip()
-        flight_iata = callsign or hex_id
+        # Convert ICAO callsigns to IATA idents so ADS-B contacts land on the
+        # same flights_current row as schedule-feed data (AeroAPI et al).
+        flight_iata = icao_callsign_to_iata(callsign) if callsign else hex_id
 
         alt_baro = raw.get("alt_baro")
         on_ground = alt_baro == "ground"

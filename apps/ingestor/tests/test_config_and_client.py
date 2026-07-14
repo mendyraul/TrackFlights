@@ -78,6 +78,8 @@ def test_upsert_flights_batches_in_chunks_of_50():
             return FakeTable()
 
     client.client = FakeClient()  # type: ignore[attr-defined]
+    client._current_cache = None
+    client._cache_fetched_at = 0.0
     flights = [{"flight_iata": f"AA{i}"} for i in range(120)]
 
     total = client.upsert_flights(flights)
