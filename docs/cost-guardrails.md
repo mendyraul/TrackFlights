@@ -98,6 +98,18 @@ client (`useFlights`) polls the route every 10 s — those hits land on the CDN,
 | 60 s | ~1.5 GB | ✅ recommended default (safest) |
 | ≤10 s | >9 GB | ❌ over budget |
 
+For the planned FlightAware AeroAPI migration (`TrackFlights#77`), the ingestor now mirrors these
+assumptions in code with `apps/ingestor/src/aeroapi_guardrails.py` and config defaults:
+
+- `AEROAPI_BBOX=25.2,-82.0,27.0,-80.0` for the first South Florida region
+- `AEROAPI_SEARCH_LIMIT=15` and `AEROAPI_MAX_PAGES_PER_POLL=4` to cap per-cycle request fan-out
+- `AEROAPI_SNAPSHOT_SIZE_KIB=35` and `AEROAPI_SNAPSHOT_REFRESH_SECONDS=60` to model the cached web
+  read path against the 5 GiB/month Supabase free-tier ceiling
+
+Those values are still adjustable, but the runtime config summary now emits the projected monthly
+request count, result-row count, and snapshot egress so operator changes are visible before a live
+provider rollout.
+
 **Guardrails:** keep **realtime OFF** (the 2M-msg/mo cap + per-client fan-out blow up with
 broadcasts). Keep `flights_current` an UPSERT (bounded rows) and `flights_history` off/downsampled
 to stay under 500 MB. If egress alerts fire, **raise** `SNAPSHOT_REFRESH_SECONDS` first.
