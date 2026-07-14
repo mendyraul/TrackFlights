@@ -12,7 +12,7 @@ from src.aeroapi_guardrails import (
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
-VALID_FLIGHT_PROVIDERS = {"aviationstack", "example", "adsb1090"}
+VALID_FLIGHT_PROVIDERS = {"aviationstack", "example", "adsb1090", "flightaware"}
 VALID_WEATHER_PROVIDERS = {"openmeteo"}
 
 
@@ -27,6 +27,15 @@ class Settings(BaseSettings):
 
     # Provider: "aviationstack", "example" (mock), or "adsb1090" (self-hosted ADS-B)
     flight_provider: str = "aviationstack"
+
+    # FlightAware AeroAPI (used when flight_provider=flightaware).
+    # Cost per query is an assumption — verify against the FlightAware portal's
+    # usage page and recalibrate. The budget guard halts polling at the cap
+    # regardless, so a wrong price can't cause an overage.
+    aeroapi_monthly_budget_usd: float = 9.0
+    aeroapi_cost_per_query_usd: float = 0.02
+    aeroapi_max_pages: int = 1  # 15 results per page; each page bills one query
+    aeroapi_budget_state_path: str = str(_PROJECT_ROOT / ".state" / "aeroapi_budget.json")
 
     # ADS-B (self-hosted readsb/dump1090 feed on the local Pi)
     adsb_json_url: str = "http://127.0.0.1:8080/data/aircraft.json"
@@ -147,6 +156,19 @@ def validate_runtime_settings() -> None:
 
     if settings.flight_provider == "aviationstack" and not settings.flight_api_key:
         errors.append("flight_api_key is required when flight_provider=aviationstack")
+
+    if settings.flight_provider == "flightaware":
+        if not settings.flight_api_key:
+            errors.append("flight_api_key is required when flight_provider=flightaware")
+        if "aeroapi" not in settings.flight_api_base_url:
+            errors.append(
+                "flight_api_base_url must point at AeroAPI "
+                "(https://aeroapi.flightaware.com/aeroapi) when flight_provider=flightaware"
+            )
+        if settings.aeroapi_monthly_budget_usd <= 0:
+            errors.append("aeroapi_monthly_budget_usd must be > 0")
+        if settings.aeroapi_max_pages <= 0:
+            errors.append("aeroapi_max_pages must be > 0")
 
     if settings.flight_provider == "adsb1090":
         if not settings.adsb_json_url:

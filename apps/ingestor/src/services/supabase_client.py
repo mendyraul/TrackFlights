@@ -42,6 +42,8 @@ class SupabaseFlightClient:
         # into it.
         self._current_cache: dict[str, dict[str, Any]] | None = None
         self._cache_fetched_at = 0.0
+        # Airline codes already registered this process lifetime.
+        self._known_airlines: set[str] = set()
 
     def get_current_flights(self) -> list[dict[str, Any]]:
         """Return flights_current rows, served from the in-process cache.
@@ -61,6 +63,31 @@ class SupabaseFlightClient:
         self._cache_fetched_at = time.monotonic()
         logger.info("Refreshed flights_current cache", rows=len(rows))
         return rows
+
+    def ensure_airlines(self, flights: list[dict[str, Any]]) -> int:
+        """Register unseen airline codes so the flights_current FK can't reject a batch.
+
+        flights_current.airline_iata references airlines(iata_code) and only a
+        handful of airlines are seeded; schedule feeds regularly carry others.
+        """
+        pending: dict[str, str] = {}
+        for flight in flights:
+            code = flight.get("airline_iata")
+            if code and code not in self._known_airlines:
+                pending[code] = flight.get("airline_name") or code
+
+        if not pending:
+            return 0
+
+        rows = [{"iata_code": code, "name": name} for code, name in pending.items()]
+        self.client.table("airlines").upsert(
+            rows,
+            on_conflict="iata_code",
+            ignore_duplicates=True,
+        ).execute()
+        self._known_airlines.update(pending)
+        logger.info("Registered airlines", count=len(rows), codes=sorted(pending))
+        return len(rows)
 
     def upsert_flights(self, flights: list[dict[str, Any]]) -> int:
         """Upsert flights into flights_current.

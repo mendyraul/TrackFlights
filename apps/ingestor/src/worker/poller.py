@@ -204,6 +204,7 @@ class Poller:
         current_db = self.db.get_current_flights()
         diff = compute_diff(all_normalized, current_db)
 
+        self.db.ensure_airlines(diff.to_upsert)
         upserted = self.db.upsert_flights(diff.to_upsert)
         # Only treat rows this provider wrote as "removed" — with two ingestor
         # processes sharing flights_current, rows owned by the other data
