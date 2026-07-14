@@ -2,6 +2,14 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
+from src.aeroapi_guardrails import (
+    estimate_monthly_result_rows,
+    estimate_monthly_search_requests,
+    estimate_monthly_snapshot_egress_gib,
+    estimate_supabase_daily_egress_budget_mib,
+    parse_bounding_box,
+)
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 VALID_FLIGHT_PROVIDERS = {"aviationstack", "example", "adsb1090"}
@@ -25,6 +33,13 @@ class Settings(BaseSettings):
     adsb_max_range_km: float = 200.0  # drop aircraft farther than this from MIA
     adsb_min_move_meters: float = 150.0  # skip writes for aircraft that barely moved
     adsb_max_seen_seconds: float = 60.0  # drop stale tracks (no recent position)
+
+    # AeroAPI planning defaults for South Florida region searches.
+    aeroapi_bbox: str = "25.2,-82.0,27.0,-80.0"
+    aeroapi_search_limit: int = 15
+    aeroapi_max_pages_per_poll: int = 4
+    aeroapi_snapshot_size_kib: float = 35.0
+    aeroapi_snapshot_refresh_seconds: int = 60
 
     # Ingestion
     poll_interval_seconds: int = 10800  # cost-control default: every 3 hours
@@ -63,10 +78,31 @@ settings = Settings()  # type: ignore[call-arg]
 
 def get_runtime_config_summary() -> dict[str, object]:
     """Return a sanitized runtime config payload for startup logging."""
+    aeroapi_plan = {
+        "bbox": settings.aeroapi_bbox,
+        "search_limit": settings.aeroapi_search_limit,
+        "max_pages_per_poll": settings.aeroapi_max_pages_per_poll,
+        "estimated_monthly_requests": estimate_monthly_search_requests(
+            settings.poll_interval_seconds,
+            settings.aeroapi_max_pages_per_poll,
+        ),
+        "estimated_monthly_result_rows": estimate_monthly_result_rows(
+            settings.poll_interval_seconds,
+            settings.aeroapi_max_pages_per_poll,
+            settings.aeroapi_search_limit,
+        ),
+        "estimated_snapshot_egress_gib": estimate_monthly_snapshot_egress_gib(
+            settings.aeroapi_snapshot_size_kib,
+            settings.aeroapi_snapshot_refresh_seconds,
+        ),
+        "daily_egress_budget_mib": estimate_supabase_daily_egress_budget_mib(),
+    }
+
     return {
         "flight_provider": settings.flight_provider,
         "flight_api_base_url": settings.flight_api_base_url,
         "flight_api_key_configured": bool(settings.flight_api_key),
+        "aeroapi_plan": aeroapi_plan,
         "airport": {
             "iata": settings.mia_iata_code,
             "icao": settings.mia_icao_code,
@@ -114,6 +150,23 @@ def validate_runtime_settings() -> None:
             errors.append("adsb_json_url is required when flight_provider=adsb1090")
         if settings.adsb_max_range_km <= 0:
             errors.append("adsb_max_range_km must be > 0 when flight_provider=adsb1090")
+
+    try:
+        parse_bounding_box(settings.aeroapi_bbox)
+    except ValueError as exc:
+        errors.append(str(exc))
+
+    if settings.aeroapi_search_limit <= 0 or settings.aeroapi_search_limit > 15:
+        errors.append("aeroapi_search_limit must be between 1 and 15")
+
+    if settings.aeroapi_max_pages_per_poll <= 0:
+        errors.append("aeroapi_max_pages_per_poll must be > 0")
+
+    if settings.aeroapi_snapshot_size_kib <= 0:
+        errors.append("aeroapi_snapshot_size_kib must be > 0")
+
+    if settings.aeroapi_snapshot_refresh_seconds <= 0:
+        errors.append("aeroapi_snapshot_refresh_seconds must be > 0")
 
     if errors:
         joined = "; ".join(errors)
