@@ -11,7 +11,9 @@ import {
 // analytics, predictions, anomalies). Browsers hit this route instead of
 // Supabase directly, so dashboard egress is bounded by the refresh window
 // rather than the audience size — same pattern as /api/flights/snapshot.
-const REFRESH_SECONDS = Number(process.env.DASHBOARD_SUMMARY_REFRESH_SECONDS ?? 300);
+const parsedRefreshSeconds = Number(process.env.DASHBOARD_SUMMARY_REFRESH_SECONDS);
+const REFRESH_SECONDS =
+  Number.isFinite(parsedRefreshSeconds) && parsedRefreshSeconds > 0 ? parsedRefreshSeconds : 300;
 
 export const dynamic = "force-dynamic";
 
