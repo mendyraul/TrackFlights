@@ -1,0 +1,26 @@
+[Unit]
+Description=MIA Flight Tracker - ADS-B Position Ingestor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/mia-flight-tracker/apps/ingestor
+# Later EnvironmentFile entries override earlier ones — per-unit differences
+# (provider, poll interval) live in .env.adsb, shared secrets in .env.
+EnvironmentFile=/home/pi/mia-flight-tracker/.env
+EnvironmentFile=/home/pi/mia-flight-tracker/.env.adsb
+ExecStart=/home/pi/mia-flight-tracker/apps/ingestor/venv/bin/python -m src.main
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Resource limits
+MemoryMax=256M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

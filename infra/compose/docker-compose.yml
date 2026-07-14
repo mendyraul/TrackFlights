@@ -3,6 +3,9 @@ version: "3.8"
 # Docker Compose for local development.
 # Supabase is expected to be external (cloud or local CLI).
 # Set environment variables in ../.env or pass via shell.
+#
+# Production runs two ingestor processes (one provider each) — mirrored here.
+# Start only what you need, e.g.: docker compose up web ingestor-adsb
 
 services:
   web:
@@ -14,17 +17,37 @@ services:
     environment:
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - SNAPSHOT_REFRESH_SECONDS=${SNAPSHOT_REFRESH_SECONDS:-120}
+      - DASHBOARD_SUMMARY_REFRESH_SECONDS=${DASHBOARD_SUMMARY_REFRESH_SECONDS:-300}
     restart: unless-stopped
 
-  ingestor:
+  ingestor-adsb:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.ingestor
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - FLIGHT_PROVIDER=adsb1090
+      - ADSB_JSON_URL=${ADSB_JSON_URL:-http://host.docker.internal:8080/data/aircraft.json}
+      - POLL_INTERVAL_SECONDS=${ADSB_POLL_INTERVAL_SECONDS:-15}
+      - WEATHER_ENABLED=true
+    restart: unless-stopped
+
+  ingestor-aeroapi:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.ingestor
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - FLIGHT_PROVIDER=flightaware
       - FLIGHT_API_KEY=${FLIGHT_API_KEY}
-      - FLIGHT_API_BASE_URL=${FLIGHT_API_BASE_URL:-https://api.aviationstack.com/v1}
-      - FLIGHT_PROVIDER=${FLIGHT_PROVIDER:-aviationstack}
-      - POLL_INTERVAL_SECONDS=${POLL_INTERVAL_SECONDS:-60}
+      - FLIGHT_API_BASE_URL=https://aeroapi.flightaware.com/aeroapi
+      - POLL_INTERVAL_SECONDS=${AEROAPI_POLL_INTERVAL_SECONDS:-14400}
+      - AEROAPI_MONTHLY_BUDGET_USD=${AEROAPI_MONTHLY_BUDGET_USD:-9.0}
+      - AEROAPI_COST_PER_QUERY_USD=${AEROAPI_COST_PER_QUERY_USD:-0.02}
+      - AEROAPI_MAX_PAGES=${AEROAPI_MAX_PAGES:-1}
+      - WEATHER_ENABLED=false
+      - PREDICTIONS_ENABLED=true
     restart: unless-stopped

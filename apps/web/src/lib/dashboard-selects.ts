@@ -87,6 +87,25 @@ export const WEATHER_COLUMNS = [
   "data_source",
 ].join(",");
 
+export const ANOMALY_COLUMNS = [
+  "id",
+  "anomaly_type",
+  "severity",
+  "title",
+  "description",
+  "metric_name",
+  "metric_value",
+  "baseline_value",
+  "deviation_pct",
+  "affected_flights",
+  "affected_airlines",
+  "affected_count",
+  "is_active",
+  "detected_at",
+  "resolved_at",
+  "detection_model",
+].join(",");
+
 export const PREDICTION_COLUMNS = [
   "id",
   "flight_iata",
