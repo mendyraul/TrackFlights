@@ -1,0 +1,32 @@
+[Unit]
+Description=TrackFlights edge ETL (ADS-B -> Supabase positions stream)
+# Start after networking and the decoder are up; aircraft.json comes from dump1090-fa.
+After=network-online.target dump1090-fa.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Adjust User and paths to match your install location.
+User=pi
+WorkingDirectory=/home/pi/trackflights-edge
+ExecStart=/home/pi/trackflights-edge/.venv/bin/python -m src.main
+
+# Resiliency: restart on crash or network blip, with backoff.
+Restart=always
+RestartSec=5
+# If it crashes more than 5 times in 60s, stop trying (avoids a hot crash loop).
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Logs go to the journal; cap journald so logs can't fill the SD card
+# (set system-wide in /etc/systemd/journald.conf: SystemMaxUse=200M).
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=trackflights-edge
+
+# Light hardening.
+NoNewPrivileges=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

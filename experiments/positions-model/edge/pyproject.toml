@@ -1,0 +1,23 @@
+[project]
+name = "trackflights-edge"
+version = "0.1.0"
+description = "TrackFlights edge ETL: ADS-B + GPS on a Raspberry Pi -> Supabase positions stream"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# Conservative, high-signal rules: pycodestyle, pyflakes, import sorting,
+# pyupgrade, flake8-bugbear.
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]  # line length is enforced by black, not ruff
