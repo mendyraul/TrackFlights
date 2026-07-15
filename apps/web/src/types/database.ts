@@ -1,3 +1,6 @@
+// Schema sync note: migration 20260710120000_analytics_rollups.sql adds
+// SQL functions + pg_cron jobs only — no table shape changes, so no type
+// updates were needed.
 export type FlightStatus =
   | "scheduled"
   | "en_route"
