@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { PREDICTION_COLUMNS } from "@/lib/dashboard-selects";
+import { fetchDashboardSummary } from "@/lib/dashboard-summary";
 import type { DelayPrediction } from "@/types/database";
+
+const POLL_MS = 5 * 60 * 1000;
 
 interface UsePredictionsReturn {
   predictions: DelayPrediction[];
@@ -16,23 +17,29 @@ export function usePredictions(): UsePredictionsReturn {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetch() {
-      const now = new Date().toISOString();
+    let cancelled = false;
 
-      const { data } = await supabase
-        .from("delay_predictions")
-        .select(PREDICTION_COLUMNS)
-        .gte("expires_at", now)
-        .order("predicted_value", { ascending: false })
-        .limit(500);
-
-      if (data) setPredictions(data as DelayPrediction[]);
-      setLoading(false);
+    async function load() {
+      try {
+        const summary = await fetchDashboardSummary();
+        if (cancelled) return;
+        setPredictions(summary.predictions);
+      } catch {
+        // Keep last known data; the next poll retries.
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
 
-    fetch();
-    const interval = setInterval(fetch, 2 * 60 * 60 * 1000);
-    return () => clearInterval(interval);
+    load();
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, POLL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   const highRiskFlights = predictions.filter(

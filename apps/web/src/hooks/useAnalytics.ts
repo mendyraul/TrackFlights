@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { ANALYTICS_DAILY_COLUMNS, ANALYTICS_HOURLY_COLUMNS } from "@/lib/dashboard-selects";
+import { fetchDashboardSummary } from "@/lib/dashboard-summary";
 import type { AnalyticsDaily, AnalyticsHourly } from "@/types/database";
+
+const POLL_MS = 5 * 60 * 1000;
 
 export function useAnalytics() {
   const [hourly, setHourly] = useState<AnalyticsHourly[]>([]);
@@ -11,26 +12,30 @@ export function useAnalytics() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetch() {
-      const [hourlyRes, dailyRes] = await Promise.all([
-        supabase
-          .from("analytics_hourly")
-          .select(ANALYTICS_HOURLY_COLUMNS)
-          .order("hour", { ascending: false })
-          .limit(48),
-        supabase
-          .from("analytics_daily")
-          .select(ANALYTICS_DAILY_COLUMNS)
-          .order("date", { ascending: false })
-          .limit(30),
-      ]);
+    let cancelled = false;
 
-      if (hourlyRes.data) setHourly(hourlyRes.data as AnalyticsHourly[]);
-      if (dailyRes.data) setDaily(dailyRes.data as AnalyticsDaily[]);
-      setLoading(false);
+    async function load() {
+      try {
+        const summary = await fetchDashboardSummary();
+        if (cancelled) return;
+        setHourly(summary.analyticsHourly);
+        setDaily(summary.analyticsDaily);
+      } catch {
+        // Keep last known data; the next poll retries.
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
 
-    fetch();
+    load();
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, POLL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   return { hourly, daily, loading };

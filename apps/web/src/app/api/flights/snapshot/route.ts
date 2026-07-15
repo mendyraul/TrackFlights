@@ -5,7 +5,9 @@ import { FLIGHT_SNAPSHOT_COLUMNS } from "@/lib/dashboard-selects";
 // re-runs the function (and the Supabase read) about once per window, so
 // Supabase egress is independent of how many browsers are watching. See
 // docs/cost-guardrails.md for the free-tier egress budget.
-const REFRESH_SECONDS = Number(process.env.SNAPSHOT_REFRESH_SECONDS ?? 30);
+const parsedRefreshSeconds = Number(process.env.SNAPSHOT_REFRESH_SECONDS);
+const REFRESH_SECONDS =
+  Number.isFinite(parsedRefreshSeconds) && parsedRefreshSeconds > 0 ? parsedRefreshSeconds : 30;
 
 export const dynamic = "force-dynamic";
 
