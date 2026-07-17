@@ -116,8 +116,16 @@ def test_weather_ingester_columns_match_schema():
     migration = Path(__file__).resolve().parents[3] / (
         "supabase/migrations/00002_weather_predictions_anomalies.sql"
     )
+    import re
+
     schema_sql = migration.read_text()
-    table_ddl = schema_sql.split("CREATE TABLE weather_snapshots")[1].split(");")[0]
+    match = re.search(
+        r"CREATE TABLE (?:IF NOT EXISTS )?(?:\w+\.)?\"?weather_snapshots\"?\s*\((.*?)\n\);",
+        schema_sql,
+        re.DOTALL,
+    )
+    assert match, "weather_snapshots DDL not found in migration 00002"
+    table_ddl = match.group(1)
 
     missing = [col for col in WEATHER_COLUMNS.split(",") if col not in table_ddl]
     assert not missing, f"columns not in weather_snapshots schema: {missing}"
