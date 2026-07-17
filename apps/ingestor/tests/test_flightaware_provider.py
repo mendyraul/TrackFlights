@@ -191,6 +191,13 @@ def test_scheduled_boards_fetch_once_per_day(tmp_path, monkeypatch):
 
 
 def test_watermark_windows_advance(tmp_path, monkeypatch):
+    from src import config
+
+    # Pin the lookback: the assertion below assumes the poll interval exceeds
+    # the 15-minute watermark overlap (true at the production 4h cadence, but
+    # not necessarily for whatever .env this test machine has).
+    monkeypatch.setattr(config.settings, "poll_interval_seconds", 14400)
+
     provider = _bare_provider()
     provider.base_url = "https://aeroapi.example/aeroapi"
     provider.api_key = "k"

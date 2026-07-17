@@ -12,7 +12,15 @@ logger = structlog.get_logger()
 
 MIA_LAT = 25.7959
 MIA_LON = -80.2870
-WEATHER_COLUMNS = "airport_iata,observed_at,temperature_c,dewpoint_c,humidity_pct,pressure_hpa,wind_speed_knots,wind_gust_knots,wind_direction_deg,visibility_km,cloud_cover_pct,weather_code,weather_description,is_thunderstorm,is_fog,precipitation_mm"
+# Must match supabase/migrations/00002 (weather_snapshots) — an unknown column
+# makes PostgREST 400 the read and kills every poll cycle after the first
+# weather interval elapses.
+WEATHER_COLUMNS = (
+    "airport_iata,observed_at,temperature_c,feels_like_c,humidity_pct,pressure_hpa,"
+    "wind_speed_knots,wind_gust_knots,wind_direction_deg,visibility_km,"
+    "cloud_coverage_pct,weather_code,weather_description,is_thunderstorm,is_fog,"
+    "is_freezing,precipitation_mm,precipitation_probability"
+)
 
 
 class WeatherIngester:
