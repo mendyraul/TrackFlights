@@ -105,3 +105,27 @@ def test_parse_bounding_box_and_request_estimates():
 def test_snapshot_egress_estimates_match_cost_guardrail_defaults():
     assert estimate_monthly_snapshot_egress_gib(35, 60) == pytest.approx(1.442, rel=0.001)
     assert estimate_supabase_daily_egress_budget_mib() == pytest.approx(170.7, rel=0.001)
+
+
+def test_weather_ingester_columns_match_schema():
+    """Every projected weather column must exist in migration 00002."""
+    from pathlib import Path
+
+    from src.services.weather_ingester import WEATHER_COLUMNS
+
+    migration = Path(__file__).resolve().parents[3] / (
+        "supabase/migrations/00002_weather_predictions_anomalies.sql"
+    )
+    import re
+
+    schema_sql = migration.read_text()
+    match = re.search(
+        r"CREATE TABLE (?:IF NOT EXISTS )?(?:\w+\.)?\"?weather_snapshots\"?\s*\((.*?)\n\);",
+        schema_sql,
+        re.DOTALL,
+    )
+    assert match, "weather_snapshots DDL not found in migration 00002"
+    table_ddl = match.group(1)
+
+    missing = [col for col in WEATHER_COLUMNS.split(",") if col not in table_ddl]
+    assert not missing, f"columns not in weather_snapshots schema: {missing}"
