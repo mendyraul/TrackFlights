@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useFlights } from "@/hooks/useFlights";
 import { supabase } from "@/lib/supabase";
 import type { Flight, FlightDirection } from "@/types/database";
+import { airportCoords } from "@/lib/airports";
 import { FlightDetailSidebar } from "@/components/map/FlightDetailSidebar";
 import { MapFilters } from "@/components/map/MapFilters";
 import { ConnectionBadge } from "@/components/ui/ConnectionBadge";
@@ -64,52 +65,78 @@ export function MapView() {
     ? (flights.find((f) => f.id === selectedFlight.id) ?? selectedFlight)
     : null;
 
+  // Origin/destination of the selected flight, highlighted on the map.
+  const highlightedAirports = syncedSelected
+    ? [syncedSelected.origin_iata, syncedSelected.destination_iata].filter((code): code is string =>
+        Boolean(code)
+      )
+    : [];
+
   useEffect(() => {
-    async function resolveRoute() {
-      if (!syncedSelected?.origin_iata || !syncedSelected.destination_iata) {
-        setRouteLine(null);
-        return;
-      }
+    const origin = syncedSelected?.origin_iata;
+    const destination = syncedSelected?.destination_iata;
 
-      const codes = [syncedSelected.origin_iata, syncedSelected.destination_iata];
-      const { data, error: airportError } = await supabase
-        .from("airports")
-        .select("iata_code, latitude, longitude")
-        .in("iata_code", codes);
+    if (!origin || !destination) {
+      setRouteLine(null);
+      return;
+    }
 
-      if (airportError || !data) {
-        setRouteLine(null);
-        return;
-      }
+    // Draw from static reference data first so the line appears on click.
+    // Waiting on Supabase costs ~7s when the database is unreachable, and the
+    // airports table ships with only MIA seeded, so the lookup below is a
+    // refinement — not the thing the user is waiting for.
+    const staticOrigin = airportCoords(origin);
+    const staticDestination = airportCoords(destination);
+    setRouteLine(
+      staticOrigin && staticDestination
+        ? { origin: staticOrigin, destination: staticDestination }
+        : null
+    );
 
-      const airports = (data ?? []) as Array<{
+    let cancelled = false;
+
+    async function refineFromDatabase() {
+      type AirportRow = {
         iata_code: string;
         latitude: number | null;
         longitude: number | null;
-      }>;
+      };
 
-      const byCode = new Map(airports.map((airport) => [airport.iata_code, airport] as const));
-
-      const origin = byCode.get(syncedSelected.origin_iata);
-      const destination = byCode.get(syncedSelected.destination_iata);
-
-      if (
-        origin?.latitude == null ||
-        origin.longitude == null ||
-        destination?.latitude == null ||
-        destination.longitude == null
-      ) {
-        setRouteLine(null);
+      let rows: AirportRow[] = [];
+      try {
+        const { data, error: airportError } = await supabase
+          .from("airports")
+          .select("iata_code, latitude, longitude")
+          .in("iata_code", [origin, destination]);
+        if (airportError || !data) return;
+        rows = data as AirportRow[];
+      } catch {
+        // Unreachable database: the static line already drawn stands.
         return;
       }
 
-      setRouteLine({
-        origin: [origin.latitude, origin.longitude],
-        destination: [destination.latitude, destination.longitude],
-      });
+      if (cancelled) return;
+
+      const byCode = new Map(rows.map((row) => [row.iata_code, row] as const));
+      const coords = (iata: string): [number, number] | null => {
+        const row = byCode.get(iata);
+        return row?.latitude != null && row.longitude != null
+          ? [row.latitude, row.longitude]
+          : airportCoords(iata);
+      };
+
+      const resolvedOrigin = coords(origin!);
+      const resolvedDestination = coords(destination!);
+      if (!resolvedOrigin || !resolvedDestination) return;
+
+      setRouteLine({ origin: resolvedOrigin, destination: resolvedDestination });
     }
 
-    void resolveRoute();
+    void refineFromDatabase();
+
+    return () => {
+      cancelled = true;
+    };
   }, [syncedSelected?.id, syncedSelected?.origin_iata, syncedSelected?.destination_iata]);
 
   if (loading) {
@@ -165,6 +192,7 @@ export function MapView() {
           selectedId={syncedSelected?.id ?? null}
           routeLine={routeLine}
           recentlyChanged={recentlyChanged}
+          highlightedAirports={highlightedAirports}
         />
       </div>
     </div>

@@ -15,3 +15,76 @@ body {
     -apple-system,
     sans-serif;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Leaflet overrides.
+
+   Leaflet's stylesheet is imported by FlightMap, which is a dynamic()
+   chunk, so its CSS loads *after* this file and wins any equal-specificity
+   contest. Every rule below is deliberately scoped under .leaflet-container
+   to outrank it regardless of load order.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* Pulse ring on the selected flight's origin/destination airport blobs. */
+@keyframes mia-airport-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.7;
+  }
+  70%,
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.mia-airport-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid currentcolor;
+  opacity: 0.7;
+  animation: mia-airport-pulse 1.6s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mia-airport-ring {
+    animation: none;
+  }
+}
+
+/* Popups and tooltips default to a white card, which clashes with the dark
+   theme and makes the monochrome-white airline logos invisible. */
+.leaflet-container .leaflet-popup-content-wrapper,
+.leaflet-container .leaflet-popup-tip {
+  background: #12122a;
+  color: #e5e7eb;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 60%);
+}
+
+.leaflet-container .leaflet-popup-content-wrapper {
+  border: 1px solid #374151;
+}
+
+.leaflet-container .leaflet-popup-close-button {
+  color: #9ca3af;
+}
+
+.leaflet-container .leaflet-popup-close-button:hover {
+  color: #f3f4f6;
+}
+
+.leaflet-container .leaflet-tooltip {
+  background: #12122a;
+  border-color: #374151;
+  color: #e5e7eb;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 50%);
+}
+
+.leaflet-container .leaflet-tooltip-top::before {
+  border-top-color: #374151;
+}
+
+.leaflet-container .leaflet-tooltip-bottom::before {
+  border-bottom-color: #374151;
+}

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useFlights } from "@/hooks/useFlights";
 import { ConnectionBadge } from "@/components/ui/ConnectionBadge";
 import type { Flight, FlightDirection, FlightStatus } from "@/types/database";
+import { AirlineLogo } from "@/components/ui/AirlineLogo";
 
 type SortField =
   | "flight_iata"
@@ -299,10 +300,17 @@ export function FlightBoard() {
                   }`}
                 >
                   <td className="px-4 py-3 text-gray-300">
-                    <span className="mr-1.5 font-mono text-xs text-mia-accent">
-                      {flight.airline_iata}
-                    </span>
-                    {flight.airline_name || "--"}
+                    <div className="flex items-center gap-2">
+                      <AirlineLogo
+                        iata={flight.airline_iata}
+                        name={flight.airline_name}
+                        size={20}
+                      />
+                      <span className="font-mono text-xs text-mia-accent">
+                        {flight.airline_iata}
+                      </span>
+                      <span className="truncate">{flight.airline_name || "--"}</span>
+                    </div>
                   </td>
                   <td className="px-4 py-3 font-mono font-semibold text-white">
                     {flight.flight_iata}

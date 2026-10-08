@@ -1,10 +1,13 @@
 "use client";
 
 import { memo, useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, Tooltip } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import type { Flight } from "@/types/database";
+import { SURROUNDING_AIRPORTS, lookupAirport, type AirportRef } from "@/lib/airports";
+import { AirlineLogo } from "@/components/ui/AirlineLogo";
+import { basemap } from "@/lib/basemap";
 import "leaflet/dist/leaflet.css";
 
 const MIA_CENTER: [number, number] = [25.7959, -80.287];
@@ -19,6 +22,8 @@ interface FlightMapProps {
     destination: [number, number];
   } | null;
   recentlyChanged: Set<string>;
+  /** IATA codes of the selected flight's origin/destination, highlighted on the map. */
+  highlightedAirports: readonly string[];
 }
 
 // ── Aircraft Icon ──────────────────────────────────────────────────────
@@ -47,14 +52,96 @@ function createAircraftIcon(
   });
 }
 
-// ── MIA Airport Marker ─────────────────────────────────────────────────
+// ── Airport Blobs ──────────────────────────────────────────────────────
 
-const MIA_ICON = L.divIcon({
-  className: "",
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
-  html: `<div style="width:14px;height:14px;background:#00d4ff;border-radius:50%;border:2px solid #fff;box-shadow:0 0 10px #00d4ff;"></div>`,
-});
+type AirportRole = "hub" | "nearby" | "highlighted";
+
+const AIRPORT_STYLE: Record<
+  AirportRole,
+  { size: number; color: string; glow: number; opacity: number }
+> = {
+  // MIA itself — always the brightest fixed point on the map.
+  hub: { size: 14, color: "#00d4ff", glow: 10, opacity: 1 },
+  // Ambient South Florida / regional fields: present but recessive.
+  nearby: { size: 8, color: "#38bdf8", glow: 6, opacity: 0.45 },
+  // Origin/destination of the selected flight.
+  highlighted: { size: 16, color: "#f59e0b", glow: 16, opacity: 1 },
+};
+
+function createAirportIcon(role: AirportRole): L.DivIcon {
+  const { size, color, glow, opacity } = AIRPORT_STYLE[role];
+  const ring =
+    role === "highlighted" ? `<span class="mia-airport-ring" style="color:${color};"></span>` : "";
+
+  return L.divIcon({
+    className: "",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    html: `<div style="position:relative;width:${size}px;height:${size}px;">
+      ${ring}
+      <span style="display:block;width:100%;height:100%;background:${color};border-radius:50%;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 ${glow}px ${color};opacity:${opacity};"></span>
+    </div>`,
+  });
+}
+
+function AirportBlob({ airport, role }: { airport: AirportRef; role: AirportRole }) {
+  return (
+    <Marker
+      position={[airport.lat, airport.lon]}
+      icon={createAirportIcon(role)}
+      // Keep blobs beneath aircraft markers so they never swallow a plane click.
+      zIndexOffset={-500}
+      keyboard={false}
+    >
+      <Tooltip direction="top" offset={[0, -8]} opacity={1}>
+        <strong>{airport.iata}</strong> — {airport.city}
+      </Tooltip>
+      <Popup>
+        <div style={{ fontSize: 12 }}>
+          <strong>{airport.iata}</strong>
+          <br />
+          {airport.name}
+          <br />
+          {airport.city}, {airport.country}
+        </div>
+      </Popup>
+    </Marker>
+  );
+}
+
+/**
+ * Ambient blobs for airports around MIA, plus the selected flight's endpoints.
+ * A highlighted endpoint outside the ambient set (a destination in Bogota, say)
+ * is added here so clicking a flight always reveals where it is headed.
+ */
+function AirportLayer({ highlighted }: { highlighted: readonly string[] }) {
+  const highlightedSet = new Set(highlighted);
+  const shown = new Map<string, AirportRef>();
+
+  for (const airport of SURROUNDING_AIRPORTS) shown.set(airport.iata, airport);
+  for (const code of highlightedSet) {
+    const airport = lookupAirport(code);
+    if (airport) shown.set(airport.iata, airport);
+  }
+
+  return (
+    <>
+      {[...shown.values()].map((airport) => (
+        <AirportBlob
+          key={airport.iata}
+          airport={airport}
+          role={
+            highlightedSet.has(airport.iata)
+              ? "highlighted"
+              : airport.iata === "MIA"
+                ? "hub"
+                : "nearby"
+          }
+        />
+      ))}
+    </>
+  );
+}
 
 // ── Smooth Marker (animates position changes) ──────────────────────────
 
@@ -113,7 +200,11 @@ function SmoothMarker({
     >
       <Popup>
         <div style={{ fontSize: 12 }}>
-          <strong>{flight.flight_iata}</strong> — {flight.airline_name}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <AirlineLogo iata={flight.airline_iata} name={flight.airline_name} size={18} />
+            <strong>{flight.flight_iata}</strong>
+          </div>
+          {flight.airline_name}
           <br />
           {flight.origin_iata} → {flight.destination_iata}
           <br />
@@ -175,6 +266,7 @@ function FlightMapInner({
   selectedId,
   routeLine,
   recentlyChanged,
+  highlightedAirports,
 }: FlightMapProps) {
   return (
     <MapContainer
@@ -183,19 +275,10 @@ function FlightMapInner({
       className="h-full w-full"
       style={{ background: "#0a0a1a" }}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-      />
+      <TileLayer attribution={basemap.attribution} url={basemap.url} />
 
-      {/* MIA airport marker */}
-      <Marker position={MIA_CENTER} icon={MIA_ICON}>
-        <Popup>
-          <strong>MIA</strong>
-          <br />
-          Miami International Airport
-        </Popup>
-      </Marker>
+      {/* Airport blobs (MIA, surrounding fields, selected flight endpoints) */}
+      <AirportLayer highlighted={highlightedAirports} />
 
       {routeLine && (
         <Polyline

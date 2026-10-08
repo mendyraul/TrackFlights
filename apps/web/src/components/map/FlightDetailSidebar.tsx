@@ -1,6 +1,8 @@
 "use client";
 
 import type { Flight } from "@/types/database";
+import { AirlineLogo } from "@/components/ui/AirlineLogo";
+import { formatCoords, formatVerticalSpeed } from "@/lib/geo";
 
 function formatTime(iso: string | null): string {
   if (!iso) return "--:--";
@@ -60,6 +62,7 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
       <div className="sticky top-0 z-10 border-b border-gray-800 bg-mia-panel px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
+            <AirlineLogo iata={flight.airline_iata} name={flight.airline_name} size={28} />
             <span className="text-xl font-bold text-mia-accent">{flight.flight_iata}</span>
             {isUpdating && <span className="h-2 w-2 rounded-full bg-orange-400 animate-ping" />}
           </div>
@@ -172,14 +175,9 @@ export function FlightDetailSidebar({ flight, isUpdating, onClose }: Props) {
               />
             </div>
             <div className="mt-2 flex justify-between text-xs text-gray-600">
-              <span>
-                {flight.latitude.toFixed(4)}°N, {flight.longitude?.toFixed(4)}°W
-              </span>
-              {flight.vertical_speed_fpm != null && (
-                <span>
-                  {flight.vertical_speed_fpm > 0 ? "↑" : "↓"} {Math.abs(flight.vertical_speed_fpm)}{" "}
-                  fpm
-                </span>
+              <span>{formatCoords(flight.latitude, flight.longitude)}</span>
+              {formatVerticalSpeed(flight.vertical_speed_fpm) && (
+                <span>{formatVerticalSpeed(flight.vertical_speed_fpm)}</span>
               )}
             </div>
           </div>
