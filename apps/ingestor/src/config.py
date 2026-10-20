@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     adsb_max_range_km: float = 200.0  # drop aircraft farther than this from MIA
     adsb_min_move_meters: float = 150.0  # skip writes for aircraft that barely moved
     adsb_max_seen_seconds: float = 60.0  # drop stale tracks (no recent position)
+    # Optional dead-man's switch (e.g. a healthchecks.io check URL). Pinged at
+    # most once a minute, and only when the decoder reported aircraft, so the
+    # check alerts on "ingestor down" *and* "radio hearing nothing".
+    heartbeat_ping_url: str = ""
+    heartbeat_ping_interval_seconds: int = 60
 
     # AeroAPI planning defaults for South Florida region searches.
     aeroapi_bbox: str = "25.2,-82.0,27.0,-80.0"

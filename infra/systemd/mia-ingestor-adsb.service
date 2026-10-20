@@ -2,12 +2,19 @@
 Description=MIA Flight Tracker - ADS-B Position Ingestor
 After=network-online.target
 Wants=network-online.target
+# Never stop retrying (the default gives up after 5 failed starts in 10 s).
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
+# Current Raspberry Pi OS images have no default "pi" user: set this (and the
+# /home/pi paths below) to the account you created in Raspberry Pi Imager.
 User=pi
 Group=pi
 WorkingDirectory=/home/pi/mia-flight-tracker/apps/ingestor
+# Secrets live only in these files, never in the repo: chmod 600 them and keep
+# them owned by the service user. EnvironmentFile takes KEY=value lines; a
+# trailing "# comment" becomes part of the value, so comments go on their own line.
 # Later EnvironmentFile entries override earlier ones — per-unit differences
 # (provider, poll interval) live in .env.adsb, shared secrets in .env.
 EnvironmentFile=/home/pi/mia-flight-tracker/.env
@@ -17,6 +24,10 @@ Restart=always
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
+
+# Light hardening; the ADS-B unit only reads local HTTP and writes to Supabase.
+NoNewPrivileges=true
+PrivateTmp=true
 
 # Resource limits
 MemoryMax=256M

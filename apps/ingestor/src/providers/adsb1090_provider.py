@@ -25,6 +25,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from src.config import settings
 from src.providers.base_provider import BaseFlightProvider
 from src.services.flight_normalizer import icao_callsign_to_iata
+from src.services.phase import infer_phase
 
 logger = structlog.get_logger()
 
@@ -41,6 +42,11 @@ def _haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> flo
     d_lon = radians(lon2 - lon1)
     a = sin(d_lat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(d_lon / 2) ** 2
     return 2 * _EARTH_RADIUS_M * asin(sqrt(a))
+
+
+def _normalize_hex(val: Any) -> str:
+    """ICAO address as uppercase hex; readsb prefixes non-ICAO (TIS-B) ids with '~'."""
+    return str(val).strip().lstrip("~").upper()
 
 
 def _to_int(val: Any) -> int | None:
@@ -63,6 +69,10 @@ class Adsb1090Provider(BaseFlightProvider):
         self.max_seen_seconds = settings.adsb_max_seen_seconds
         # icao24 -> (lat, lon) of the last position we emitted, for movement gating.
         self._last_emitted: dict[str, tuple[float, float]] = {}
+        # What the last poll saw before the movement gate: how many aircraft
+        # the decoder reported, and every in-range aircraft's hex/phase/
+        # distance. Feeds the heartbeat and hourly traffic stats.
+        self.last_poll: dict[str, Any] = {"received": 0, "observations": []}
 
     @property
     def name(self) -> str:
@@ -101,6 +111,7 @@ class Adsb1090Provider(BaseFlightProvider):
 
         kept: list[dict[str, Any]] = []
         active_hexes: set[str] = set()
+        observations: list[dict[str, Any]] = []
         max_range_m = self.max_range_km * 1000.0
 
         for ac in raw_aircraft:
@@ -119,6 +130,21 @@ class Adsb1090Provider(BaseFlightProvider):
                 continue
 
             active_hexes.add(hex_id)
+            alt_baro = ac.get("alt_baro")
+            observations.append(
+                {
+                    "hex": _normalize_hex(hex_id),
+                    "distance_km": distance_m / 1000.0,
+                    "phase": infer_phase(
+                        lat,
+                        lon,
+                        0 if alt_baro == "ground" else _to_int(alt_baro),
+                        ac.get("baro_rate", ac.get("geom_rate")),
+                        ac.get("track"),
+                        on_ground=alt_baro == "ground",
+                    ),
+                }
+            )
             last = self._last_emitted.get(hex_id)
             if last is not None:
                 moved = _haversine_meters(last[0], last[1], lat, lon)
@@ -132,6 +158,8 @@ class Adsb1090Provider(BaseFlightProvider):
         for stale_hex in set(self._last_emitted) - active_hexes:
             self._last_emitted.pop(stale_hex, None)
 
+        self.last_poll = {"received": len(raw_aircraft), "observations": observations}
+
         logger.info(
             "ADS-B snapshot",
             received=len(raw_aircraft),
@@ -143,10 +171,12 @@ class Adsb1090Provider(BaseFlightProvider):
     def normalize(self, raw: dict[str, Any], direction: str) -> dict[str, Any]:
         """Transform one readsb aircraft record into a canonical flight row.
 
-        ``direction`` is ignored; it is inferred per-aircraft from vertical rate
-        since ADS-B carries no arrival/departure board semantics.
+        ``direction`` is ignored; it is inferred per-aircraft (see
+        src/services/phase.py) since ADS-B carries no arrival/departure board.
+        The column only allows arrival/departure, so overflights are stored as
+        departures; the site re-derives the full phase for display.
         """
-        hex_id = str(raw.get("hex", "")).strip().lstrip("~").upper()
+        hex_id = _normalize_hex(raw.get("hex", ""))
         callsign = (raw.get("flight") or "").strip()
         # Convert ICAO callsigns to IATA idents so ADS-B contacts land on the
         # same flights_current row as schedule-feed data (AeroAPI et al).
@@ -156,17 +186,16 @@ class Adsb1090Provider(BaseFlightProvider):
         on_ground = alt_baro == "ground"
         vertical_rate = raw.get("baro_rate", raw.get("geom_rate"))
 
-        if on_ground:
-            status = "landed"
-            inferred_direction = "arrival"
-        else:
-            status = "en_route"
-            # Descending => arriving, otherwise treat as departing/overflying.
-            inferred_direction = (
-                "arrival"
-                if isinstance(vertical_rate, (int, float)) and vertical_rate < -64
-                else "departure"
-            )
+        status = "landed" if on_ground else "en_route"
+        phase = infer_phase(
+            raw.get("lat"),
+            raw.get("lon"),
+            0 if on_ground else _to_int(alt_baro),
+            vertical_rate if isinstance(vertical_rate, (int, float)) else None,
+            raw.get("track"),
+            on_ground=on_ground,
+        )
+        inferred_direction = "arrival" if phase in ("arriving", "on-ground") else "departure"
 
         return {
             "flight_iata": flight_iata,

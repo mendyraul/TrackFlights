@@ -3,6 +3,7 @@
 import time
 from dataclasses import asdict
 
+import httpx
 import structlog
 from supabase import create_client
 
@@ -11,6 +12,7 @@ from src.providers.base_provider import BaseFlightProvider
 from src.services.flight_diff_engine import compute_diff
 from src.services.flight_normalizer import normalize_batch
 from src.services.supabase_client import SupabaseFlightClient
+from src.services.traffic_stats import TrafficAccumulator
 from src.worker.capacity import (
     CapacityThresholds,
     build_capacity_snapshot,
@@ -43,6 +45,10 @@ class Poller:
         self._last_weather_time = 0.0
         self._last_successful_cycle_time = 0.0
         self._last_prune_time = 0.0
+        self._traffic = TrafficAccumulator()
+        # Log a missing-migration failure once, not every 15 s.
+        self._telemetry_warned = False
+        self._last_ping = 0.0
 
         # Lazy-init ML services (only if enabled)
         self._weather_ingester = None
@@ -101,6 +107,7 @@ class Poller:
         # ── 1-6. Flight ingestion ────────────────────────────────────
         flight_stats = await self._ingest_flights(airport)
         stats.update(flight_stats)
+        self._record_receiver_telemetry(flight_stats)
 
         # Get current flights for ML services
         current_flights = self.db.get_current_flights()
@@ -228,6 +235,47 @@ class Poller:
             "upserted": upserted,
             "archived": archived,
         }
+
+    def _record_receiver_telemetry(self, flight_stats: dict[str, int]) -> None:
+        """Heartbeat + hourly traffic for live position feeds.
+
+        Never fails the cycle: if the 20261020 migration isn't applied yet the
+        ingestor keeps working and logs one warning.
+        """
+        last_poll = getattr(self.provider, "last_poll", None)
+        if not self.provider.is_live_position_feed or last_poll is None:
+            return
+        observations = last_poll["observations"]
+        try:
+            self.db.record_heartbeat(
+                source=self.provider.name,
+                received=last_poll["received"],
+                in_range=len(observations),
+                rows_written=flight_stats.get("upserted", 0),
+            )
+            hour = self._traffic.add_poll(observations)
+            self.db.record_traffic_hour(hour.to_rpc_params())
+        except Exception:
+            if not self._telemetry_warned:
+                logger.exception(
+                    "Receiver telemetry write failed (is migration 20261020120000 applied?)"
+                )
+                self._telemetry_warned = True
+
+        if last_poll["received"] > 0:
+            self._ping_heartbeat_url()
+
+    def _ping_heartbeat_url(self) -> None:
+        """Dead-man's switch: tell an external monitor the receiver is alive."""
+        url = settings.heartbeat_ping_url
+        now = time.monotonic()
+        if not url or now - self._last_ping < settings.heartbeat_ping_interval_seconds:
+            return
+        self._last_ping = now
+        try:
+            httpx.get(url, timeout=5.0)
+        except Exception:
+            logger.warning("Heartbeat ping failed", url_host=httpx.URL(url).host)
 
     def _get_latest_weather_from_db(self) -> dict | None:
         """Read the most recent weather snapshot written by the other process."""
