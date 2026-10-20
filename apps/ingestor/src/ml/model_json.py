@@ -13,10 +13,14 @@ code review. Supported shapes (all produced by apps/ml/trackflights_ml/export.py
 
 Each tree is stored as parallel arrays (scikit-learn's tree_ layout):
 feature[i] < 0 marks a leaf; otherwise go left when x[feature] <= threshold.
+scikit-learn casts inputs to float32 before comparing against thresholds, so
+the evaluator does too; otherwise a value right at a split could go the
+other way and the Pi would disagree with the trained model.
 """
 
 import json
 import math
+import struct
 from pathlib import Path
 from typing import Any
 
@@ -106,8 +110,12 @@ def _tree_value(tree: dict[str, list], x: list[float]) -> list[float]:
     feature, threshold = tree["feature"], tree["threshold"]
     left, right = tree["left"], tree["right"]
     while feature[node] >= 0:
-        node = left[node] if x[feature[node]] <= threshold[node] else right[node]
+        node = left[node] if _f32(x[feature[node]]) <= threshold[node] else right[node]
     return tree["value"][node]
+
+
+def _f32(value: float) -> float:
+    return struct.unpack("f", struct.pack("f", value))[0]
 
 
 def _softmax(raw: list[float]) -> list[float]:
