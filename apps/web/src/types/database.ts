@@ -47,6 +47,8 @@ export interface Flight {
   arrival_gate: string | null;
   baggage_belt: string | null;
   updated_at: string;
+  /** ICAO 24-bit hex address, projected from raw_data->>hex by the snapshot route. */
+  icao_hex?: string | null;
 }
 
 export interface Airline {

@@ -34,6 +34,9 @@ export const FLIGHT_SNAPSHOT_COLUMNS = [
   "arrival_gate",
   "baggage_belt",
   "updated_at",
+  // ADS-B ICAO 24-bit address. Not a column: the ingestor keeps it in
+  // raw_data, so project it out under a stable name.
+  "icao_hex:raw_data->>hex",
 ].join(",");
 
 export const ANALYTICS_HOURLY_COLUMNS = [

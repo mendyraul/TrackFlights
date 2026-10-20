@@ -18,6 +18,7 @@ describe("dashboard select projections", () => {
     expect(snapshotColumns).toContain("ground_speed_knots");
     expect(snapshotColumns).toContain("departure_terminal");
     expect(snapshotColumns).toContain("arrival_gate");
+    expect(snapshotColumns).toContain("icao_hex:raw_data->>hex");
     expect(snapshotColumns).not.toContain("departure_airport_iata");
     expect(snapshotColumns).not.toContain("arrival_airport_iata");
     expect(snapshotColumns).not.toContain("estimated_departure");

@@ -1,236 +1,199 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useFlights } from "@/hooks/useFlights";
 import { DataStatusBanner } from "@/components/ui/DataStatusBanner";
-import type { Flight, FlightDirection, FlightStatus } from "@/types/database";
 import { AirlineLogo } from "@/components/ui/AirlineLogo";
+import { toAircraft, visibleFlights, type Aircraft } from "@/lib/aircraft";
+import { PHASE_LABEL, type FlightPhase } from "@/lib/phase";
+import { formatAge } from "@/lib/freshness";
+import { formatVerticalSpeed } from "@/lib/geo";
 
 type SortField =
-  | "flight_iata"
-  | "airline_name"
-  | "route"
-  | "scheduled"
-  | "estimated"
-  | "status"
-  | "gate";
+  | "operator"
+  | "ident"
+  | "phase"
+  | "altitude"
+  | "speed"
+  | "vrate"
+  | "distance"
+  | "seen";
 type SortDir = "asc" | "desc";
+type PhaseFilter = FlightPhase | "all";
 
-const ALL_STATUSES: { value: FlightStatus | ""; label: string }[] = [
-  { value: "", label: "Any Status" },
-  { value: "scheduled", label: "Scheduled" },
-  { value: "en_route", label: "En Route" },
-  { value: "landed", label: "Landed" },
-  { value: "departed", label: "Departed" },
-  { value: "delayed", label: "Delayed" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "diverted", label: "Diverted" },
+const PHASE_FILTERS: { value: PhaseFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "arriving", label: "Arriving" },
+  { value: "departing", label: "Departing" },
+  { value: "overflight", label: "Overflights" },
+  { value: "on-ground", label: "On ground" },
 ];
 
-function formatTime(iso: string | null): string {
-  if (!iso) return "--:--";
-  return new Date(iso).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
+const PHASE_STYLE: Record<FlightPhase, string> = {
+  arriving: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  departing: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  overflight: "bg-gray-500/15 text-gray-300 border-gray-500/30",
+  "on-ground": "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  unknown: "bg-gray-500/10 text-gray-400 border-gray-600/30",
+};
 
-function statusBadge(status: Flight["status"]) {
-  const colors: Record<string, string> = {
-    en_route: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-    landed: "bg-green-500/20 text-green-400 border-green-500/30",
-    arrived: "bg-green-500/20 text-green-400 border-green-500/30",
-    departed: "bg-green-500/20 text-green-400 border-green-500/30",
-    scheduled: "bg-gray-500/20 text-gray-400 border-gray-500/30",
-    delayed: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    cancelled: "bg-red-500/20 text-red-400 border-red-500/30",
-    diverted: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-    unknown: "bg-gray-500/20 text-gray-500 border-gray-500/30",
-  };
+const NUMERIC = (n: number | null | undefined) => (n == null ? Number.NEGATIVE_INFINITY : n);
 
-  return (
-    <span
-      className={`inline-block rounded border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${colors[status] || colors.unknown}`}
-    >
-      {status.replace("_", " ")}
-    </span>
-  );
-}
-
-function getSortValue(flight: Flight, field: SortField, direction: FlightDirection): string {
+function sortValue(a: Aircraft, field: SortField): string | number {
+  const f = a.flight;
   switch (field) {
-    case "flight_iata":
-      return flight.flight_iata;
-    case "airline_name":
-      return flight.airline_name || "";
-    case "route":
-      return direction === "arrival" ? flight.origin_iata || "" : flight.destination_iata || "";
-    case "scheduled":
-      return (
-        (direction === "arrival" ? flight.scheduled_arrival : flight.scheduled_departure) || ""
-      );
-    case "estimated":
-      return (
-        (direction === "arrival"
-          ? flight.estimated_arrival || flight.actual_arrival
-          : flight.actual_departure) || ""
-      );
-    case "status":
-      return flight.status;
-    case "gate":
-      return (direction === "arrival" ? flight.arrival_gate : flight.departure_gate) || "";
-    default:
-      return "";
+    case "operator":
+      return a.operator.label;
+    case "ident":
+      return a.ident;
+    case "phase":
+      return PHASE_LABEL[a.phase];
+    case "altitude":
+      return NUMERIC(f.altitude_ft);
+    case "speed":
+      return NUMERIC(f.ground_speed_knots);
+    case "vrate":
+      return NUMERIC(f.vertical_speed_fpm);
+    case "distance":
+      return a.distanceKm ?? Number.POSITIVE_INFINITY;
+    case "seen":
+      return -a.updatedAt;
   }
 }
 
 export function FlightBoard() {
   const { flights, loading, freshness, dataUpdatedAt, now, recentlyChanged } = useFlights();
-  const [direction, setDirection] = useState<FlightDirection>("arrival");
+  const [phase, setPhase] = useState<PhaseFilter>("all");
+  const [operator, setOperator] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<FlightStatus | "">("");
-  const [airlineFilter, setAirlineFilter] = useState("");
   const [sort, setSort] = useState<{ field: SortField; dir: SortDir }>({
-    field: "scheduled",
+    field: "distance",
     dir: "asc",
   });
 
-  const toggleSort = (field: SortField) => {
+  const aircraft = useMemo(
+    () => visibleFlights(flights, freshness, now).map(toAircraft),
+    // `now` ticks every second; recompute the tracked set at most per snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [flights, freshness]
+  );
+
+  const operators = useMemo(
+    () => [...new Set(aircraft.map((a) => a.operator.label))].sort(),
+    [aircraft]
+  );
+
+  // Only show schedule columns when some row actually has schedule data
+  // (ADS-B never does; the optional AeroAPI feed sometimes does).
+  const hasRoutes = aircraft.some((a) => a.flight.origin_iata || a.flight.destination_iata);
+
+  const rows = useMemo(() => {
+    const q = search.trim().toUpperCase();
+    return aircraft
+      .filter((a) => phase === "all" || a.phase === phase)
+      .filter((a) => !operator || a.operator.label === operator)
+      .filter(
+        (a) =>
+          !q ||
+          a.ident.toUpperCase().includes(q) ||
+          (a.hex ?? "").includes(q) ||
+          a.operator.label.toUpperCase().includes(q)
+      )
+      .sort((a, b) => {
+        const av = sortValue(a, sort.field);
+        const bv = sortValue(b, sort.field);
+        const cmp =
+          typeof av === "number" && typeof bv === "number"
+            ? av - bv
+            : String(av).localeCompare(String(bv));
+        return sort.dir === "asc" ? cmp : -cmp;
+      });
+  }, [aircraft, phase, operator, search, sort]);
+
+  const toggleSort = (field: SortField) =>
     setSort((prev) =>
       prev.field === field
         ? { field, dir: prev.dir === "asc" ? "desc" : "asc" }
         : { field, dir: "asc" }
     );
-  };
 
-  const sortIndicator = (field: SortField) => {
-    if (sort.field !== field) return <span className="ml-1 text-gray-600">↕</span>;
-    return <span className="ml-1 text-mia-accent">{sort.dir === "asc" ? "↑" : "↓"}</span>;
-  };
-
-  // Unique airlines for filter
-  const airlines = useMemo(() => {
-    const codes = new Set<string>();
-    for (const f of flights) {
-      if (f.airline_iata) codes.add(f.airline_iata);
-    }
-    return [...codes].sort();
-  }, [flights]);
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return flights
-      .filter((f) => f.direction === direction)
-      .filter((f) => !statusFilter || f.status === statusFilter)
-      .filter((f) => !airlineFilter || f.airline_iata === airlineFilter)
-      .filter(
-        (f) =>
-          !q ||
-          f.flight_iata.toLowerCase().includes(q) ||
-          f.airline_name?.toLowerCase().includes(q) ||
-          f.origin_iata?.toLowerCase().includes(q) ||
-          f.destination_iata?.toLowerCase().includes(q) ||
-          f.origin_name?.toLowerCase().includes(q) ||
-          f.destination_name?.toLowerCase().includes(q)
-      )
-      .sort((a, b) => {
-        const aVal = getSortValue(a, sort.field, direction);
-        const bVal = getSortValue(b, sort.field, direction);
-        const cmp = aVal.localeCompare(bVal);
-        return sort.dir === "asc" ? cmp : -cmp;
-      });
-  }, [flights, direction, search, statusFilter, airlineFilter, sort]);
-
-  if (loading) {
+  const header = (field: SortField, label: string, align: "left" | "right" = "left") => {
+    const active = sort.field === field;
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-mia-accent border-t-transparent" />
-          <p className="text-gray-400">Loading flight board...</p>
-        </div>
-      </div>
+      <th
+        scope="col"
+        className={`px-3 py-3 font-medium ${align === "right" ? "text-right" : "text-left"}`}
+        aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+      >
+        <button
+          type="button"
+          onClick={() => toggleSort(field)}
+          className="inline-flex items-center gap-1 rounded uppercase tracking-wider hover:text-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-mia-accent"
+        >
+          {label}
+          <span aria-hidden="true" className={active ? "text-mia-accent" : "text-gray-600"}>
+            {active ? (sort.dir === "asc" ? "↑" : "↓") : "↕"}
+          </span>
+        </button>
+      </th>
     );
-  }
+  };
 
   return (
-    <div className="p-6">
-      {/* Board header */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        {/* Direction toggle */}
-        <div className="flex overflow-hidden rounded-lg border border-gray-700">
-          {(["arrival", "departure"] as FlightDirection[]).map((dir) => (
+    <div className="px-4 py-5 sm:px-6">
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <div
+          role="group"
+          aria-label="Flight phase"
+          className="flex max-w-full overflow-x-auto rounded-lg border border-gray-700"
+        >
+          {PHASE_FILTERS.map((p) => (
             <button
-              key={dir}
-              onClick={() => setDirection(dir)}
-              className={`px-5 py-2.5 text-sm font-semibold uppercase tracking-wider transition-colors ${
-                direction === dir
+              key={p.value}
+              type="button"
+              aria-pressed={phase === p.value}
+              onClick={() => setPhase(p.value)}
+              className={`whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors ${
+                phase === p.value
                   ? "bg-mia-accent text-black"
-                  : "bg-mia-panel text-gray-400 hover:text-white"
+                  : "bg-mia-panel text-gray-300 hover:text-white"
               }`}
             >
-              {dir}s
+              {p.label}
             </button>
           ))}
         </div>
 
-        {/* Status filter */}
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as FlightStatus | "")}
-          className="rounded-lg border border-gray-700 bg-mia-panel px-3 py-2.5 text-sm text-gray-200"
-        >
-          {ALL_STATUSES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        <label className="flex flex-col gap-1 text-xs text-gray-400">
+          Operator
+          <select
+            value={operator}
+            onChange={(e) => setOperator(e.target.value)}
+            className="rounded-lg border border-gray-700 bg-mia-panel px-3 py-2 text-sm text-gray-200"
+          >
+            <option value="">All operators</option>
+            {operators.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
 
-        {/* Airline filter */}
-        <select
-          value={airlineFilter}
-          onChange={(e) => setAirlineFilter(e.target.value)}
-          className="rounded-lg border border-gray-700 bg-mia-panel px-3 py-2.5 text-sm text-gray-200"
-        >
-          <option value="">All Airlines</option>
-          {airlines.map((code) => (
-            <option key={code} value={code}>
-              {code}
-            </option>
-          ))}
-        </select>
-
-        {/* Search */}
-        <div className="relative">
+        <label className="flex flex-col gap-1 text-xs text-gray-400">
+          Search
           <input
-            type="text"
-            placeholder="Search flight, airline, city..."
+            type="search"
+            placeholder="Callsign, hex or airline"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-56 rounded-lg border border-gray-700 bg-mia-panel pl-9 pr-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:border-mia-accent focus:outline-none"
+            className="w-56 rounded-lg border border-gray-700 bg-mia-panel px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-mia-accent focus:outline-none"
           />
-          <svg
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-        </div>
+        </label>
 
-        {/* Connection status + count */}
-        <div className="ml-auto flex items-center gap-3">
-          <span className="rounded bg-mia-dark px-2.5 py-1 text-xs font-medium text-gray-400">
-            {filtered.length} flights
-          </span>
-        </div>
+        <p className="ml-auto text-xs text-gray-400" aria-live="polite">
+          {loading ? "Loading aircraft…" : `${rows.length} of ${aircraft.length} aircraft`}
+        </p>
       </div>
 
       <DataStatusBanner
@@ -241,130 +204,126 @@ export function FlightBoard() {
         className="mb-4"
       />
 
-      {/* Table */}
       <div className="overflow-x-auto rounded-lg border border-gray-800">
-        <table className="w-full text-sm">
-          <thead className="bg-mia-panel text-xs uppercase tracking-wider text-gray-400">
+        <table className="w-full min-w-[60rem] text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
+          <caption className="sr-only">
+            Aircraft heard by the receiver, with phase inferred from altitude, vertical rate, track
+            and distance to MIA
+          </caption>
+          <thead className="bg-mia-panel text-xs text-gray-400">
             <tr>
-              <th
-                className="cursor-pointer px-4 py-3 text-left hover:text-gray-200"
-                onClick={() => toggleSort("airline_name")}
-              >
-                Airline {sortIndicator("airline_name")}
+              {header("operator", "Operator")}
+              {header("ident", "Callsign")}
+              <th scope="col" className="px-3 py-3 text-left font-medium uppercase tracking-wider">
+                ICAO hex
               </th>
-              <th
-                className="cursor-pointer px-4 py-3 text-left hover:text-gray-200"
-                onClick={() => toggleSort("flight_iata")}
-              >
-                Flight {sortIndicator("flight_iata")}
+              {header("phase", "Phase")}
+              {hasRoutes && (
+                <th
+                  scope="col"
+                  className="px-3 py-3 text-left font-medium uppercase tracking-wider"
+                >
+                  Route
+                </th>
+              )}
+              {header("altitude", "Altitude", "right")}
+              {header("speed", "Speed", "right")}
+              <th scope="col" className="px-3 py-3 text-right font-medium uppercase tracking-wider">
+                Track
               </th>
-              <th
-                className="cursor-pointer px-4 py-3 text-left hover:text-gray-200"
-                onClick={() => toggleSort("route")}
-              >
-                {direction === "arrival" ? "Origin" : "Destination"} {sortIndicator("route")}
-              </th>
-              <th
-                className="cursor-pointer px-4 py-3 text-left hover:text-gray-200"
-                onClick={() => toggleSort("scheduled")}
-              >
-                Scheduled {sortIndicator("scheduled")}
-              </th>
-              <th
-                className="cursor-pointer px-4 py-3 text-left hover:text-gray-200"
-                onClick={() => toggleSort("estimated")}
-              >
-                {direction === "arrival" ? "ETA" : "Actual"} {sortIndicator("estimated")}
-              </th>
-              <th
-                className="cursor-pointer px-4 py-3 text-left hover:text-gray-200"
-                onClick={() => toggleSort("status")}
-              >
-                Status {sortIndicator("status")}
-              </th>
-              <th
-                className="cursor-pointer px-4 py-3 text-left hover:text-gray-200"
-                onClick={() => toggleSort("gate")}
-              >
-                Gate {sortIndicator("gate")}
-              </th>
+              {header("vrate", "V/S", "right")}
+              {header("distance", "From MIA", "right")}
+              {header("seen", "Last seen", "right")}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800/50">
-            {filtered.map((flight) => {
-              const isChanged = recentlyChanged.has(flight.id);
+          <tbody className="divide-y divide-gray-800/60">
+            {loading &&
+              Array.from({ length: 8 }, (_, i) => (
+                <tr key={`skeleton-${i}`} aria-hidden="true">
+                  <td colSpan={hasRoutes ? 11 : 10} className="px-3 py-3">
+                    <div className="h-4 w-full animate-pulse rounded bg-gray-800/70" />
+                  </td>
+                </tr>
+              ))}
+            {rows.map((a) => {
+              const f = a.flight;
+              const changed = recentlyChanged.has(f.id);
               return (
                 <tr
-                  key={flight.id}
-                  className={`transition-all duration-700 ${
-                    isChanged
-                      ? "bg-mia-accent/5 ring-1 ring-inset ring-mia-accent/20"
-                      : "hover:bg-gray-800/30"
+                  key={f.id}
+                  className={`transition-colors duration-700 ${
+                    changed ? "bg-mia-accent/5" : "hover:bg-gray-800/30"
                   }`}
                 >
-                  <td className="px-4 py-3 text-gray-300">
+                  <td className="px-3 py-2.5 text-gray-200">
                     <div className="flex items-center gap-2">
                       <AirlineLogo
-                        iata={flight.airline_iata}
-                        name={flight.airline_name}
+                        iata={a.operator.airline?.iata ?? null}
+                        name={a.operator.label}
                         size={20}
                       />
-                      <span className="font-mono text-xs text-mia-accent">
-                        {flight.airline_iata}
-                      </span>
-                      <span className="truncate">{flight.airline_name || "--"}</span>
+                      <span className="max-w-[14rem] truncate">{a.operator.label}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-mono font-semibold text-white">
-                    {flight.flight_iata}
+                  <td className="px-3 py-2.5 font-mono font-semibold text-white">
+                    {a.callsign ?? <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="font-mono font-medium">
-                      {direction === "arrival"
-                        ? flight.origin_iata || "--"
-                        : flight.destination_iata || "--"}
-                    </span>
-                    <span className="ml-2 text-xs text-gray-500">
-                      {direction === "arrival" ? flight.origin_name : flight.destination_name}
+                  <td className="px-3 py-2.5 font-mono text-gray-300">{a.hex ?? "—"}</td>
+                  <td className="px-3 py-2.5">
+                    <span
+                      className={`inline-block rounded border px-2 py-0.5 text-xs font-semibold ${PHASE_STYLE[a.phase]}`}
+                    >
+                      {PHASE_LABEL[a.phase]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-mono">
-                    {formatTime(
-                      direction === "arrival"
-                        ? flight.scheduled_arrival
-                        : flight.scheduled_departure
-                    )}
+                  {hasRoutes && (
+                    <td className="px-3 py-2.5 font-mono text-gray-300">
+                      {f.origin_iata || f.destination_iata
+                        ? `${f.origin_iata ?? "?"} → ${f.destination_iata ?? "?"}`
+                        : "—"}
+                    </td>
+                  )}
+                  <td className="px-3 py-2.5 text-right font-mono tabular-nums text-gray-200">
+                    {f.altitude_ft === 0
+                      ? "GND"
+                      : f.altitude_ft != null
+                        ? `${f.altitude_ft.toLocaleString()} ft`
+                        : "—"}
                   </td>
-                  <td className="px-4 py-3 font-mono">
-                    {direction === "arrival"
-                      ? formatTime(flight.estimated_arrival || flight.actual_arrival)
-                      : formatTime(flight.actual_departure)}
-                    {flight.delay_minutes > 0 && (
-                      <span className="ml-1.5 text-xs text-yellow-400">
-                        +{flight.delay_minutes}m
-                      </span>
-                    )}
+                  <td className="px-3 py-2.5 text-right font-mono tabular-nums text-gray-200">
+                    {f.ground_speed_knots != null ? `${f.ground_speed_knots} kt` : "—"}
                   </td>
-                  <td className="px-4 py-3">{statusBadge(flight.status)}</td>
-                  <td className="px-4 py-3 font-mono text-gray-300">
-                    {(direction === "arrival" ? flight.arrival_gate : flight.departure_gate) ||
-                      "--"}
+                  <td className="px-3 py-2.5 text-right font-mono tabular-nums text-gray-300">
+                    {f.heading != null ? `${Math.round(f.heading)}°` : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-mono tabular-nums text-gray-300">
+                    {formatVerticalSpeed(f.vertical_speed_fpm) ?? "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-mono tabular-nums text-gray-200">
+                    {a.distanceKm != null ? `${Math.round(a.distanceKm)} km` : "—"}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-right text-gray-400">
+                    {formatAge(now - a.updatedAt)}
                   </td>
                 </tr>
               );
             })}
-            {filtered.length === 0 && (
+            {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-gray-500">
-                  {search || statusFilter || airlineFilter
-                    ? "No flights match your filters"
-                    : "No flights found"}
+                <td colSpan={hasRoutes ? 11 : 10} className="px-4 py-12 text-center text-gray-400">
+                  {aircraft.length > 0
+                    ? "No aircraft match these filters."
+                    : "No aircraft in range right now."}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+      <p className="mt-3 text-xs text-gray-400">
+        Phase is inferred from altitude, vertical rate, track and distance to MIA. Without a flight
+        plan, an aircraft descending into Fort Lauderdale can still show as arriving.
+      </p>
     </div>
   );
 }

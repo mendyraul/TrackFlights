@@ -9,6 +9,7 @@ import { airportCoords } from "@/lib/airports";
 import { FlightDetailSidebar } from "@/components/map/FlightDetailSidebar";
 import { MapFilters } from "@/components/map/MapFilters";
 import { DataStatusBanner } from "@/components/ui/DataStatusBanner";
+import { visibleFlights } from "@/lib/aircraft";
 
 const FlightMap = dynamic(() => import("@/components/map/FlightMap"), {
   ssr: false,
@@ -35,7 +36,16 @@ export interface MapFilterState {
 }
 
 export function MapView() {
-  const { flights, loading, freshness, dataUpdatedAt, now, recentlyChanged } = useFlights();
+  const {
+    flights: allFlights,
+    loading,
+    freshness,
+    dataUpdatedAt,
+    now,
+    recentlyChanged,
+  } = useFlights();
+  // Live: only aircraft heard recently. Offline: the last known picture.
+  const flights = visibleFlights(allFlights, freshness, now);
   const stale = freshness === "offline" || freshness === "error";
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
   const [routeLine, setRouteLine] = useState<RouteLine | null>(null);
