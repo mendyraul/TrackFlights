@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     # check alerts on "ingestor down" *and* "radio hearing nothing".
     heartbeat_ping_url: str = ""
     heartbeat_ping_interval_seconds: int = 60
+    # Local position history for training the phase classifier (SQLite on
+    # the Pi's SD card or a USB drive). Empty path = off. See
+    # src/services/track_log.py and `python -m src.tools.track_log_stats`.
+    track_log_path: str = ""
+    track_log_sample_seconds: int = 30
+    track_log_retention_days: int = 30
+    track_log_max_mb: int = 1024
+    track_log_min_free_mb: int = 1024
 
     # AeroAPI planning defaults for South Florida region searches.
     aeroapi_bbox: str = "25.2,-82.0,27.0,-80.0"

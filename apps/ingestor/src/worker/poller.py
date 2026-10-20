@@ -12,6 +12,7 @@ from src.providers.base_provider import BaseFlightProvider
 from src.services.flight_diff_engine import compute_diff
 from src.services.flight_normalizer import normalize_batch
 from src.services.supabase_client import SupabaseFlightClient
+from src.services.track_log import TrackLog
 from src.services.traffic_stats import TrafficAccumulator
 from src.worker.capacity import (
     CapacityThresholds,
@@ -48,6 +49,8 @@ class Poller:
         # Log a missing-migration failure once, not every 15 s.
         self._telemetry_warned = False
         self._last_ping = 0.0
+        self._track_log = self._open_track_log()
+        self._last_track_prune = 0.0
 
         self._weather_ingester = None
 
@@ -226,8 +229,40 @@ class Poller:
                 )
                 self._telemetry_warned = True
 
+        self._record_track_log(observations)
+
         if last_poll["received"] > 0:
             self._ping_heartbeat_url()
+
+    def _open_track_log(self) -> TrackLog | None:
+        """Open the local position log if TRACK_LOG_PATH is set; never fatal."""
+        if not settings.track_log_path or not self.provider.is_live_position_feed:
+            return None
+        try:
+            log = TrackLog(
+                settings.track_log_path,
+                sample_seconds=settings.track_log_sample_seconds,
+                retention_days=settings.track_log_retention_days,
+                max_mb=settings.track_log_max_mb,
+                min_free_mb=settings.track_log_min_free_mb,
+            )
+            logger.info("Track log enabled", **log.stats())
+            return log
+        except Exception:
+            logger.exception("Track log disabled: could not open", path=settings.track_log_path)
+            return None
+
+    def _record_track_log(self, observations: list[dict]) -> None:
+        if self._track_log is None:
+            return
+        try:
+            self._track_log.record(observations)
+            if time.time() - self._last_track_prune >= 3600:
+                self._track_log.prune()
+                self._last_track_prune = time.time()
+                logger.info("Track log status", **self._track_log.stats())
+        except Exception:
+            logger.exception("Track log write failed")
 
     def _ping_heartbeat_url(self) -> None:
         """Dead-man's switch: tell an external monitor the receiver is alive."""

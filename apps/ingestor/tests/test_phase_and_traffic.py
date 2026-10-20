@@ -143,6 +143,8 @@ def _poller_with(db, provider):
     poller._traffic = TrafficAccumulator()
     poller._telemetry_warned = False
     poller._last_ping = 0.0
+    poller._track_log = None
+    poller._last_track_prune = 0.0
     return poller
 
 
@@ -189,3 +191,21 @@ def test_ping_only_when_the_radio_hears_aircraft(monkeypatch):
     poller._record_receiver_telemetry({})
     poller._record_receiver_telemetry({})  # throttled to once a minute
     assert pings == ["https://hc-ping.example/abc"]
+
+
+def test_track_log_receives_every_observation_and_never_breaks_a_poll(tmp_path):
+    provider = _provider()
+    provider.last_poll = {
+        "received": 2,
+        "observations": [
+            {"hex": "A1", "lat": 25.8, "lon": -80.3, "phase": "arriving", "distance_km": 3.0}
+        ],
+    }
+    poller = _poller_with(_FakeDb(), provider)
+
+    class Broken:
+        def record(self, _obs):
+            raise OSError("disk unplugged")
+
+    poller._track_log = Broken()
+    poller._record_receiver_telemetry({"upserted": 0})  # must not raise

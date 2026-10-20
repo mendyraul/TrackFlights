@@ -131,17 +131,23 @@ class Adsb1090Provider(BaseFlightProvider):
 
             active_hexes.add(hex_id)
             alt_baro = ac.get("alt_baro")
+            on_ground = alt_baro == "ground"
+            alt_ft = 0 if on_ground else _to_int(alt_baro)
+            vrate = _to_int(ac.get("baro_rate", ac.get("geom_rate")))
             observations.append(
                 {
                     "hex": _normalize_hex(hex_id),
+                    "callsign": (ac.get("flight") or "").strip() or None,
+                    "lat": lat,
+                    "lon": lon,
+                    "alt_ft": alt_ft,
+                    "vrate_fpm": vrate,
+                    "gs_kt": _to_int(ac.get("gs")),
+                    "track": ac.get("track"),
+                    "on_ground": on_ground,
                     "distance_km": distance_m / 1000.0,
                     "phase": infer_phase(
-                        lat,
-                        lon,
-                        0 if alt_baro == "ground" else _to_int(alt_baro),
-                        ac.get("baro_rate", ac.get("geom_rate")),
-                        ac.get("track"),
-                        on_ground=alt_baro == "ground",
+                        lat, lon, alt_ft, vrate, ac.get("track"), on_ground=on_ground
                     ),
                 }
             )
