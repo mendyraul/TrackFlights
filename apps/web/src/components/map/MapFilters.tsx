@@ -12,7 +12,7 @@ interface Props {
   mappableCount: number;
 }
 
-const PHASES: FlightPhase[] = ["arriving", "departing", "overflight", "on-ground"];
+const PHASES: FlightPhase[] = ["arriving", "departing", "overflight", "other-airport", "on-ground"];
 const control =
   "rounded border border-gray-700 bg-mia-dark px-2 py-1.5 text-sm text-gray-200 focus:border-mia-accent focus:outline-none";
 

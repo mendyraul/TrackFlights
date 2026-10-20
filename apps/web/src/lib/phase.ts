@@ -17,12 +17,20 @@
 
 export const KMIA: readonly [number, number] = [25.79325, -80.29056];
 
-export type FlightPhase = "arriving" | "departing" | "overflight" | "on-ground" | "unknown";
+export type FlightPhase =
+  | "arriving"
+  | "departing"
+  | "overflight"
+  // Only the learned classifier (ingestor) can tell FLL/OPF/... traffic apart.
+  | "other-airport"
+  | "on-ground"
+  | "unknown";
 
 export const PHASE_LABEL: Record<FlightPhase, string> = {
   arriving: "Arriving",
   departing: "Departing",
   overflight: "Overflight",
+  "other-airport": "Nearby airport",
   "on-ground": "On ground",
   unknown: "Unknown",
 };
@@ -67,6 +75,11 @@ export interface PhaseInput {
 
 /** Vertical rate beyond which an aircraft counts as climbing/descending. */
 const VRATE_FPM = 300;
+
+/** The ingestor's model phase, when it sent a valid one. */
+export function modelPhase(value: string | null | undefined): FlightPhase | null {
+  return value && value in PHASE_LABEL && value !== "unknown" ? (value as FlightPhase) : null;
+}
 
 export function inferPhase(f: PhaseInput): FlightPhase {
   if (f.latitude == null || f.longitude == null) return "unknown";

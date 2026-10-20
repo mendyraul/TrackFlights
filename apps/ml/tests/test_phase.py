@@ -267,3 +267,22 @@ def test_dataset_has_no_rows_from_the_ground_or_unlabeled(tracks):
     assert set(data["label"]) <= set(CLASSES)
     assert (data["alt_ft"] > 0).all()
     assert isinstance(data["day"].iloc[0], type(pd.Timestamp("2026-01-01").date()))
+
+
+def test_trained_model_runs_in_the_pi_classifier_poll_by_poll(tracks, tmp_path):
+    from src.ml.phase_service import PhaseClassifier
+
+    path, flights = tracks
+    model_path = tmp_path / "phase.json"
+    train_and_export(path, model_path, tmp_path / "phase.md")
+    classifier = PhaseClassifier(JsonModel.load(model_path))
+
+    # Replay one FLL arrival the way the Pi sees it: one observation per poll.
+    _, _, pts = next(f for f in flights if f[1] == "other_airport")
+    seen = []
+    for p in pts:
+        phase = classifier.apply([{**p, "hex": "FLL1"}], now=p["ts"])["FLL1"]
+        seen.append(phase)
+    airborne = [s for s, p in zip(seen, pts, strict=True) if not p["on_ground"]]
+    assert airborne.count("other-airport") / len(airborne) > 0.8
+    assert seen[-1] == "on-ground"

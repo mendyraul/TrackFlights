@@ -31,6 +31,8 @@ export const FLIGHT_SNAPSHOT_COLUMNS = [
   // ADS-B ICAO 24-bit address. Not a column: the ingestor keeps it in
   // raw_data, so project it out under a stable name.
   "icao_hex:raw_data->>hex",
+  // Phase from the ingestor's trained classifier, when one is installed.
+  "model_phase:raw_data->>phase",
 ].join(",");
 
 export const ANALYTICS_HOURLY_COLUMNS = [

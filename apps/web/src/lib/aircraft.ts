@@ -1,6 +1,6 @@
 import type { Flight } from "@/types/database";
 import { broadcastCallsign, describeCallsign, type CallsignInfo } from "@/lib/airlines";
-import { KMIA, distanceKm, inferPhase, type FlightPhase } from "@/lib/phase";
+import { KMIA, distanceKm, inferPhase, modelPhase, type FlightPhase } from "@/lib/phase";
 import { trackedNow, type Freshness } from "@/lib/freshness";
 
 /** A snapshot row plus everything the UI derives from ADS-B state. */
@@ -13,6 +13,8 @@ export interface Aircraft {
   hex: string | null;
   operator: CallsignInfo;
   phase: FlightPhase;
+  /** True when the phase came from the ingestor's trained model, not the rules. */
+  phaseFromModel: boolean;
   distanceKm: number | null;
   updatedAt: number;
 }
@@ -26,7 +28,10 @@ export function toAircraft(flight: Flight): Aircraft {
     ident: callsign ?? hex ?? flight.flight_iata,
     hex,
     operator: describeCallsign(callsign),
-    phase: inferPhase(flight),
+    // Prefer the trained model's phase (written by the ingestor); fall back
+    // to the hand-written rules when no model is installed.
+    phase: modelPhase(flight.model_phase) ?? inferPhase(flight),
+    phaseFromModel: modelPhase(flight.model_phase) !== null,
     distanceKm:
       flight.latitude != null && flight.longitude != null
         ? distanceKm(flight.latitude, flight.longitude, KMIA[0], KMIA[1])

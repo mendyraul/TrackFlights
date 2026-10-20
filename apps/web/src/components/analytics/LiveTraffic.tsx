@@ -69,6 +69,7 @@ export function summarize(aircraft: Aircraft[]) {
     departing: count("departing"),
     overflight: count("overflight"),
     onGround: count("on-ground"),
+    otherAirport: count("other-airport"),
     farthestKm: distances.length ? Math.max(...distances) : null,
     highestFt: altitudes.length ? Math.max(...altitudes) : null,
     operators: top,
@@ -92,7 +93,15 @@ export function LiveTraffic({ aircraft, stale }: { aircraft: Aircraft[]; stale: 
         />
         <Tile label="Arriving" value={String(s.arriving)} sub="inferred" />
         <Tile label="Departing" value={String(s.departing)} sub="inferred" />
-        <Tile label="Overflights" value={String(s.overflight)} sub={`${s.onGround} on ground`} />
+        <Tile
+          label="Overflights"
+          value={String(s.overflight)}
+          sub={
+            s.otherAirport > 0
+              ? `${s.otherAirport} at nearby fields · ${s.onGround} on ground`
+              : `${s.onGround} on ground`
+          }
+        />
         <Tile
           label="Farthest"
           value={s.farthestKm != null ? `${Math.round(s.farthestKm)} km` : "—"}

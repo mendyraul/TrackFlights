@@ -44,6 +44,9 @@ class HourlyTraffic:
     def to_rpc_params(self) -> dict[str, Any]:
         counts = {"arriving": 0, "departing": 0, "overflight": 0, "on-ground": 0}
         for phase in self.phases.values():
+            # Traffic to/from other fields isn't MIA traffic: count it with
+            # overflights so the phase buckets still add up to unique_aircraft.
+            phase = "overflight" if phase == "other-airport" else phase
             if phase in counts:
                 counts[phase] += 1
         return {

@@ -109,7 +109,10 @@ export function FlightDetailSidebar({ aircraft: a, now, isUpdating, onClose }: P
         </div>
 
         <dl className="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
-          <Field label="Phase (inferred)" value={PHASE_LABEL[a.phase]} />
+          <Field
+            label={a.phaseFromModel ? "Phase (model)" : "Phase (inferred)"}
+            value={PHASE_LABEL[a.phase]}
+          />
           <Field label="Vertical rate" value={formatVerticalSpeed(f.vertical_speed_fpm) ?? "—"} />
           <Field
             label="From MIA"

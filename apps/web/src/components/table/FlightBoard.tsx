@@ -26,6 +26,7 @@ const PHASE_FILTERS: { value: PhaseFilter; label: string }[] = [
   { value: "arriving", label: "Arriving" },
   { value: "departing", label: "Departing" },
   { value: "overflight", label: "Overflights" },
+  { value: "other-airport", label: "Nearby airports" },
   { value: "on-ground", label: "On ground" },
 ];
 
@@ -33,6 +34,7 @@ const PHASE_STYLE: Record<FlightPhase, string> = {
   arriving: "bg-sky-500/15 text-sky-300 border-sky-500/30",
   departing: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   overflight: "bg-gray-500/15 text-gray-300 border-gray-500/30",
+  "other-airport": "bg-violet-500/15 text-violet-300 border-violet-500/30",
   "on-ground": "bg-amber-500/15 text-amber-300 border-amber-500/30",
   unknown: "bg-gray-500/10 text-gray-400 border-gray-600/30",
 };
@@ -324,8 +326,9 @@ export function FlightBoard() {
         </table>
       </div>
       <p className="mt-3 text-xs text-gray-400">
-        Phase is inferred from altitude, vertical rate, track and distance to MIA. Without a flight
-        plan, an aircraft descending into Fort Lauderdale can still show as arriving.
+        {aircraft.some((a) => a.phaseFromModel)
+          ? "Phase comes from a classifier trained on this receiver's own tracks (labels from where each aircraft actually landed or took off), which can tell MIA traffic from nearby fields."
+          : "Phase is inferred from altitude, vertical rate, track and distance to MIA. Without a flight plan, an aircraft descending into Fort Lauderdale can still show as arriving."}
       </p>
     </div>
   );

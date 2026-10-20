@@ -57,3 +57,28 @@ describe("visibleFlights", () => {
     expect(visibleFlights(rows, "offline", now)).toHaveLength(2);
   });
 });
+
+describe("toAircraft phase source", () => {
+  const base = {
+    latitude: 25.79325,
+    longitude: -79.99,
+    altitude_ft: 6000,
+    vertical_speed_fpm: -1200,
+    heading: 270,
+  };
+
+  it("uses the ingestor's model phase when present", async () => {
+    const { toAircraft } = await import("./aircraft");
+    const a = toAircraft(row({ ...base, model_phase: "other-airport" }));
+    expect(a.phase).toBe("other-airport");
+    expect(a.phaseFromModel).toBe(true);
+  });
+
+  it("falls back to the rules without a (valid) model phase", async () => {
+    const { toAircraft } = await import("./aircraft");
+    expect(toAircraft(row(base)).phase).toBe("arriving");
+    const junk = toAircraft(row({ ...base, model_phase: "teleporting" }));
+    expect(junk.phase).toBe("arriving");
+    expect(junk.phaseFromModel).toBe(false);
+  });
+});

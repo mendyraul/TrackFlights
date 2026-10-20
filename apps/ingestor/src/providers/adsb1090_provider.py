@@ -15,6 +15,7 @@ Notes:
     DB footprint) bounded. See docs/architecture.md.
 """
 
+import time
 from math import asin, cos, radians, sin, sqrt
 from typing import Any
 
@@ -73,6 +74,10 @@ class Adsb1090Provider(BaseFlightProvider):
         # the decoder reported, and every in-range aircraft's hex/phase/
         # distance. Feeds the heartbeat and hourly traffic stats.
         self.last_poll: dict[str, Any] = {"received": 0, "observations": []}
+        # Optional learned classifier (src/ml/phase_service.py), set by the
+        # poller when PHASE_MODEL_PATH is configured; None = rule-based phase.
+        self.phase_classifier: Any = None
+        self._model_phases: dict[str, str] = {}
 
     @property
     def name(self) -> str:
@@ -164,6 +169,8 @@ class Adsb1090Provider(BaseFlightProvider):
         for stale_hex in set(self._last_emitted) - active_hexes:
             self._last_emitted.pop(stale_hex, None)
 
+        classifier = getattr(self, "phase_classifier", None)
+        self._model_phases = classifier.apply(observations, time.time()) if classifier else {}
         self.last_poll = {"received": len(raw_aircraft), "observations": observations}
 
         logger.info(
@@ -201,6 +208,15 @@ class Adsb1090Provider(BaseFlightProvider):
             raw.get("track"),
             on_ground=on_ground,
         )
+        # The learned classifier, when installed, overrides the rules. Its
+        # phase rides in raw_data (no schema change needed for the site to
+        # read it) along with the model version that produced it.
+        model_phase = getattr(self, "_model_phases", {}).get(hex_id)
+        raw_data: dict[str, Any] = {"hex": hex_id, "category": raw.get("category")}
+        if model_phase:
+            phase = model_phase
+            raw_data["phase"] = model_phase
+            raw_data["phase_model"] = self.phase_classifier.version
         inferred_direction = "arrival" if phase in ("arriving", "on-ground") else "departure"
 
         return {
@@ -218,5 +234,5 @@ class Adsb1090Provider(BaseFlightProvider):
             "ground_speed_knots": _to_int(raw.get("gs")),
             "vertical_speed_fpm": _to_int(vertical_rate),
             "data_source": self.name,
-            "raw_data": {"hex": hex_id, "category": raw.get("category")},
+            "raw_data": raw_data,
         }

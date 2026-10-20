@@ -53,6 +53,8 @@ export interface Flight {
   updated_at: string;
   /** ICAO 24-bit hex address, projected from raw_data->>hex by the snapshot route. */
   icao_hex?: string | null;
+  /** Learned-classifier phase, projected from raw_data->>phase (absent without a model). */
+  model_phase?: string | null;
 }
 
 export interface Airline {

@@ -10,6 +10,8 @@ from supabase import create_client
 
 from src.config import settings
 from src.ml.forecast_service import ForecastService
+from src.ml.model_json import JsonModel
+from src.ml.phase_service import PhaseClassifier
 from src.providers.base_provider import BaseFlightProvider
 from src.services.flight_diff_engine import compute_diff
 from src.services.flight_normalizer import normalize_batch
@@ -54,6 +56,7 @@ class Poller:
         self._last_ping = 0.0
         self._track_log = self._open_track_log()
         self._forecast = self._load_forecast()
+        self._load_phase_model()
         self._last_track_prune = 0.0
 
         self._weather_ingester = None
@@ -261,6 +264,22 @@ class Poller:
         except Exception:
             logger.exception("Forecast disabled: could not load model")
             return None
+
+    def _load_phase_model(self) -> None:
+        """Attach the learned classifier to the provider; rules stay on failure."""
+        if not settings.phase_model_path or not self.provider.is_live_position_feed:
+            return
+        try:
+            classifier = PhaseClassifier(JsonModel.load(settings.phase_model_path))
+            self.provider.phase_classifier = classifier
+            logger.info(
+                "Phase model loaded",
+                path=settings.phase_model_path,
+                version=classifier.version,
+                heldout_macro_f1=classifier.model.metrics.get("macro_f1"),
+            )
+        except Exception:
+            logger.exception("Phase model disabled: could not load; using rules")
 
     def _run_forecast(self) -> None:
         if self._forecast is None:
