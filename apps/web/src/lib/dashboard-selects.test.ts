@@ -16,8 +16,10 @@ describe("dashboard select projections", () => {
     expect(snapshotColumns).toContain("origin_iata");
     expect(snapshotColumns).toContain("destination_iata");
     expect(snapshotColumns).toContain("ground_speed_knots");
-    expect(snapshotColumns).toContain("departure_terminal");
-    expect(snapshotColumns).toContain("arrival_gate");
+    // Never filled by ADS-B and not rendered: dropped to cut egress.
+    expect(snapshotColumns).not.toContain("departure_terminal");
+    expect(snapshotColumns).not.toContain("arrival_gate");
+    expect(snapshotColumns).not.toContain("baggage_belt");
     expect(snapshotColumns).toContain("icao_hex:raw_data->>hex");
     expect(snapshotColumns).not.toContain("departure_airport_iata");
     expect(snapshotColumns).not.toContain("arrival_airport_iata");

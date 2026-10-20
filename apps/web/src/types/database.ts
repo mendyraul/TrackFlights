@@ -14,6 +14,10 @@ export type FlightStatus =
 
 export type FlightDirection = "arrival" | "departure";
 
+/**
+ * A flights_current row. The snapshot route selects a subset of these columns
+ * (FLIGHT_SNAPSHOT_COLUMNS); fields it doesn't select arrive undefined.
+ */
 export interface Flight {
   id: string;
   flight_iata: string;
