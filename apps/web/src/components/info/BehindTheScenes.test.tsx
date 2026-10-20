@@ -23,7 +23,15 @@ describe("BehindTheScenes", () => {
     for (const table of screen.getAllByRole("table")) {
       expect(within(table).getAllByRole("columnheader").length).toBeGreaterThanOrEqual(3);
     }
-    expect(screen.getByRole("columnheader", { name: /Quality build/i })).toBeInTheDocument();
+  });
+
+  it("describes the actual hardware: generic RTL-SDR, Pi 3, antenna in a window", () => {
+    const { container } = render(<BehindTheScenes />);
+    const text = container.textContent ?? "";
+    expect(text).toMatch(/Generic RTL-SDR/);
+    expect(text).toMatch(/Raspberry Pi 3/);
+    expect(text).toMatch(/window/);
+    expect(text).not.toMatch(/roof-mounted|Rooftop|Raspberry Pi 4/);
   });
 
   it("states the corrected pipeline facts", () => {
@@ -35,16 +43,12 @@ describe("BehindTheScenes", () => {
     expect(text).not.toMatch(/60–80%/);
     // Egress claim is per CDN region, not global.
     expect(text).toMatch(/same CDN region/);
-    expect(text).not.toMatch(/ssh pi@raspberrypi/);
     expect(text).toMatch(/ICAO hex address/);
   });
 
-  it("keeps env-file comments on their own lines", () => {
-    render(<BehindTheScenes />);
-    const env = screen.getByLabelText(/Ingestor environment file/i).textContent ?? "";
-    expect(env).toMatch(/ADSB_JSON_URL/);
-    for (const line of env.split("\n")) {
-      if (/^[A-Z_]+=/.test(line)) expect(line).not.toMatch(/#/);
-    }
+  it("has no intro blurb, big-picture section or build guide", () => {
+    const { container } = render(<BehindTheScenes />);
+    const text = container.textContent ?? "";
+    expect(text).not.toMatch(/The big picture|Build it yourself|puts live planes on this map/);
   });
 });

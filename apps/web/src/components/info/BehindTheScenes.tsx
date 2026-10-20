@@ -2,8 +2,8 @@ import { Photo } from "./Photo";
 import { measuredRangeKm, photos } from "@/lib/photos";
 
 /**
- * Static explainer of how live aircraft get onto the map, from the rooftop
- * antenna to the browser. No data is fetched here. Numbers are the
+ * Static explainer of how live aircraft get onto the map, from the antenna
+ * to the browser. No data is fetched here. Numbers are the
  * pipeline's configured values (ingestor config, infra/systemd/env.adsb.example,
  * the snapshot route) or measurements, and the text says which is which.
  * Photos and the measured range are filled in lib/photos.ts.
@@ -36,38 +36,6 @@ function Section({
 /** Inline code that wraps instead of pushing the page sideways on phones. */
 function C({ children }: { children: React.ReactNode }) {
   return <code className="text-mia-sky [overflow-wrap:anywhere]">{children}</code>;
-}
-
-function PipelineStrip() {
-  const stages = [
-    "Antenna",
-    "RTL-SDR",
-    "readsb",
-    "aircraft.json",
-    "ingestor",
-    "Supabase",
-    "CDN",
-    "This map",
-  ];
-  return (
-    <ol
-      aria-label="Data pipeline"
-      className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-800 bg-mia-dark/50 p-4"
-    >
-      {stages.map((stage, i) => (
-        <li key={stage} className="flex items-center gap-2">
-          <span className="rounded bg-mia-panel px-2.5 py-1 text-xs font-medium text-gray-200">
-            {stage}
-          </span>
-          {i < stages.length - 1 && (
-            <span aria-hidden="true" className="text-mia-accent">
-              →
-            </span>
-          )}
-        </li>
-      ))}
-    </ol>
-  );
 }
 
 /** A real table with a header row, scrolling inside its own box on phones. */
@@ -115,90 +83,28 @@ function DataTable({
   );
 }
 
-function CodeBlock({ children, label }: { children: string; label: string }) {
-  return (
-    <pre
-      aria-label={label}
-      tabIndex={0}
-      className="max-w-full overflow-x-auto rounded-md border border-gray-800 bg-mia-dark/70 p-3 text-xs leading-relaxed text-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-mia-accent"
-    >
-      <code>{children}</code>
-    </pre>
-  );
-}
-
-function BuildStep({
-  n,
-  title,
-  children,
-}: {
-  n: number;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <li className="flex gap-3 sm:gap-4">
-      <div
-        aria-hidden="true"
-        className="flex h-7 w-7 flex-none items-center justify-center rounded-full border border-mia-accent/40 bg-mia-accent/10 text-sm font-semibold text-mia-accent"
-      >
-        {n}
-      </div>
-      <div className="min-w-0 flex-1 space-y-2">
-        <h3 className="text-sm font-semibold text-gray-100">{title}</h3>
-        <div className="space-y-2 text-sm leading-relaxed text-gray-300">{children}</div>
-      </div>
-    </li>
-  );
-}
-
 export function BehindTheScenes() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-gray-100">Behind the Scenes</h1>
-        <p className="text-sm text-gray-400">
-          How an antenna on my roof puts live planes on this map, built end to end on a Raspberry
-          Pi. Below: how the pipeline works, the numbers behind it, and how to build your own.
-        </p>
-      </header>
-
-      <Section title="The big picture">
-        <p>
-          Aircraft broadcast their position on <strong>1090&nbsp;MHz</strong>. A rooftop antenna and
-          a Raspberry Pi catch those broadcasts and decode them; a small Python service filters them
-          and stores them; the site serves a cached snapshot to your browser. The live positions
-          come straight out of the sky, not from a paid flight API.
-        </p>
-        <PipelineStrip />
-      </Section>
+      <h1 className="text-2xl font-bold text-gray-100">Behind the Scenes</h1>
 
       <Section step="Step 1" title="The hardware">
-        <p>
-          Reception is mostly about a clean signal path and a high, clear antenna location. Two ways
-          to build it:
-        </p>
+        <p>My setup is deliberately simple, and it works fine:</p>
         <DataTable
-          caption="Parts for a quality build and a starter build"
-          columns={["Part", "Quality build (~$120–160)", "Starter build (~$50–70)"]}
+          caption="The receiver hardware I use"
+          columns={["Part", "What I use", "Notes"]}
           rows={[
             [
-              "Antenna",
-              "Tuned 1090 MHz vertical, roof-mounted",
-              "Basic 1090 MHz antenna, as high as you can",
-            ],
-            [
               "SDR receiver",
-              "FlightAware Pro Stick Plus (filter + amplifier built in)",
-              "Generic RTL-SDR dongle",
+              "Generic RTL-SDR USB dongle",
+              "Works fine. A filtered, amplified stick (e.g. FlightAware Pro Stick Plus) is the upgrade if local interference becomes a problem.",
             ],
             [
-              "1090 MHz bandpass filter",
-              "Not needed (built into the Pro Stick Plus)",
-              "Recommended: only if your SDR lacks one",
+              "Antenna",
+              "1090 MHz antenna facing out a window",
+              "Indoors, so the building blocks part of the sky. Moving it outside and higher is the biggest range upgrade.",
             ],
-            ["Compute", "Raspberry Pi 4", "Raspberry Pi 4"],
-            ["Feedline", "Short run of low-loss coax", "Shortest coax you can manage"],
+            ["Computer", "Raspberry Pi 3", "Runs the decoder and the Python ingestor together."],
           ]}
         />
         <Photo photo={photos.hardware} />
@@ -215,7 +121,10 @@ export function BehindTheScenes() {
               <strong>{measuredRangeKm}&nbsp;km</strong>, from tar1090&apos;s range plot.
             </>
           ) : (
-            <>Rooftop receivers commonly hear aircraft a couple of hundred kilometres out.</>
+            <>
+              Mine sits in a window rather than on the roof, so part of the sky is blocked, but it
+              still hears aircraft well over 100&nbsp;km away.
+            </>
           )}{" "}
           The ingestor only keeps aircraft within <strong>200&nbsp;km</strong> of Miami
           International (KMIA, 25.79°N / 80.29°W), so the map stays about local traffic.
@@ -353,124 +262,6 @@ export function BehindTheScenes() {
         </p>
         <Photo photo={photos.liveMap} />
       </Section>
-
-      <section className="rounded-lg border border-mia-accent/30 bg-mia-panel p-4 sm:p-6">
-        <div className="mb-4 space-y-2">
-          <h2 className="text-lg font-semibold text-gray-100">Build it yourself</h2>
-          <p className="text-sm leading-relaxed text-gray-400">
-            The path from parts to a working feed. Install scripts and package names change, so
-            check each project&apos;s current instructions as you go.
-          </p>
-        </div>
-
-        <ol className="space-y-6">
-          <BuildStep n={1} title="Gather the hardware">
-            <p>
-              Start from the parts table above. A shorter coax run and a higher, clearer antenna
-              matter more than almost anything else. Skip the separate bandpass filter if your SDR
-              already has one, like the FlightAware Pro Stick Plus.
-            </p>
-          </BuildStep>
-
-          <BuildStep n={2} title="Flash and prep the Raspberry Pi">
-            <p>
-              Write Raspberry Pi OS Lite to a microSD card with Raspberry Pi Imager. In its
-              settings, create your user, enable SSH and set Wi-Fi so the Pi works headless from the
-              first boot. Current images have no default <C>pi</C> user, so log in with the one you
-              created:
-            </p>
-            <CodeBlock label="Connect and update the Pi">{`ssh <your-username>@<your-hostname>.local
-sudo apt update && sudo apt full-upgrade -y
-sudo reboot`}</CodeBlock>
-          </BuildStep>
-
-          <BuildStep n={3} title="Install a decoder and a local map">
-            <p>
-              Two common routes; either one works as the data source. With{" "}
-              <strong>readsb + tar1090</strong> (wiedehopf&apos;s install scripts):
-            </p>
-            <CodeBlock label="Install readsb and tar1090">{`sudo bash -c "$(wget -nv -O - https://github.com/wiedehopf/adsb-scripts/raw/master/readsb-install.sh)"
-sudo bash -c "$(wget -nv -O - https://github.com/wiedehopf/tar1090/raw/master/install.sh)"`}</CodeBlock>
-            <p>
-              Or flash FlightAware&apos;s <strong>PiAware</strong> image, which bundles{" "}
-              <C>dump1090-fa</C> and its SkyAware map and also feeds FlightAware.
-            </p>
-          </BuildStep>
-
-          <BuildStep n={4} title="Connect the SDR and confirm reception">
-            <p>
-              Plug in the SDR, connect the antenna, and open the local map. Aircraft should appear
-              within a minute or two. Where the map and the JSON live depends on the route:
-            </p>
-            <DataTable
-              caption="Local map and aircraft.json locations"
-              columns={["Setup", "Map in a browser", "aircraft.json"]}
-              rows={[
-                [
-                  "readsb + tar1090",
-                  <C key="m">http://&lt;pi-ip&gt;/tar1090</C>,
-                  <C key="j">http://&lt;pi-ip&gt;/tar1090/data/aircraft.json</C>,
-                ],
-                [
-                  "PiAware (dump1090-fa)",
-                  <C key="m">http://&lt;pi-ip&gt;:8080</C>,
-                  <C key="j">http://&lt;pi-ip&gt;:8080/data/aircraft.json</C>,
-                ],
-              ]}
-            />
-            <p>
-              The ingestor defaults to <C>http://127.0.0.1:8080/data/aircraft.json</C>, the PiAware
-              layout. On a readsb + tar1090 Pi, point <C>ADSB_JSON_URL</C> at the tar1090 path
-              instead.
-            </p>
-          </BuildStep>
-
-          <BuildStep n={5} title="Tune for range">
-            <p>
-              Mount the antenna as high and as clear of obstructions as you safely can. Adjust the
-              SDR gain until the message rate and range peak without the receiver overloading;
-              tar1090 shows both, and its range plot shows where buildings or trees block you.
-            </p>
-          </BuildStep>
-
-          <BuildStep n={6} title="Point the ingestor at your feed">
-            <p>
-              Run this project&apos;s Python ingestor on the Pi and give it an env file. systemd
-              reads <C>EnvironmentFile</C> lines as <C>KEY=value</C>, and a trailing{" "}
-              <C># comment</C> would become part of the value, so comments go on their own line:
-            </p>
-            <CodeBlock label="Ingestor environment file">{`# Read ADS-B from the local decoder (PiAware path; see the table above)
-FLIGHT_PROVIDER=adsb1090
-ADSB_JSON_URL=http://127.0.0.1:8080/data/aircraft.json
-# Poll every 15 seconds
-POLL_INTERVAL_SECONDS=15
-# Keep aircraft within 200 km of MIA
-ADSB_MAX_RANGE_KM=200
-# Drop aircraft with no position in the last 60 s
-ADSB_MAX_SEEN_SECONDS=60
-# Skip rewriting aircraft that moved less than 150 m
-ADSB_MIN_MOVE_METERS=150
-# Your Supabase project URL
-SUPABASE_URL=https://<project-ref>.supabase.co
-# Service-role key: write access, Pi only. Never commit it or ship it to a browser.
-SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
-# Optional: a healthchecks.io URL that alerts you when pings stop
-HEARTBEAT_PING_URL=`}</CodeBlock>
-            <p>
-              Keep the file readable only by the service user (<C>chmod 600</C>).
-            </p>
-          </BuildStep>
-
-          <BuildStep n={7} title="Run it as a service and verify">
-            <p>
-              Install the systemd unit from <C>infra/systemd/</C> so the ingestor starts on boot and
-              restarts on failure, then watch it with <C>journalctl -u mia-ingestor-adsb -f</C>.
-              Each poll logs how many aircraft it received and wrote. Within a refresh or two your
-              traffic shows up on the map, and the header switches to &ldquo;Receiver online&rdquo;.
-            </p>
-          </BuildStep>
-        </ol>
-      </section>
 
       <Section title="Benchmarks at a glance">
         <DataTable

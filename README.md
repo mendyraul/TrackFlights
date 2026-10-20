@@ -1,7 +1,7 @@
 # MIA Flight Tracker
 
-Live aircraft around Miami International, decoded from 1090 MHz ADS-B by a Raspberry Pi
-receiver on my roof. A Python ingestor filters what the antenna hears and writes it to
+Live aircraft around Miami International, decoded from 1090 MHz ADS-B by my own Raspberry Pi
+receiver (a generic RTL-SDR and an antenna facing out a window). A Python ingestor filters what the antenna hears and writes it to
 Postgres (Supabase); a Next.js site on Vercel serves it through a CDN-cached API to a
 Leaflet map, a sortable aircraft board and an analytics page.
 
@@ -32,7 +32,7 @@ flowchart LR
 
 ## Tech stack
 
-- **Receiver:** RTL-SDR + 1090 MHz antenna, readsb or dump1090-fa on a Raspberry Pi 4
+- **Receiver:** generic RTL-SDR dongle + 1090 MHz antenna in a window, decoder on a Raspberry Pi 3
 - **Ingestor:** Python 3.11, httpx, Supabase client, structlog; systemd service on the Pi
 - **Database:** Supabase Postgres with row-level security, pg_cron jobs and SQL rollups
 - **Web:** Next.js 15 (App Router), React 18, TypeScript, Tailwind, Leaflet, Recharts

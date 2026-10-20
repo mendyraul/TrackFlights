@@ -8,7 +8,7 @@ export const site = {
   name: "MIA Flight Tracker",
   url: "https://track-flights-web.vercel.app",
   description:
-    "Live aircraft around Miami International, decoded from ADS-B by a Raspberry Pi receiver on my roof.",
+    "Live aircraft around Miami International, decoded from ADS-B by my own Raspberry Pi receiver.",
   author: "Raul Mendy",
   repoUrl: "https://github.com/mendyraul/TrackFlights",
   githubUrl: "https://github.com/mendyraul",

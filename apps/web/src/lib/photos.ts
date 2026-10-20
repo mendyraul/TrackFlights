@@ -15,11 +15,11 @@ export interface PhotoSlot {
 }
 
 export const photos = {
-  /** Step 1: the roof antenna, and the Pi + SDR in its case. */
+  /** Step 1: the antenna in the window, and the Pi + RTL-SDR. */
   hardware: {
     src: "",
-    alt: "The 1090 MHz antenna on the roof, and the Raspberry Pi with its SDR in a case",
-    caption: "The antenna on my roof, and the Pi + SDR that decode it.",
+    alt: "The 1090 MHz antenna facing out a window, and the Raspberry Pi 3 with its RTL-SDR dongle",
+    caption: "The antenna in my window, and the Pi + RTL-SDR that decode it.",
     width: 1600,
     height: 1200,
   },

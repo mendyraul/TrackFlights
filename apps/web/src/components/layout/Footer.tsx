@@ -18,7 +18,7 @@ export function Footer() {
           <a href={site.githubUrl} className={`${link} underline`}>
             {site.author}
           </a>
-          : the rooftop receiver, the ingestor, and this site.
+          : the receiver, the ingestor, and this site.
         </p>
         <nav aria-label="Project links" className="flex flex-wrap gap-x-4 gap-y-1">
           {links.map((l) => (
