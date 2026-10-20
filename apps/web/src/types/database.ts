@@ -225,3 +225,28 @@ export interface Database {
     };
   };
 }
+
+// ── 20261020120000_traffic_history_and_heartbeat.sql ─────────────────────
+
+/** One hour of what the ADS-B receiver observed. */
+export interface TrafficHourly {
+  hour: string;
+  unique_aircraft: number;
+  arriving: number;
+  departing: number;
+  overflights: number;
+  on_ground: number;
+  peak_concurrent: number;
+  max_range_km: number | null;
+  polls: number;
+  updated_at: string;
+}
+
+/** Rewritten by each ingestor every poll. */
+export interface IngestorHeartbeat {
+  source: string;
+  last_poll_at: string;
+  aircraft_received: number;
+  aircraft_in_range: number;
+  rows_written: number;
+}
