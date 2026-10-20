@@ -264,3 +264,16 @@ export interface IngestorHeartbeat {
   aircraft_in_range: number;
   rows_written: number;
 }
+
+// ── 20261023120000_traffic_forecast.sql ──────────────────────────────────
+
+/** Predicted distinct aircraft for an upcoming hour, from the exported model. */
+export interface TrafficForecast {
+  hour: string;
+  predicted_aircraft: number;
+  model_version: string;
+  /** The model's mean absolute error on its held-out week. */
+  model_mae: number | null;
+  /** The best simple baseline's error on the same week. */
+  baseline_mae: number | null;
+}

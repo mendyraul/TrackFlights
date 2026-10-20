@@ -239,6 +239,27 @@ class SupabaseFlightClient:
             on_conflict="source",
         ).execute()
 
+    def get_traffic_counts(self, hours: list[datetime]) -> dict[datetime, tuple[int, int]]:
+        """(unique_aircraft, polls) for the given hours, for forecast lag features."""
+        if not hours:
+            return {}
+        result = (
+            self.client.table("traffic_hourly")
+            .select("hour,unique_aircraft,polls")
+            .in_("hour", [h.isoformat() for h in hours])
+            .execute()
+        )
+        return {
+            datetime.fromisoformat(row["hour"]).astimezone(UTC): (
+                row["unique_aircraft"],
+                row["polls"],
+            )
+            for row in result.data or []
+        }
+
+    def upsert_traffic_forecast(self, rows: list[dict[str, Any]]) -> None:
+        self.client.table("traffic_forecast").upsert(rows, on_conflict="hour").execute()
+
     def record_traffic_hour(self, params: dict[str, Any]) -> None:
         """Merge the current hour's traffic stats (see record_traffic_hour SQL)."""
         self.client.rpc("record_traffic_hour", params).execute()

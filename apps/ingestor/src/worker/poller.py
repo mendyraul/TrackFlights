@@ -2,12 +2,14 @@
 
 import time
 from dataclasses import asdict
+from datetime import UTC, datetime
 
 import httpx
 import structlog
 from supabase import create_client
 
 from src.config import settings
+from src.ml.forecast_service import ForecastService
 from src.providers.base_provider import BaseFlightProvider
 from src.services.flight_diff_engine import compute_diff
 from src.services.flight_normalizer import normalize_batch
@@ -35,7 +37,8 @@ class Poller:
         6. Archive completed flights to history
         7. (Periodic) Fetch weather data
         8. Record receiver heartbeat, hourly traffic + weather, track log
-        9. Log statistics
+        9. (Hourly) Forecast the next 6 hours, if a model is installed
+        10. Log statistics
     """
 
     def __init__(self, provider: BaseFlightProvider) -> None:
@@ -50,6 +53,7 @@ class Poller:
         self._telemetry_warned = False
         self._last_ping = 0.0
         self._track_log = self._open_track_log()
+        self._forecast = self._load_forecast()
         self._last_track_prune = 0.0
 
         self._weather_ingester = None
@@ -102,6 +106,9 @@ class Poller:
 
         # ── 8. Heartbeat, hourly traffic (with weather), track log ────
         self._record_receiver_telemetry(flight_stats)
+
+        # ── 9. Traffic forecast (hourly, if a model is installed) ──────
+        self._run_forecast()
 
         # Periodic pruning (once/day)
         if (time.time() - self._last_prune_time) >= 86400:
@@ -238,6 +245,31 @@ class Poller:
 
         if last_poll["received"] > 0:
             self._ping_heartbeat_url()
+
+    def _load_forecast(self) -> ForecastService | None:
+        if not settings.forecast_model_path or not self.provider.is_live_position_feed:
+            return None
+        try:
+            service = ForecastService.from_path(settings.forecast_model_path, self.db)
+            logger.info(
+                "Forecast model loaded",
+                path=settings.forecast_model_path,
+                version=service.model.version,
+                heldout_mae=service.model.metrics.get("mae"),
+            )
+            return service
+        except Exception:
+            logger.exception("Forecast disabled: could not load model")
+            return None
+
+    def _run_forecast(self) -> None:
+        if self._forecast is None:
+            return
+        forecast_weather = getattr(self._weather_ingester, "last_forecast", []) or []
+        try:
+            self._forecast.maybe_run(datetime.now(UTC), forecast_weather)
+        except Exception:
+            logger.exception("Traffic forecast failed")
 
     def _open_track_log(self) -> TrackLog | None:
         """Open the local position log if TRACK_LOG_PATH is set; never fatal."""

@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     track_log_retention_days: int = 30
     track_log_max_mb: int = 1024
     track_log_min_free_mb: int = 1024
+    # Exported traffic-forecast model (apps/ml). Empty = no forecasting.
+    forecast_model_path: str = ""
 
     # AeroAPI planning defaults for South Florida region searches.
     aeroapi_bbox: str = "25.2,-82.0,27.0,-80.0"

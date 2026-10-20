@@ -56,6 +56,8 @@ export function Dashboard() {
         variant="toast"
       />
 
+      {activeAnomalies.length > 0 && <AnomalyAlerts anomalies={activeAnomalies} />}
+
       <div>
         <SectionHeading>{stale ? "Last known picture" : "Right now"}</SectionHeading>
         {flightsLoading ? (
@@ -85,7 +87,10 @@ export function Dashboard() {
             few minutes.
           </p>
         ) : (
-          <TrafficHistoryChart hours={summary?.trafficHourly ?? []} />
+          <TrafficHistoryChart
+            hours={summary?.trafficHourly ?? []}
+            forecast={summary?.trafficForecast ?? []}
+          />
         )}
       </div>
 
@@ -97,8 +102,6 @@ export function Dashboard() {
           <WeatherCard weather={summary?.weatherCurrent ?? null} />
         )}
       </div>
-
-      {activeAnomalies.length > 0 && <AnomalyAlerts anomalies={activeAnomalies} />}
 
       {/* Schedule-feed analytics (optional AeroAPI ingestor). ADS-B alone carries
           no schedules, delays or cancellations, so this only renders with data. */}

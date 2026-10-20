@@ -145,6 +145,7 @@ def _poller_with(db, provider):
     poller._last_ping = 0.0
     poller._track_log = None
     poller._latest_weather = None
+    poller._forecast = None
     poller._last_track_prune = 0.0
     return poller
 

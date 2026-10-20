@@ -113,3 +113,11 @@ export const TRAFFIC_HOURLY_COLUMNS = [
   "peak_concurrent",
   "max_range_km",
 ].join(",");
+
+export const TRAFFIC_FORECAST_COLUMNS = [
+  "hour",
+  "predicted_aircraft",
+  "model_version",
+  "model_mae",
+  "baseline_mae",
+].join(",");

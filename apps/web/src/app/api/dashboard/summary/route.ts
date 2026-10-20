@@ -3,6 +3,7 @@ import {
   ANALYTICS_DAILY_COLUMNS,
   ANALYTICS_HOURLY_COLUMNS,
   ANOMALY_COLUMNS,
+  TRAFFIC_FORECAST_COLUMNS,
   TRAFFIC_HOURLY_COLUMNS,
   WEATHER_COLUMNS,
 } from "@/lib/dashboard-selects";
@@ -23,46 +24,54 @@ export async function GET() {
 
   const trafficCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
-  const [hourly, daily, weatherCurrent, weatherForecast, anomalies, traffic] = await Promise.all([
-    supabase
-      .from("analytics_hourly")
-      .select(ANALYTICS_HOURLY_COLUMNS)
-      .order("hour", { ascending: false })
-      .limit(48),
-    supabase
-      .from("analytics_daily")
-      .select(ANALYTICS_DAILY_COLUMNS)
-      .order("date", { ascending: false })
-      .limit(30),
-    supabase
-      .from("weather_snapshots")
-      .select(WEATHER_COLUMNS)
-      .eq("airport_iata", "MIA")
-      .lte("observed_at", nowIso)
-      .order("observed_at", { ascending: false })
-      .limit(1),
-    supabase
-      .from("weather_snapshots")
-      .select(WEATHER_COLUMNS)
-      .eq("airport_iata", "MIA")
-      .gte("observed_at", nowIso)
-      .order("observed_at", { ascending: true })
-      .limit(12),
-    supabase
-      .from("traffic_anomalies")
-      .select(ANOMALY_COLUMNS)
-      .gte("detected_at", anomalyCutoff)
-      .order("detected_at", { ascending: false })
-      .limit(200),
-    // ADS-B traffic history (migration 20261020120000). Optional: a missing
-    // table must not take down the rest of the dashboard.
-    supabase
-      .from("traffic_hourly")
-      .select(TRAFFIC_HOURLY_COLUMNS)
-      .gte("hour", trafficCutoff)
-      .order("hour", { ascending: true })
-      .limit(48),
-  ]);
+  const [hourly, daily, weatherCurrent, weatherForecast, anomalies, traffic, forecast] =
+    await Promise.all([
+      supabase
+        .from("analytics_hourly")
+        .select(ANALYTICS_HOURLY_COLUMNS)
+        .order("hour", { ascending: false })
+        .limit(48),
+      supabase
+        .from("analytics_daily")
+        .select(ANALYTICS_DAILY_COLUMNS)
+        .order("date", { ascending: false })
+        .limit(30),
+      supabase
+        .from("weather_snapshots")
+        .select(WEATHER_COLUMNS)
+        .eq("airport_iata", "MIA")
+        .lte("observed_at", nowIso)
+        .order("observed_at", { ascending: false })
+        .limit(1),
+      supabase
+        .from("weather_snapshots")
+        .select(WEATHER_COLUMNS)
+        .eq("airport_iata", "MIA")
+        .gte("observed_at", nowIso)
+        .order("observed_at", { ascending: true })
+        .limit(12),
+      supabase
+        .from("traffic_anomalies")
+        .select(ANOMALY_COLUMNS)
+        .gte("detected_at", anomalyCutoff)
+        .order("detected_at", { ascending: false })
+        .limit(200),
+      // ADS-B traffic history (migration 20261020120000). Optional: a missing
+      // table must not take down the rest of the dashboard.
+      supabase
+        .from("traffic_hourly")
+        .select(TRAFFIC_HOURLY_COLUMNS)
+        .gte("hour", trafficCutoff)
+        .order("hour", { ascending: true })
+        .limit(48),
+      // Model forecast for the coming hours (migration 20261023120000). Optional.
+      supabase
+        .from("traffic_forecast")
+        .select(TRAFFIC_FORECAST_COLUMNS)
+        .gte("hour", nowIso)
+        .order("hour", { ascending: true })
+        .limit(8),
+    ]);
 
   const required = [hourly, daily, weatherCurrent, weatherForecast, anomalies];
   const firstError = required.find((res) => res.error)?.error;
@@ -82,6 +91,7 @@ export async function GET() {
       weatherForecast: weatherForecast.data ?? [],
       anomalies: anomalies.data ?? [],
       trafficHourly: traffic.error ? [] : (traffic.data ?? []),
+      trafficForecast: forecast.error ? [] : (forecast.data ?? []),
       lastUpdate: Date.now(),
     },
     {
