@@ -33,8 +33,8 @@ class Poller:
         4. Upsert only changed flights
         5. Mark stale flights
         6. Archive completed flights to history
-        7. Record receiver heartbeat + hourly traffic (live feeds)
-        8. (Periodic) Fetch weather data
+        7. (Periodic) Fetch weather data
+        8. Record receiver heartbeat, hourly traffic + weather, track log
         9. Log statistics
     """
 
@@ -53,6 +53,9 @@ class Poller:
         self._last_track_prune = 0.0
 
         self._weather_ingester = None
+        # Latest weather this process fetched. Kept in memory: re-reading it
+        # from Supabase every poll was ~5,800 egress reads a day.
+        self._latest_weather: dict | None = None
 
         # Raw Supabase client for the weather ingester.
         self._supabase = create_client(
@@ -92,11 +95,13 @@ class Poller:
         # ── 1-6. Flight ingestion ────────────────────────────────────
         flight_stats = await self._ingest_flights(airport)
         stats.update(flight_stats)
-        self._record_receiver_telemetry(flight_stats)
 
         # ── 7. Weather (periodic) ────────────────────────────────────
         if settings.weather_enabled:
             await self._maybe_ingest_weather(stats)
+
+        # ── 8. Heartbeat, hourly traffic (with weather), track log ────
+        self._record_receiver_telemetry(flight_stats)
 
         # Periodic pruning (once/day)
         if (time.time() - self._last_prune_time) >= 86400:
@@ -220,7 +225,7 @@ class Poller:
                 in_range=len(observations),
                 rows_written=flight_stats.get("upserted", 0),
             )
-            hour = self._traffic.add_poll(observations)
+            hour = self._traffic.add_poll(observations, weather=self._latest_weather)
             self.db.record_traffic_hour(hour.to_rpc_params())
         except Exception:
             if not self._telemetry_warned:
@@ -282,15 +287,14 @@ class Poller:
         elapsed = now - self._last_weather_time
 
         if elapsed < settings.weather_poll_interval_seconds and self._last_weather_time > 0:
-            # Return cached latest
-            ingester = self._get_weather_ingester()
-            return ingester.get_latest()
+            return self._latest_weather
 
         try:
             ingester = self._get_weather_ingester()
             weather = await ingester.ingest_current()
             forecast_count = await ingester.ingest_forecast(hours=12)
             self._last_weather_time = now
+            self._latest_weather = weather
             stats["weather_forecast_hours"] = forecast_count
             stats["weather_updated"] = 1
             return weather

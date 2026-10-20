@@ -144,6 +144,7 @@ def _poller_with(db, provider):
     poller._telemetry_warned = False
     poller._last_ping = 0.0
     poller._track_log = None
+    poller._latest_weather = None
     poller._last_track_prune = 0.0
     return poller
 
@@ -209,3 +210,15 @@ def test_track_log_receives_every_observation_and_never_breaks_a_poll(tmp_path):
 
     poller._track_log = Broken()
     poller._record_receiver_telemetry({"upserted": 0})  # must not raise
+
+
+def test_hour_carries_the_latest_weather():
+    acc = TrafficAccumulator()
+    t = datetime(2026, 10, 20, 14, 5, tzinfo=UTC)
+    acc.add_poll([], now=t, weather={"temperature_c": 30.0, "wind_speed_knots": 12.0})
+    hour = acc.add_poll([], now=t, weather={"temperature_c": 31.5, "is_thunderstorm": True})
+    params = hour.to_rpc_params()
+    assert params["p_temp_c"] == 31.5
+    assert params["p_is_thunderstorm"] is True
+    # A poll with no weather keeps what the hour already had.
+    assert acc.add_poll([], now=t).to_rpc_params()["p_temp_c"] == 31.5

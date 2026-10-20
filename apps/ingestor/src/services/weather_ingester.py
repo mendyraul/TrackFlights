@@ -29,6 +29,7 @@ class WeatherIngester:
     def __init__(self, provider: BaseWeatherProvider, db: Client) -> None:
         self.provider = provider
         self.db = db
+        self.last_forecast: list[dict[str, Any]] = []
 
     async def ingest_current(self) -> dict[str, Any]:
         raw = await self.provider.fetch_current(MIA_LAT, MIA_LON)
@@ -56,6 +57,9 @@ class WeatherIngester:
             self.provider.normalize_forecast_hour(hour_data)  # type: ignore[attr-defined]
             for hour_data in raw_hours
         ]
+
+        # Kept for the traffic forecast, which needs the next hours' weather.
+        self.last_forecast = snapshots
 
         if snapshots:
             self.db.table("weather_snapshots").upsert(

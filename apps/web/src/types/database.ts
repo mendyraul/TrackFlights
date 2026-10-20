@@ -244,6 +244,13 @@ export interface TrafficHourly {
   max_range_km: number | null;
   polls: number;
   updated_at: string;
+  // 20261021120000_traffic_hourly_weather.sql
+  temp_c: number | null;
+  wind_kt: number | null;
+  gust_kt: number | null;
+  precip_mm: number | null;
+  visibility_km: number | null;
+  is_thunderstorm: boolean | null;
 }
 
 /** Rewritten by each ingestor every poll. */

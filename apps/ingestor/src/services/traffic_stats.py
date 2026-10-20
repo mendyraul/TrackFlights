@@ -25,9 +25,15 @@ class HourlyTraffic:
     peak_concurrent: int = 0
     max_range_km: float | None = None
     polls: int = 0
+    # Most recent weather seen during the hour (forecast-model features).
+    weather: dict[str, Any] | None = None
 
-    def add_poll(self, observations: list[dict[str, Any]]) -> None:
+    def add_poll(
+        self, observations: list[dict[str, Any]], weather: dict[str, Any] | None = None
+    ) -> None:
         self.polls += 1
+        if weather:
+            self.weather = weather
         self.peak_concurrent = max(self.peak_concurrent, len(observations))
         for obs in observations:
             self.phases[obs["hex"]] = obs["phase"]
@@ -52,7 +58,20 @@ class HourlyTraffic:
                 round(self.max_range_km, 1) if self.max_range_km is not None else None
             ),
             "p_polls": self.polls,
+            **_weather_params(self.weather),
         }
+
+
+def _weather_params(w: dict[str, Any] | None) -> dict[str, Any]:
+    w = w or {}
+    return {
+        "p_temp_c": w.get("temperature_c"),
+        "p_wind_kt": w.get("wind_speed_knots"),
+        "p_gust_kt": w.get("wind_gust_knots"),
+        "p_precip_mm": w.get("precipitation_mm"),
+        "p_visibility_km": w.get("visibility_km"),
+        "p_is_thunderstorm": w.get("is_thunderstorm"),
+    }
 
 
 def current_hour(now: datetime | None = None) -> datetime:
@@ -67,10 +86,13 @@ class TrafficAccumulator:
         self.current: HourlyTraffic | None = None
 
     def add_poll(
-        self, observations: list[dict[str, Any]], now: datetime | None = None
+        self,
+        observations: list[dict[str, Any]],
+        now: datetime | None = None,
+        weather: dict[str, Any] | None = None,
     ) -> HourlyTraffic:
         hour = current_hour(now)
         if self.current is None or self.current.hour != hour:
             self.current = HourlyTraffic(hour=hour)
-        self.current.add_poll(observations)
+        self.current.add_poll(observations, weather)
         return self.current
