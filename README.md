@@ -135,6 +135,13 @@ infra/compose/     Docker Compose for running the web app and ingestors in conta
 docs/              Architecture, operations runbooks, cost guardrails, ADRs
 ```
 
+## How I built it
+
+The receiver and the design calls are mine: using my own antenna instead of a paid flight API,
+caching at the CDN to stay inside Supabase's free egress, and inferring arrivals and departures
+from ADS-B alone. I wrote a lot of the code with Claude Code as a pair programmer, and the commit
+history shows it. I review what it writes, and I can walk through any part of this repo.
+
 ## Known limitations
 
 - Rows are keyed by flight ident rather than ICAO hex, so one aircraft can briefly own two rows
