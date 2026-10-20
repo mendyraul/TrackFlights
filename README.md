@@ -66,7 +66,23 @@ Keying rows on the hex outright is the cleaner design; see [Known limitations](#
 vertical rate, track and distance to KMIA: descending below 12,000 ft within 60 km is an arrival,
 climbing and not pointed at the airport is a departure, cruise traffic and holding are
 overflights. The same rules run in the ingestor (Python) and the site (TypeScript), with shared
-test cases.
+test cases. A trained classifier can replace them (next section).
+
+**Models, and only if they beat a baseline.** Three models run on what the receiver hears (code
+in `apps/ml`, details in its README):
+
+- *Busy/quiet alerts:* each hour against the same hour of the week over 8 weeks, using median
+  and MAD inside Postgres, ignoring hours when the receiver was partly down.
+- *Traffic forecast:* next 6 hours from calendar, weather forecast and the same hour last week;
+  ridge vs gradient boosting, against "same hour last week" and the hour-of-week average.
+- *Learned arrival/departure:* the Pi logs every aircraft's positions locally (no egress); each
+  position is labeled by what that aircraft did next (landed at MIA, took off from it, used
+  FLL/OPF/..., or never came low), and a classifier trained on those labels competes with the
+  hand-written rules.
+
+Each is scored on days it never saw and exported only if it wins. Models ship to the Pi as small
+JSON files evaluated without scikit-learn; tests check that evaluator matches scikit-learn to
+1e-9. Results, including models that lost, show on the Behind the Scenes page.
 
 **Be honest about staleness.** "Live" is derived from the age of the newest data and an ingestor
 heartbeat, not from whether the API answered. When the receiver is down the site says so, shows
@@ -122,14 +138,19 @@ npm run lint && npm run type-check
 npm test --workspace=apps/web
 cd apps/ingestor && pip install -r requirements-dev.txt && \
   SUPABASE_URL=https://example.supabase.co SUPABASE_SERVICE_ROLE_KEY=placeholder pytest -q
+cd apps/ml && pip install -r requirements.txt && python -m pytest tests -q   # model export parity + training
+./scripts/test-sql.sh   # all migrations + SQL tests on a throwaway Postgres (needs Docker)
 ```
 
 ## Repository layout
 
 ```
 apps/web/          Next.js site and API routes (CDN-cached snapshot + dashboard summary)
-apps/ingestor/     Python ingestor: ADS-B provider, gates, phase inference, heartbeat, rollups
-supabase/          SQL migrations (schema, RLS, pg_cron jobs, rollup functions) and seed
+apps/ingestor/     Python ingestor: ADS-B provider, gates, phase inference, heartbeat, rollups,
+                   local track log, and the JSON model evaluator / forecast + phase services
+apps/ml/           Training and evaluation (laptop only): labeling, baselines, export to JSON
+supabase/          SQL migrations (schema, RLS, pg_cron jobs, rollups, anomaly detection),
+                   seed, and tests/ run by scripts/test-sql.sh
 infra/systemd/     Unit files and env examples for the Pi
 infra/compose/     Docker Compose for running the web app and ingestors in containers
 docs/              Architecture, operations runbooks, cost guardrails, ADRs
@@ -147,10 +168,11 @@ history shows it. I review what it writes, and I can walk through any part of th
 - Rows are keyed by flight ident rather than ICAO hex, so one aircraft can briefly own two rows
   (the site dedupes by hex). Moving the key to the hex needs a migration and a change to how
   ADS-B and schedule rows merge.
-- Phase is a heuristic: without a flight plan an arrival into Fort Lauderdale looks like an
-  arrival into MIA.
+- Until the classifier has enough track history to train (and beats the rules), phase is a
+  heuristic: an arrival into Fort Lauderdale looks like an arrival into MIA. Labels depend on
+  seeing aircraft low near a field, which an indoor antenna does less often.
 - Hourly history starts when the traffic-history migration is applied and the receiver runs;
-  there is no backfill.
+  there is no backfill, so the forecast and alerts need weeks of data before they switch on.
 - A single receiver is a single point of failure; [ADR 0002](docs/adr/0002-single-pi-ingestor-risk-matrix.md)
   covers the risks and the failover plan.
 

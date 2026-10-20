@@ -51,6 +51,23 @@ select jobname, status, start_time from cron.job_run_details order by start_time
 If `flights_current` keeps growing or history stays empty, the jobs aren't scheduled; re-run the
 migrations in `supabase/migrations/`.
 
+## Track log disk use (on the Pi)
+
+```bash
+df -h /path/to/tracks/dir
+python -m src.tools.track_log_stats /path/to/tracks.db 1024
+```
+
+The stats show MB/day, days of data and days until the disk fills. Writes pause on their own
+below `TRACK_LOG_MIN_FREE_MB`; lower `TRACK_LOG_RETENTION_DAYS`/`TRACK_LOG_MAX_MB` or raise
+`TRACK_LOG_SAMPLE_SECONDS` to use less space, or point `TRACK_LOG_PATH` at a USB drive.
+
+## Models
+
+Retraining and installing a model: `apps/ml/README.md`. After a restart, the journal should say
+`Forecast model loaded` / `Phase model loaded`; a broken file logs an error and the ingestor
+carries on without it (no forecast, rule-based phase).
+
 ## Rolling back the site
 
 Vercel dashboard → Deployments → previous deployment → **Promote to Production**, or
