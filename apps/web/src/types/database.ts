@@ -155,7 +155,10 @@ export type AnomalyType =
   | "delay_distribution_shift"
   | "congestion"
   | "unusual_cancellations"
-  | "weather_impact";
+  | "weather_impact"
+  // 20261022120000_traffic_anomaly_detection.sql
+  | "traffic_high"
+  | "traffic_low";
 
 export type AnomalySeverity = "low" | "medium" | "high" | "critical";
 
