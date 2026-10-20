@@ -4,7 +4,6 @@
 import type {
   AnalyticsDaily,
   AnalyticsHourly,
-  DelayPrediction,
   TrafficAnomaly,
   TrafficHourly,
   WeatherSnapshot,
@@ -15,7 +14,6 @@ export interface DashboardSummary {
   analyticsDaily: AnalyticsDaily[];
   weatherCurrent: WeatherSnapshot | null;
   weatherForecast: WeatherSnapshot[];
-  predictions: DelayPrediction[];
   anomalies: TrafficAnomaly[];
   /** ADS-B traffic per hour, last 48 h, oldest first. Empty until history exists. */
   trafficHourly: TrafficHourly[];

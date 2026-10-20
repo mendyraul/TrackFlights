@@ -3,7 +3,6 @@ import {
   ANALYTICS_DAILY_COLUMNS,
   ANALYTICS_HOURLY_COLUMNS,
   FLIGHT_SNAPSHOT_COLUMNS,
-  PREDICTION_COLUMNS,
   WEATHER_COLUMNS,
 } from "./dashboard-selects";
 
@@ -28,11 +27,10 @@ describe("dashboard select projections", () => {
     expect(snapshotColumns).not.toContain("baggage_claim");
   });
 
-  it("uses the current analytics, weather, and prediction column names", () => {
+  it("uses the current analytics and weather column names", () => {
     const hourlyColumns = columns(ANALYTICS_HOURLY_COLUMNS);
     const dailyColumns = columns(ANALYTICS_DAILY_COLUMNS);
     const weatherColumns = columns(WEATHER_COLUMNS);
-    const predictionColumns = columns(PREDICTION_COLUMNS);
 
     expect(hourlyColumns).toContain("on_time");
     expect(hourlyColumns).toContain("delayed");
@@ -49,10 +47,5 @@ describe("dashboard select projections", () => {
     expect(weatherColumns).toContain("is_freezing");
     expect(weatherColumns).not.toContain("dewpoint_c");
     expect(weatherColumns).not.toContain("cloud_cover_pct");
-
-    expect(predictionColumns).toContain("created_at");
-    expect(predictionColumns).toContain("direction");
-    expect(predictionColumns).toContain("factors");
-    expect(predictionColumns).not.toContain("generated_at");
   });
 });

@@ -8,8 +8,6 @@ import { LiveTraffic } from "@/components/analytics/LiveTraffic";
 import { TrafficHistoryChart } from "@/components/analytics/TrafficHistoryChart";
 import { WeatherCard } from "@/components/analytics/WeatherCard";
 import { AnomalyAlerts } from "@/components/analytics/AnomalyAlerts";
-import { HighRiskFlights } from "@/components/analytics/HighRiskFlights";
-import { DelayPredictionChart } from "@/components/analytics/DelayPredictionChart";
 import { DelayTrendsChart } from "@/components/analytics/DelayTrendsChart";
 import { TrafficVolumeChart } from "@/components/analytics/TrafficVolumeChart";
 import { toAircraft, visibleFlights } from "@/lib/aircraft";
@@ -44,7 +42,6 @@ export function Dashboard() {
   );
   const stale = freshness === "offline" || freshness === "error";
 
-  const predictions = summary?.predictions ?? [];
   const activeAnomalies = (summary?.anomalies ?? []).filter((a) => a.is_active);
   const hasScheduleHistory =
     (summary?.analyticsHourly.length ?? 0) > 0 || (summary?.analyticsDaily.length ?? 0) > 0;
@@ -101,19 +98,10 @@ export function Dashboard() {
         )}
       </div>
 
-      {/* Schedule-feed analytics (optional AeroAPI ingestor). ADS-B alone carries
-          no schedules, delays or cancellations, so these only render with data. */}
       {activeAnomalies.length > 0 && <AnomalyAlerts anomalies={activeAnomalies} />}
 
-      {predictions.length > 0 && (
-        <div>
-          <SectionHeading>Delay predictions (schedule feed)</SectionHeading>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <HighRiskFlights predictions={predictions} />
-            <DelayPredictionChart predictions={predictions} />
-          </div>
-        </div>
-      )}
+      {/* Schedule-feed analytics (optional AeroAPI ingestor). ADS-B alone carries
+          no schedules, delays or cancellations, so this only renders with data. */}
 
       {hasScheduleHistory && summary && (
         <div>

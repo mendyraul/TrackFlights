@@ -68,10 +68,6 @@ class Settings(BaseSettings):
     weather_provider: str = "openmeteo"
     weather_poll_interval_seconds: int = 3600  # Temporary cost-control mode: every 60 minutes
 
-    # ML / Predictions (write-heavy; disabled by default for free-tier cost control)
-    predictions_enabled: bool = False
-    anomaly_detection_enabled: bool = False
-
     # Data retention (days)
     flights_history_retention_days: int = 7
     weather_retention_days: int = 3
@@ -130,10 +126,7 @@ def get_runtime_config_summary() -> dict[str, object]:
             "provider": settings.weather_provider,
             "poll_interval_seconds": settings.weather_poll_interval_seconds,
         },
-        "ml": {
-            "predictions_enabled": settings.predictions_enabled,
-            "anomaly_detection_enabled": settings.anomaly_detection_enabled,
-        },
+        "ml": {},
         "supabase": {
             "url_configured": bool(settings.supabase_url),
             "service_key_configured": bool(settings.supabase_service_role_key),

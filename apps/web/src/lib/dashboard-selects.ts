@@ -103,20 +103,6 @@ export const ANOMALY_COLUMNS = [
   "detection_model",
 ].join(",");
 
-export const PREDICTION_COLUMNS = [
-  "id",
-  "flight_iata",
-  "scheduled_departure",
-  "direction",
-  "prediction_type",
-  "predicted_value",
-  "confidence",
-  "factors",
-  "model_version",
-  "created_at",
-  "expires_at",
-].join(",");
-
 export const TRAFFIC_HOURLY_COLUMNS = [
   "hour",
   "unique_aircraft",
