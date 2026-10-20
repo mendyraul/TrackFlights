@@ -122,3 +122,14 @@ export const PREDICTION_COLUMNS = [
   "created_at",
   "expires_at",
 ].join(",");
+
+export const TRAFFIC_HOURLY_COLUMNS = [
+  "hour",
+  "unique_aircraft",
+  "arriving",
+  "departing",
+  "overflights",
+  "on_ground",
+  "peak_concurrent",
+  "max_range_km",
+].join(",");

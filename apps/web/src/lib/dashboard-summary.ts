@@ -6,6 +6,7 @@ import type {
   AnalyticsHourly,
   DelayPrediction,
   TrafficAnomaly,
+  TrafficHourly,
   WeatherSnapshot,
 } from "@/types/database";
 
@@ -16,6 +17,8 @@ export interface DashboardSummary {
   weatherForecast: WeatherSnapshot[];
   predictions: DelayPrediction[];
   anomalies: TrafficAnomaly[];
+  /** ADS-B traffic per hour, last 48 h, oldest first. Empty until history exists. */
+  trafficHourly: TrafficHourly[];
   lastUpdate: number;
 }
 

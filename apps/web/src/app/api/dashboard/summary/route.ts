@@ -4,6 +4,7 @@ import {
   ANALYTICS_HOURLY_COLUMNS,
   ANOMALY_COLUMNS,
   PREDICTION_COLUMNS,
+  TRAFFIC_HOURLY_COLUMNS,
   WEATHER_COLUMNS,
 } from "@/lib/dashboard-selects";
 
@@ -21,7 +22,9 @@ export async function GET() {
   const nowIso = new Date().toISOString();
   const anomalyCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [hourly, daily, weatherCurrent, weatherForecast, predictions, anomalies] =
+  const trafficCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
+  const [hourly, daily, weatherCurrent, weatherForecast, predictions, anomalies, traffic] =
     await Promise.all([
       supabase
         .from("analytics_hourly")
@@ -59,11 +62,18 @@ export async function GET() {
         .gte("detected_at", anomalyCutoff)
         .order("detected_at", { ascending: false })
         .limit(200),
+      // ADS-B traffic history (migration 20261020120000). Optional: a missing
+      // table must not take down the rest of the dashboard.
+      supabase
+        .from("traffic_hourly")
+        .select(TRAFFIC_HOURLY_COLUMNS)
+        .gte("hour", trafficCutoff)
+        .order("hour", { ascending: true })
+        .limit(48),
     ]);
 
-  const firstError = [hourly, daily, weatherCurrent, weatherForecast, predictions, anomalies].find(
-    (res) => res.error
-  )?.error;
+  const required = [hourly, daily, weatherCurrent, weatherForecast, predictions, anomalies];
+  const firstError = required.find((res) => res.error)?.error;
 
   if (firstError) {
     return Response.json(
@@ -80,6 +90,7 @@ export async function GET() {
       weatherForecast: weatherForecast.data ?? [],
       predictions: predictions.data ?? [],
       anomalies: anomalies.data ?? [],
+      trafficHourly: traffic.error ? [] : (traffic.data ?? []),
       lastUpdate: Date.now(),
     },
     {
