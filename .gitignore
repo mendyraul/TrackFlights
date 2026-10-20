@@ -65,3 +65,6 @@ apps/web/.vercel/
 # Local performance evidence captures (machine-specific, not source of truth)
 docs/evidence/perf-*local*.json
 .state/
+
+# Local screenshot/Lighthouse audit output and tooling (never committed)
+audit/
