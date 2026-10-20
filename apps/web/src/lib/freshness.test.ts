@@ -32,6 +32,21 @@ describe("freshness", () => {
     expect(classifyFreshness({ ...base, loading: true, dataUpdatedAt: null })).toBe("loading");
   });
 
+  it("trusts a fresh heartbeat over row age", () => {
+    const base = { loading: false, error: null, now: NOW, dataUpdatedAt: NOW - 3_600_000 };
+    const beat = (agoMs: number, received: number) => ({
+      lastPollAt: new Date(NOW - agoMs).toISOString(),
+      received,
+      inRange: 0,
+    });
+    // Ingestor polling, decoder hearing aircraft (none moved / in range): live.
+    expect(classifyFreshness({ ...base, receiver: beat(10_000, 12) })).toBe("live");
+    // Ingestor polling, decoder hearing nothing: radio-side problem.
+    expect(classifyFreshness({ ...base, receiver: beat(10_000, 0) })).toBe("silent");
+    // Stale heartbeat: fall back to row age (an hour old -> offline).
+    expect(classifyFreshness({ ...base, receiver: beat(10 * 60_000, 12) })).toBe("offline");
+  });
+
   it("counts only recently updated aircraft as tracked", () => {
     const rows = [
       { id: "a", updated_at: "2026-10-20T11:59:30Z" },

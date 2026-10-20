@@ -14,7 +14,21 @@ export const OFFLINE_AFTER_MS = 15 * 60_000;
 /** An aircraft counts as currently tracked if its row was updated within this window. */
 export const TRACKED_WINDOW_MS = 5 * 60_000;
 
-export type Freshness = "loading" | "live" | "delayed" | "offline" | "error";
+/** How long a heartbeat counts as current. The ingestor writes one every ~15 s. */
+export const HEARTBEAT_MAX_AGE_MS = 2 * 60_000;
+
+/**
+ * "silent": the ingestor is polling (fresh heartbeat) but the decoder reports
+ * no aircraft at all, i.e. the radio side (antenna, SDR, readsb) is the problem.
+ */
+export type Freshness = "loading" | "live" | "delayed" | "silent" | "offline" | "error";
+
+/** The ingestor's last poll, from ingestor_heartbeat via the snapshot route. */
+export interface ReceiverStatus {
+  lastPollAt: string;
+  received: number;
+  inRange: number;
+}
 
 interface HasUpdatedAt {
   updated_at: string;
@@ -35,9 +49,21 @@ export function classifyFreshness(args: {
   error: string | null;
   dataUpdatedAt: number | null;
   now: number;
+  receiver?: ReceiverStatus | null;
 }): Freshness {
-  const { loading, error, dataUpdatedAt, now } = args;
+  const { loading, error, dataUpdatedAt, now, receiver } = args;
   if (loading) return "loading";
+
+  // A fresh heartbeat is the best signal: the ingestor ran in the last couple
+  // of minutes. It is only present once the heartbeat migration is applied;
+  // otherwise fall back to the newest row's age.
+  if (receiver) {
+    const beat = Date.parse(receiver.lastPollAt);
+    if (Number.isFinite(beat) && now - beat <= HEARTBEAT_MAX_AGE_MS) {
+      return receiver.received > 0 ? "live" : "silent";
+    }
+  }
+
   if (dataUpdatedAt === null) return error ? "error" : "offline";
   const age = now - dataUpdatedAt;
   if (age <= LIVE_MAX_AGE_MS) return "live";

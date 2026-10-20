@@ -4,7 +4,12 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Flight } from "@/types/database";
 import type { ConnectionStatus } from "@/services/realtime";
 import { logger } from "@/lib/logger";
-import { classifyFreshness, newestUpdate, type Freshness } from "@/lib/freshness";
+import {
+  classifyFreshness,
+  newestUpdate,
+  type Freshness,
+  type ReceiverStatus,
+} from "@/lib/freshness";
 
 // Every component that needs flights (header status, map, board, analytics)
 // shares one poller, so a page never fetches the snapshot more than once per
@@ -29,6 +34,8 @@ interface SnapshotState {
   dataUpdatedAt: number | null;
   /** IDs whose row changed since the previous snapshot (for highlight animations). */
   recentlyChanged: Set<string>;
+  /** Ingestor heartbeat, once the heartbeat migration is applied. */
+  receiver: ReceiverStatus | null;
 }
 
 const initialState: SnapshotState = {
@@ -39,6 +46,7 @@ const initialState: SnapshotState = {
   lastUpdate: null,
   dataUpdatedAt: null,
   recentlyChanged: new Set(),
+  receiver: null,
 };
 
 let state: SnapshotState = initialState;
@@ -61,7 +69,11 @@ async function fetchSnapshot() {
     if (!resp.ok) {
       throw new Error(`snapshot request failed (${resp.status})`);
     }
-    const body = (await resp.json()) as { flights?: Flight[]; dataUpdatedAt?: string | null };
+    const body = (await resp.json()) as {
+      flights?: Flight[];
+      dataUpdatedAt?: string | null;
+      receiver?: ReceiverStatus | null;
+    };
     const flights = body.flights ?? [];
 
     const previous = new Map(state.flights.map((f) => [f.id, f.updated_at]));
@@ -80,6 +92,7 @@ async function fetchSnapshot() {
       lastUpdate: Date.now(),
       dataUpdatedAt: Number.isFinite(fromServer) ? fromServer : newestUpdate(flights),
       recentlyChanged: changed,
+      receiver: body.receiver ?? null,
     });
 
     if (changed.size > 0) {
@@ -141,6 +154,7 @@ export function useFlights(): UseFlightsReturn {
     loading: snapshot.loading,
     error: snapshot.error,
     dataUpdatedAt: snapshot.dataUpdatedAt,
+    receiver: snapshot.receiver,
     now,
   });
   return { ...snapshot, freshness, now };

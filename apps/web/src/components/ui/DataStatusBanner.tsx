@@ -30,7 +30,12 @@ export function DataStatusBanner({
   let title: string;
   let body: string;
 
-  if (freshness === "error") {
+  if (freshness === "silent") {
+    title = "Receiver hearing no aircraft";
+    body = `The ingestor is running, but the radio isn't reporting any aircraft${
+      dataUpdatedAt !== null ? ` (last aircraft ${formatAge(now - dataUpdatedAt)})` : ""
+    }. ${retry}`;
+  } else if (freshness === "error") {
     tone = "border-red-500/40 bg-red-950/90 text-red-100";
     title = "Can't reach the flight data API";
     body = retry;
