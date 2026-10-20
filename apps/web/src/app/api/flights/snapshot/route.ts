@@ -25,8 +25,13 @@ export async function GET() {
     );
   }
 
+  const flights = data ?? [];
+  // Rows are newest-first, so the first row's updated_at is the data age the
+  // UI reports. lastUpdate is only when this response was generated.
+  const newest = flights[0] as { updated_at?: string } | undefined;
+
   return Response.json(
-    { flights: data ?? [], lastUpdate: Date.now() },
+    { flights, dataUpdatedAt: newest?.updated_at ?? null, lastUpdate: Date.now() },
     {
       status: 200,
       headers: {

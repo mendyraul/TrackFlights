@@ -5,7 +5,7 @@ import { useFlights } from "@/hooks/useFlights";
 import { useWeather } from "@/hooks/useWeather";
 import { usePredictions } from "@/hooks/usePredictions";
 import { useAnomalies } from "@/hooks/useAnomalies";
-import { ConnectionBadge } from "@/components/ui/ConnectionBadge";
+import { DataStatusBanner } from "@/components/ui/DataStatusBanner";
 import { KpiCards } from "@/components/analytics/KpiCards";
 import { StatusBreakdown } from "@/components/analytics/StatusBreakdown";
 import { WeatherCard } from "@/components/analytics/WeatherCard";
@@ -17,7 +17,7 @@ import { TrafficVolumeChart } from "@/components/analytics/TrafficVolumeChart";
 
 export function Dashboard() {
   const { hourly, daily, loading: analyticsLoading } = useAnalytics();
-  const { flights, loading: flightsLoading, connectionStatus, lastUpdate } = useFlights();
+  const { flights, loading: flightsLoading, freshness, dataUpdatedAt, now } = useFlights();
   const { current: weather, loading: weatherLoading } = useWeather();
   const { predictions, highRiskFlights, loading: predictionsLoading } = usePredictions();
   const { activeAnomalies, highSeverity, loading: anomaliesLoading } = useAnomalies();
@@ -41,8 +41,8 @@ export function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-200">Operations Dashboard</h2>
-        <ConnectionBadge status={connectionStatus} lastUpdate={lastUpdate} />
       </div>
+      <DataStatusBanner freshness={freshness} dataUpdatedAt={dataUpdatedAt} now={now} />
 
       {/* Anomaly alerts (top priority) */}
       {activeAnomalies.length > 0 && <AnomalyAlerts anomalies={activeAnomalies} />}

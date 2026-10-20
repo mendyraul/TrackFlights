@@ -22,7 +22,10 @@ describe("GET /api/flights/snapshot", () => {
   });
 
   it("returns the snapshot with an edge-cache header", async () => {
-    limitMock.mockResolvedValue({ data: [{ id: "1", flight_iata: "AA100" }], error: null });
+    limitMock.mockResolvedValue({
+      data: [{ id: "1", flight_iata: "AA100", updated_at: "2026-10-20T12:00:00Z" }],
+      error: null,
+    });
 
     const res = await GET();
 
@@ -30,7 +33,11 @@ describe("GET /api/flights/snapshot", () => {
     // The s-maxage header is what lets Vercel's CDN absorb viewer traffic.
     expect(res.headers.get("Cache-Control")).toContain("s-maxage=");
     const body = await res.json();
-    expect(body.flights).toEqual([{ id: "1", flight_iata: "AA100" }]);
+    expect(body.flights).toEqual([
+      { id: "1", flight_iata: "AA100", updated_at: "2026-10-20T12:00:00Z" },
+    ]);
+    // The newest row's timestamp, so the UI can tell live data from old data.
+    expect(body.dataUpdatedAt).toBe("2026-10-20T12:00:00Z");
   });
 
   it("returns 503 + no-store when Supabase errors", async () => {
