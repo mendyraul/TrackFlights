@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Flight } from "@/types/database";
-import type { ConnectionStatus } from "@/services/realtime";
 import { logger } from "@/lib/logger";
 import {
   classifyFreshness,
@@ -20,6 +19,8 @@ import {
 // refreshes, and only every other poll repeats data, where a 10 s poll
 // repeated two out of three. Repeat polls are CDN hits, not Supabase reads.
 const SNAPSHOT_URL = "/api/flights/snapshot";
+
+export type ConnectionStatus = "connected" | "connecting" | "disconnected";
 export const CLIENT_POLL_MS = 15_000;
 const HIGHLIGHT_MS = 2_500;
 
