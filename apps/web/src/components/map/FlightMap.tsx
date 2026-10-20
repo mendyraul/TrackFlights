@@ -1,12 +1,21 @@
 "use client";
 
 import { memo, useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, Tooltip } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  useMap,
+  Tooltip,
+  ZoomControl,
+} from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import type { Flight } from "@/types/database";
 import { SURROUNDING_AIRPORTS, lookupAirport, type AirportRef } from "@/lib/airports";
-import { AirlineLogo } from "@/components/ui/AirlineLogo";
+import { broadcastCallsign } from "@/lib/airlines";
 import { basemap } from "@/lib/basemap";
 import "leaflet/dist/leaflet.css";
 
@@ -201,24 +210,29 @@ function SmoothMarker({
       ref={markerRef}
       position={[flight.latitude!, flight.longitude!]}
       icon={createAircraftIcon(flight.heading, isSelected, isChanged, stale)}
-      eventHandlers={{ click: onSelect }}
-    >
-      <Popup>
-        <div style={{ fontSize: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <AirlineLogo iata={flight.airline_iata} name={flight.airline_name} size={18} />
-            <strong>{flight.flight_iata}</strong>
-          </div>
-          {flight.airline_name}
-          <br />
-          {flight.origin_iata} → {flight.destination_iata}
-          <br />
-          {flight.altitude_ft ? `${flight.altitude_ft.toLocaleString()} ft` : ""}
-          {flight.ground_speed_knots ? ` · ${flight.ground_speed_knots} kts` : ""}
-        </div>
-      </Popup>
-    </Marker>
+      // Details open in the side panel / bottom sheet, so no popup here.
+      // Leaflet uses title as the focusable marker's accessible name.
+      title={markerTitle(flight)}
+      eventHandlers={{
+        click: onSelect,
+        keypress: (e) => {
+          const key = (e.originalEvent as KeyboardEvent).key;
+          if (key === "Enter" || key === " ") onSelect();
+        },
+      }}
+    />
   );
+}
+
+function markerTitle(flight: Flight): string {
+  const ident = broadcastCallsign(flight) ?? flight.icao_hex ?? flight.flight_iata;
+  const alt =
+    flight.altitude_ft === 0
+      ? "on ground"
+      : flight.altitude_ft != null
+        ? `${flight.altitude_ft.toLocaleString()} ft`
+        : "altitude unknown";
+  return `${ident}, ${alt}`;
 }
 
 // ── Bounds Updater ─────────────────────────────────────────────────────
@@ -281,7 +295,10 @@ function FlightMapInner({
       zoom={DEFAULT_ZOOM}
       className="h-full w-full"
       style={{ background: "#0a0a1a" }}
+      // The default top-left zoom buttons sat on top of the filter panel.
+      zoomControl={false}
     >
+      <ZoomControl position="bottomright" />
       <TileLayer attribution={basemap.attribution} url={basemap.url} />
 
       {/* Airport blobs (MIA, surrounding fields, selected flight endpoints) */}
