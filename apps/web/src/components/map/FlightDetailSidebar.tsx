@@ -58,6 +58,7 @@ export function FlightDetailSidebar({ aircraft: a, now, isUpdating, onClose }: P
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <AirlineLogo
+              decorative
               iata={a.operator.airline?.iata ?? null}
               name={a.operator.label}
               size={28}

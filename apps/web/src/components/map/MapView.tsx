@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useFlights } from "@/hooks/useFlights";
 import type { Flight } from "@/types/database";
@@ -73,16 +73,22 @@ export function MapView() {
   // Route line and endpoint highlights only exist for rows with schedule data
   // (the optional AeroAPI feed). Coordinates come from the bundled airport
   // table, so selecting a flight never costs a database read.
-  const highlightedAirports = selectedFlight
-    ? [selectedFlight.origin_iata, selectedFlight.destination_iata].filter((code): code is string =>
-        Boolean(code)
-      )
-    : [];
-  const origin = selectedFlight?.origin_iata ? airportCoords(selectedFlight.origin_iata) : null;
-  const destination = selectedFlight?.destination_iata
-    ? airportCoords(selectedFlight.destination_iata)
-    : null;
-  const routeLine = origin && destination ? { origin, destination } : null;
+  //
+  // Everything handed to <FlightMap> is memoized: the page re-renders every
+  // second (the "updated Xs ago" clock), and fresh arrays/callbacks would
+  // re-render every marker on each tick.
+  const originCode = selectedFlight?.origin_iata ?? null;
+  const destinationCode = selectedFlight?.destination_iata ?? null;
+  const highlightedAirports = useMemo(
+    () => [originCode, destinationCode].filter((code): code is string => Boolean(code)),
+    [originCode, destinationCode]
+  );
+  const routeLine = useMemo(() => {
+    const origin = originCode ? airportCoords(originCode) : null;
+    const destination = destinationCode ? airportCoords(destinationCode) : null;
+    return origin && destination ? { origin, destination } : null;
+  }, [originCode, destinationCode]);
+  const onSelect = useCallback((f: Flight) => setSelectedId(f.id), []);
 
   // Escape closes the detail panel.
   useEffect(() => {
@@ -133,7 +139,7 @@ export function MapView() {
 
         <FlightMap
           flights={mappable}
-          onSelect={(f: Flight) => setSelectedId(f.id)}
+          onSelect={onSelect}
           selectedId={selectedId}
           routeLine={routeLine}
           recentlyChanged={recentlyChanged}

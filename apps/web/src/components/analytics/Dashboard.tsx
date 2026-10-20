@@ -56,6 +56,7 @@ export function Dashboard() {
         dataUpdatedAt={dataUpdatedAt}
         now={now}
         showing="the last aircraft seen"
+        variant="toast"
       />
 
       <div>

@@ -15,7 +15,7 @@ export function Footer() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-gray-400">
           Built by{" "}
-          <a href={site.githubUrl} className={link}>
+          <a href={site.githubUrl} className={`${link} underline`}>
             {site.author}
           </a>
           : the rooftop receiver, the ingestor, and this site.

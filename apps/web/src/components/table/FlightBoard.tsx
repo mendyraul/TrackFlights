@@ -169,7 +169,9 @@ export function FlightBoard() {
           <select
             value={operator}
             onChange={(e) => setOperator(e.target.value)}
-            className="rounded-lg border border-gray-700 bg-mia-panel px-3 py-2 text-sm text-gray-200"
+            // Fixed width: a select sizes to its longest option, so it would
+            // widen when the data arrives and push the row (layout shift).
+            className="w-56 rounded-lg border border-gray-700 bg-mia-panel px-3 py-2 text-sm text-gray-200"
           >
             <option value="">All operators</option>
             {operators.map((name) => (
@@ -201,7 +203,7 @@ export function FlightBoard() {
         dataUpdatedAt={dataUpdatedAt}
         now={now}
         showing="the last aircraft seen"
-        className="mb-4"
+        variant="toast"
       />
 
       <div className="overflow-x-auto rounded-lg border border-gray-800">
@@ -258,6 +260,7 @@ export function FlightBoard() {
                   <td className="px-3 py-2.5 text-gray-200">
                     <div className="flex items-center gap-2">
                       <AirlineLogo
+                        decorative
                         iata={a.operator.airline?.iata ?? null}
                         name={a.operator.label}
                         size={20}
