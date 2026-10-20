@@ -6,3 +6,5 @@ scikit-learn==1.7.2
 matplotlib==3.10.7
 httpx>=0.26
 pytest==8.3.5
+# Imported via the ingestor modules the training code shares
+structlog>=24.1.0
