@@ -52,3 +52,12 @@ describe("BehindTheScenes", () => {
     expect(text).not.toMatch(/The big picture|Build it yourself|puts live planes on this map/);
   });
 });
+
+describe("Models section", () => {
+  it("shows what each model is waiting for until a real evaluation exists", () => {
+    render(<BehindTheScenes />);
+    expect(screen.getByRole("heading", { level: 2, name: "Models" })).toBeInTheDocument();
+    expect(screen.getByText(/Collecting data: needs about 4 weeks/)).toBeInTheDocument();
+    expect(screen.getByText(/Collecting tracks: needs about 2 weeks/)).toBeInTheDocument();
+  });
+});

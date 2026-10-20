@@ -1,5 +1,6 @@
 import { Photo } from "./Photo";
 import { measuredRangeKm, photos } from "@/lib/photos";
+import modelMetrics from "@/lib/model-metrics.json";
 
 /**
  * Static explainer of how live aircraft get onto the map, from the antenna
@@ -192,7 +193,7 @@ export function BehindTheScenes() {
           isn&apos;t pointed at the airport counts as departing. Farther out, the vertical trend and
           the track both have to agree. Everything else, including cruise traffic over Miami and
           aircraft in a hold, counts as an overflight. Without a flight plan, an arrival into Fort
-          Lauderdale still looks like an arrival.
+          Lauderdale still looks like an arrival, which is what the trained classifier below is for.
         </p>
       </Section>
 
@@ -263,6 +264,8 @@ export function BehindTheScenes() {
         <Photo photo={photos.liveMap} />
       </Section>
 
+      <Models />
+
       <Section title="Benchmarks at a glance">
         <DataTable
           caption="Pipeline numbers and where each is set"
@@ -296,5 +299,131 @@ export function BehindTheScenes() {
         />
       </Section>
     </div>
+  );
+}
+
+// ── Models ──────────────────────────────────────────────────────────────
+
+interface ForecastMetrics {
+  ships: boolean;
+  model: string;
+  mae: number;
+  best_baseline_mae: number;
+  improvement_pct: number | null;
+  heldout_days: number;
+  evaluated_at: string;
+}
+
+interface PhaseMetrics {
+  ships: boolean;
+  model: string;
+  macro_f1: number;
+  baseline_macro_f1: number;
+  test_samples: number;
+  heldout_days: number;
+  evaluated_at: string;
+}
+
+const MODEL_NAMES: Record<string, string> = {
+  ridge: "ridge regression",
+  gradient_boosting: "gradient-boosted trees",
+  logistic_regression: "logistic regression",
+  decision_tree: "a decision tree",
+};
+
+function ModelCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-gray-800 bg-mia-dark/40 p-4">
+      <h3 className="mb-1 text-sm font-semibold text-gray-100">{title}</h3>
+      <div className="space-y-2 text-sm leading-relaxed text-gray-300">{children}</div>
+    </div>
+  );
+}
+
+function Status({ children }: { children: React.ReactNode }) {
+  return <p className="text-xs text-mia-sky">{children}</p>;
+}
+
+/**
+ * The three models, with results only from real evaluation runs
+ * (apps/ml writes them to lib/model-metrics.json). Until then, each card says
+ * what it's waiting for.
+ */
+export function Models() {
+  const forecast = modelMetrics.forecast as ForecastMetrics | null;
+  const phase = modelMetrics.phase as PhaseMetrics | null;
+
+  return (
+    <Section title="Models">
+      <p>
+        Three small models run on what the receiver hears. Each is trained on this receiver&apos;s
+        own data, scored on days it never saw, and only switched on if it beats a simple baseline.
+        Models are trained on a laptop and shipped to the Pi as small JSON files, so the Pi runs
+        them without any machine-learning libraries.
+      </p>
+      <div className="grid gap-3">
+        <ModelCard title="Unusually busy or quiet hours">
+          <p>
+            Each hour is compared with the same hour of the week over the previous 8 weeks (a
+            Tuesday at 5&nbsp;pm against the last eight Tuesdays at 5&nbsp;pm) using median and MAD,
+            which shrug off the odd storm or outage. Three or more deviations away raises an alert
+            on the Analytics page. Hours when the receiver was partly down are ignored.
+          </p>
+          <Status>Runs inside the database every hour, once 3 weeks of history exist.</Status>
+        </ModelCard>
+
+        <ModelCard title="Traffic forecast, next 6 hours">
+          <p>
+            Predicts how many aircraft the receiver will hear from the local hour and weekday,
+            holidays, the weather forecast, and the same hour last week.
+          </p>
+          {forecast ? (
+            forecast.ships ? (
+              <Status>
+                Held out the last {forecast.heldout_days} days: off by {forecast.mae.toFixed(1)}{" "}
+                aircraft/hour on average with {MODEL_NAMES[forecast.model] ?? forecast.model}, vs{" "}
+                {forecast.best_baseline_mae.toFixed(1)} for the best simple baseline
+                {forecast.improvement_pct !== null ? ` (${forecast.improvement_pct}% better)` : ""}.
+                Evaluated {forecast.evaluated_at}.
+              </Status>
+            ) : (
+              <Status>
+                Evaluated {forecast.evaluated_at}: no model beat the &ldquo;same hour last
+                week&rdquo; baseline yet, so it isn&apos;t switched on.
+              </Status>
+            )
+          ) : (
+            <Status>Collecting data: needs about 4 weeks of hourly history.</Status>
+          )}
+        </ModelCard>
+
+        <ModelCard title="Arriving, departing, or somewhere else">
+          <p>
+            Learns phase from what aircraft actually did. The Pi keeps a local log of every
+            aircraft&apos;s positions; afterwards, each position is labeled by whether that aircraft
+            went on to land at MIA, had just taken off from it, used a nearby field like Fort
+            Lauderdale, or never came low near any airport. A classifier trained on those labels
+            replaces the hand-written rules above.
+          </p>
+          {phase ? (
+            phase.ships ? (
+              <Status>
+                Held out {phase.heldout_days} days ({phase.test_samples.toLocaleString("en-US")}{" "}
+                positions): macro-F1 {phase.macro_f1.toFixed(2)} with{" "}
+                {MODEL_NAMES[phase.model] ?? phase.model}, vs {phase.baseline_macro_f1.toFixed(2)}{" "}
+                for the hand-written rules. Evaluated {phase.evaluated_at}.
+              </Status>
+            ) : (
+              <Status>
+                Evaluated {phase.evaluated_at}: the model didn&apos;t beat the hand-written rules
+                yet, so the rules stay on.
+              </Status>
+            )
+          ) : (
+            <Status>Collecting tracks: needs about 2 weeks of position history.</Status>
+          )}
+        </ModelCard>
+      </div>
+    </Section>
   );
 }

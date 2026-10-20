@@ -134,3 +134,33 @@ def test_refuses_to_train_on_too_little_history(tmp_path):
     synthetic_traffic(12).to_csv(csv, index=False)
     with pytest.raises(NotEnoughData):
         train_and_export(csv, tmp_path / "m.json", tmp_path / "r.md")
+
+
+def test_cli_records_results_for_the_website(tmp_path):
+    import json
+
+    from trackflights_ml import train_forecast
+
+    csv = tmp_path / "t.csv"
+    synthetic_traffic(42).to_csv(csv, index=False)
+    site = tmp_path / "model-metrics.json"
+    site.write_text('{"forecast": null, "phase": null}')
+
+    assert (
+        train_forecast.main(
+            [
+                str(csv),
+                "--model-out",
+                str(tmp_path / "m.json"),
+                "--report-out",
+                str(tmp_path / "r.md"),
+                "--site-metrics",
+                str(site),
+            ]
+        )
+        == 0
+    )
+    data = json.loads(site.read_text())
+    assert data["phase"] is None
+    assert data["forecast"]["ships"] is True and data["forecast"]["mae"] > 0
+    assert "evaluated_at" in data["forecast"]

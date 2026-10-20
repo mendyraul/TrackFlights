@@ -9,7 +9,9 @@ on the held-out week, models/forecast.json for the Pi.
 import argparse
 import json
 import sys
+from pathlib import Path
 
+from trackflights_ml import site_metrics
 from trackflights_ml.forecast import NotEnoughData, train_and_export
 
 
@@ -21,6 +23,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--model-out", default="models/forecast.json")
     p.add_argument("--report-out", default="reports/forecast.md")
     p.add_argument("--test-days", type=int, default=7)
+    p.add_argument(
+        "--site-metrics",
+        default=str(site_metrics.DEFAULT_PATH),
+        help="where the website reads results from; '' to skip",
+    )
     args = p.parse_args(argv)
     try:
         summary = train_and_export(
@@ -29,6 +36,8 @@ def main(argv: list[str] | None = None) -> int:
     except NotEnoughData as e:
         print(f"Not enough data yet: {e}", file=sys.stderr)
         return 1
+    if args.site_metrics:
+        site_metrics.record("forecast", summary, Path(args.site_metrics))
     print(json.dumps(summary, indent=2))
     return 0
 
