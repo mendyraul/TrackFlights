@@ -1,14 +1,25 @@
 # Self-Hosted ADS-B Ingest — Hardware Guide (KMIA, 1090 MHz)
 
 This is the receiving station that feeds the `adsb1090` provider (see
-[`etl-pipeline.md`](./etl-pipeline.md)). Aircraft broadcast position reports as **ADS-B on
+[architecture](./architecture.md)). Aircraft broadcast position reports as **ADS-B on
 1090 MHz** (Mode S Extended Squitter). A Raspberry Pi with a software-defined radio (SDR)
 decodes those broadcasts locally — no external API, no per-call quota, full control of the data.
 
 > Band choice: KMIA is an airliner hub, and airliners transmit on **1090 MHz**. The 978 MHz UAT
 > band is US general-aviation only (below 18,000 ft) and is **optional/later** — not needed here.
 
-## Bill of materials (quality tier, ~$120–160)
+## What I run
+
+| Part | What I use |
+|------|------------|
+| SDR receiver | Generic RTL-SDR USB dongle |
+| Antenna | 1090 MHz antenna, indoors, facing out a window |
+| Compute | Raspberry Pi 3, running the decoder and the Python ingestor |
+
+It works fine for the MIA area. The window placement blocks part of the sky, so range is
+uneven by direction; the upgrades below are what I'd change first.
+
+## Upgrade options (~$120–160 all in)
 
 | Part | Recommended | Why |
 |------|-------------|-----|
@@ -19,9 +30,8 @@ decodes those broadcasts locally — no external API, no per-call quota, full co
 | Compute | **Raspberry Pi 4 (2 GB+)**, quality SD card or USB-SSD, 3A USB-C PSU | Pi 4 handles readsb + the Python ingestor comfortably. SSD if you also run `tar1090` history. |
 | Misc | USB extension (move SDR away from Pi USB3 noise), outdoor mount, weatherproofing | USB3 ports radiate at ~1 GHz and desensitize the SDR — keep the dongle on a short USB2 extension away from the Pi. |
 
-### Budget fallback (noted, not recommended here)
-RTL-SDR Blog V3 + DIY 1090 "spider"/coco antenna + Pi 3B+ (~$50–70). Works, but lower range,
-no integrated filter, and more fiddling. Fine for a first test, not for a permanent KMIA station.
+A Pi 3 runs readsb and the ingestor fine; a Pi 4 only matters if you also keep long tar1090
+history or run other services on it.
 
 ## Placement (this matters more than the gear)
 - **Line of sight to the horizon** is everything — ADS-B is ~line-of-sight VHF/UHF behavior. Roof
@@ -48,7 +58,7 @@ A healthy KMIA-area station should show dozens of aircraft with `lat`/`lon` duri
 this is empty, fix antenna/placement **first** — the ETL can't ingest what the radio can't hear.
 
 ## How it connects to TrackFlights
-The Pi runs two services (see [`etl-pipeline.md`](./etl-pipeline.md) and
+The Pi runs two services (see [`etl-pipeline.md`](./architecture.md) and
 `infra/systemd/`): `readsb` (decode) and the existing **ingestor** with
 `FLIGHT_PROVIDER=adsb1090`, which reads `ADSB_JSON_URL` and pushes to Supabase. Those writes are
 **ingress** and do not consume the Supabase egress budget — the egress controls live on the read

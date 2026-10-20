@@ -151,5 +151,4 @@ docs/              Architecture, operations runbooks, cost guardrails, ADRs
 
 - [Architecture](docs/architecture.md) · [Cost guardrails](docs/cost-guardrails.md) ·
   [Deployment](docs/deployment.md) · [Docs index](docs/README.md)
-- Operations: [observability runbook](docs/observability-reliability-runbook.md),
-  [release checklist](docs/release-checklist.md), [rollback runbook](docs/rollback-runbook.md)
+- Operations: [runbook](docs/runbook.md)

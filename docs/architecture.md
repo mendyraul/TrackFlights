@@ -1,97 +1,51 @@
 # Architecture
 
-## System Overview
+The README has the diagram and the main tradeoffs. This page is the reference for how the
+pieces fit together.
 
-MIA Flight Tracker is a three-tier system designed for zero-cost deployment.
+## Data path
 
-### Data Flow
+1. **Receiver (Pi).** An RTL-SDR and a 1090 MHz antenna feed readsb or dump1090-fa, which
+   rewrites `aircraft.json` about once a second.
+2. **Ingestor (Pi, `apps/ingestor`).** Every 15 s it reads `aircraft.json` and drops aircraft
+   with no position in the last 60 s, beyond 200 km of KMIA, or that moved under 150 m since
+   their last write. It infers each aircraft's phase, converts the callsign to an IATA ident,
+   diffs against an in-memory copy of `flights_current`, and upserts what changed. It also
+   writes a heartbeat row and the current hour's traffic stats every poll.
+3. **Database (Supabase Postgres).** Writes are ingress and aren't metered. pg_cron jobs
+   archive finished flights, purge rows that stopped updating, roll up history, and prune
+   old rollups, all inside the database.
+4. **API (`apps/web/src/app/api`, Vercel).** `/api/flights/snapshot` returns up to 250 aircraft
+   (most recently updated first), the newest row's timestamp and the ingestor heartbeat.
+   `/api/dashboard/summary` returns traffic history and weather. Both are cached by Vercel's
+   CDN (30 s and 300 s), so database reads scale with CDN regions, not viewers.
+5. **Browser.** One shared poller (`useFlights`) fetches the snapshot every 15 s for the
+   header, map, board and analytics. Airline, phase and distance are derived client-side
+   from ADS-B fields.
 
-```
-External Flight APIs
-        │
-        ▼
-┌───────────────────┐
-│  Python Ingestor  │  (Raspberry Pi)
-│                   │
-│  • Polls APIs     │
-│  • Normalizes     │
-│  • Computes diffs │
-│  • Upserts to DB  │
-└───────┬───────────┘
-        │ HTTPS (Supabase client)
-        ▼
-┌───────────────────┐
-│  Supabase         │
-│                   │
-│  • Postgres DB    │
-│  • Realtime       │
-│  • Row Level Sec  │
-│  • Edge Functions │
-└───────┬───────────┘
-        │ WebSocket (Realtime)
-        ▼
-┌───────────────────┐
-│  Next.js Frontend │  (Vercel)
-│                   │
-│  • Map view       │
-│  • Table view     │
-│  • Analytics      │
-└───────────────────┘
-```
+## Tables
 
-## Component Details
+| Table | Written by | Purpose |
+|---|---|---|
+| `flights_current` | ingestors | One row per flight ident (hex when no callsign); live position and state |
+| `flights_history` | pg_cron archive job | Finished flights, kept 7 days |
+| `traffic_hourly` | ADS-B ingestor via `record_traffic_hour()` | Per-hour unique aircraft by phase, peak, range |
+| `ingestor_heartbeat` | ingestors | Last poll time and aircraft counts, for the status indicator |
+| `weather_snapshots` | ADS-B ingestor (Open-Meteo) | Hourly weather at MIA |
+| `analytics_hourly` / `_daily` | pg_cron rollups | Schedule-based stats; only filled by the AeroAPI feed |
 
-### Frontend (apps/web)
+Every table has RLS with public read only. Writes use the service-role key, which exists only
+on the Pi. Write-capable SQL functions are executable only by `service_role`.
 
-- **Framework**: Next.js 14+ with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Map**: Leaflet or Mapbox GL JS (free tier)
-- **Charts**: Recharts
-- **State**: React hooks + Supabase Realtime subscriptions
-- **Deployment**: Vercel (free tier, auto-deploy from GitHub)
+## Optional schedule feed
 
-**Key pages:**
-- `/` — Map view (default)
-- `/table` — Arrival/departure board
-- `/analytics` — Operational dashboards
+A second ingestor unit (`mia-ingestor-aeroapi`) can poll FlightAware AeroAPI every 4 hours for
+schedules, delays and gates, under a hard monthly budget guard. Its rows merge with ADS-B rows
+on the flight ident. The site shows schedule data only where it exists.
 
-### Ingestion Service (apps/ingestor)
+## Freshness
 
-- **Language**: Python 3.11+
-- **Runtime**: Raspberry Pi (systemd service) or Docker
-- **Scheduling**: Simple polling loop with configurable interval
-- **Database client**: supabase-py
-
-**Responsibilities:**
-1. Poll flight data APIs every N seconds
-2. Normalize API responses into canonical schema
-3. Diff against current state to detect changes
-4. Upsert changed flights into `flights_current`
-5. Archive completed flights to `flights_history`
-6. Compute hourly/daily analytics rollups
-
-### Database (Supabase)
-
-- **Engine**: PostgreSQL 15
-- **Realtime**: Enabled on `flights_current` for live UI updates
-- **Security**: Row Level Security (RLS) with anonymous read access
-- **Extensions**: pg_cron (analytics rollups), postgis (optional, geo queries)
-
-## Key Design Decisions
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Frontend framework | Next.js | SSR, free Vercel hosting, React ecosystem |
-| Database | Supabase Postgres | Free tier, built-in Realtime, typed client |
-| Ingestion runtime | Raspberry Pi | Zero-cost, always-on, low power |
-| Realtime mechanism | Supabase Realtime | No WebSocket server needed, built into Supabase |
-| Monorepo | npm workspaces | Simple, no extra tooling |
-| No Redis | Supabase only | Reduce complexity; add caching later if needed |
-
-## Scaling Path
-
-1. **Phase 1** (current): Single Raspberry Pi ingestor, Supabase free tier
-2. **Phase 2**: Add Redis for caching, multiple API sources
-3. **Phase 3**: ML models for delay prediction, anomaly detection
-4. **Phase 4**: Multi-airport support, paid Supabase tier
+The site calls data "live" when the heartbeat is under 2 minutes old and the decoder reported
+aircraft, or, without a heartbeat, when the newest row is under 2 minutes old. A fresh heartbeat
+with zero aircraft is "no signal" (radio side). After 15 minutes without new data it shows
+"Receiver offline" with the last data time.

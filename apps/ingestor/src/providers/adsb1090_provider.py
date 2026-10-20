@@ -12,7 +12,7 @@ Notes:
     fetches one snapshot per cycle.
   * The Pi -> Supabase write is ingress and does not count against the Supabase
     egress budget; in-provider range + movement gating keeps row churn (and the
-    DB footprint) bounded. See docs/etl-pipeline.md.
+    DB footprint) bounded. See docs/architecture.md.
 """
 
 from math import asin, cos, radians, sin, sqrt
