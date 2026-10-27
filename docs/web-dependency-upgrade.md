@@ -12,6 +12,7 @@ npm run lint
 npm run test --workspace=apps/web
 npm run format:check --workspace=apps/web
 npm run build
+npm run test:browser
 npm audit --audit-level=high
 ```
 
@@ -19,6 +20,12 @@ Next.js 16 removed `next lint`, so the web lint script uses the ESLint CLI and
 the framework's flat config. The route-line fallback is now derived from the
 selected airports while database refinement stays asynchronous. This preserves
 immediate route rendering without setting state synchronously inside an effect.
+
+Production keeps the supported Webpack build mode. Browser verification found a
+missing module-factory error in the lazily loaded Leaflet chunk with the new
+Turbopack default, despite a successful build. The production browser check now
+waits for the actual map and exercises selection/route rendering, so a loading
+placeholder cannot count as a passing map check.
 
 The old Lodash 4.17.21 overrides prevented security updates and are removed.
 The test runner, Vite and React plugin are also declared at the workspace root
