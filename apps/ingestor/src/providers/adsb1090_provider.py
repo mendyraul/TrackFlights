@@ -63,6 +63,7 @@ class Adsb1090Provider(BaseFlightProvider):
         self.max_seen_seconds = settings.adsb_max_seen_seconds
         # icao24 -> (lat, lon) of the last position we emitted, for movement gating.
         self._last_emitted: dict[str, tuple[float, float]] = {}
+        self.last_snapshot_counts: tuple[int, int] = (0, 0)
 
     @property
     def name(self) -> str:
@@ -138,6 +139,7 @@ class Adsb1090Provider(BaseFlightProvider):
             in_range_active=len(active_hexes),
             emitted=len(kept),
         )
+        self.last_snapshot_counts = (len(raw_aircraft), len(active_hexes))
         return kept
 
     def normalize(self, raw: dict[str, Any], direction: str) -> dict[str, Any]:

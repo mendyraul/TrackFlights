@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { FLIGHT_SNAPSHOT_COLUMNS } from "@/lib/dashboard-selects";
+import { readReceiver } from "@/lib/receiver";
+import { withinDeadline } from "@/lib/health";
 
 // Server refresh window. Vercel's CDN serves this response from cache and only
 // re-runs the function (and the Supabase read) about once per window, so
@@ -11,22 +13,34 @@ const REFRESH_SECONDS =
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const { data, error } = await supabase
-    .from("flights_current")
-    .select(FLIGHT_SNAPSHOT_COLUMNS)
-    .order("updated_at", { ascending: false })
-    .limit(250);
+async function snapshot() {
+  const [result, receiver] = await Promise.all([
+    withinDeadline((signal) =>
+      supabase
+        .from("flights_current")
+        .select(FLIGHT_SNAPSHOT_COLUMNS)
+        .order("updated_at", { ascending: false })
+        .limit(250)
+        .abortSignal(signal)
+    ),
+    readReceiver(),
+  ]);
+  const { data, error } = result;
 
   if (error) {
     return Response.json(
-      { flights: [], error: error.message },
+      { flights: [], error: "Flight data unavailable" },
       { status: 503, headers: { "Cache-Control": "no-store" } }
     );
   }
 
+  const flights = data ?? [];
+  // Rows are newest-first, so the first row's updated_at is the data age the
+  // UI reports. lastUpdate is only when this response was generated.
+  const newest = flights[0] as { updated_at?: string } | undefined;
+
   return Response.json(
-    { flights: data ?? [], lastUpdate: Date.now() },
+    { flights, dataUpdatedAt: newest?.updated_at ?? null, receiver, lastUpdate: Date.now() },
     {
       status: 200,
       headers: {
@@ -35,4 +49,15 @@ export async function GET() {
       },
     }
   );
+}
+
+export async function GET() {
+  try {
+    return await snapshot();
+  } catch {
+    return Response.json(
+      { flights: [], error: "Flight data unavailable" },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
 }

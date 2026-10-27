@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useFlights } from "@/hooks/useFlights";
-import { ConnectionBadge } from "@/components/ui/ConnectionBadge";
+import { DataStatusBanner } from "@/components/ui/DataStatusBanner";
 import type { Flight, FlightDirection, FlightStatus } from "@/types/database";
 import { AirlineLogo } from "@/components/ui/AirlineLogo";
 
@@ -86,7 +86,7 @@ function getSortValue(flight: Flight, field: SortField, direction: FlightDirecti
 }
 
 export function FlightBoard() {
-  const { flights, loading, error, connectionStatus, lastUpdate, recentlyChanged } = useFlights();
+  const { flights, loading, freshness, dataUpdatedAt, now, recentlyChanged } = useFlights();
   const [direction, setDirection] = useState<FlightDirection>("arrival");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<FlightStatus | "">("");
@@ -227,16 +227,19 @@ export function FlightBoard() {
 
         {/* Connection status + count */}
         <div className="ml-auto flex items-center gap-3">
-          <ConnectionBadge status={connectionStatus} lastUpdate={lastUpdate} />
           <span className="rounded bg-mia-dark px-2.5 py-1 text-xs font-medium text-gray-400">
             {filtered.length} flights
           </span>
         </div>
       </div>
 
-      {error && (
-        <p className="mb-4 rounded bg-red-900/20 px-3 py-2 text-sm text-red-400">{error}</p>
-      )}
+      <DataStatusBanner
+        freshness={freshness}
+        dataUpdatedAt={dataUpdatedAt}
+        now={now}
+        showing="the last aircraft seen"
+        className="mb-4"
+      />
 
       {/* Table */}
       <div className="overflow-x-auto rounded-lg border border-gray-800">

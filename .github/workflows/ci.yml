@@ -2,14 +2,14 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, dev]
     paths:
       - "apps/**"
       - "packages/**"
       - "package*.json"
       - "tsconfig*.json"
       - "apps/ingestor/**"
-      - "supabase/migrations/**"
+      - "supabase/**"
+      - "scripts/*ingestion-health.py"
       - ".github/workflows/ci.yml"
   push:
     branches: [main, dev]
@@ -19,7 +19,8 @@ on:
       - "package*.json"
       - "tsconfig*.json"
       - "apps/ingestor/**"
-      - "supabase/migrations/**"
+      - "supabase/**"
+      - "scripts/*ingestion-health.py"
       - ".github/workflows/ci.yml"
 
 concurrency:
@@ -27,6 +28,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ops-health-tests:
+    name: ops / ingestion health probes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/test-ingestion-health.py
+
+  heartbeat-migration:
+    name: db / receiver heartbeat permissions
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply additive migration twice and check role permissions
+        run: |
+          psql -v ON_ERROR_STOP=1 -c 'CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;'
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027120000_receiver_heartbeat.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027120000_receiver_heartbeat.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/receiver_heartbeat_test.sql
+
   changes:
     runs-on: ubuntu-latest
     outputs:
