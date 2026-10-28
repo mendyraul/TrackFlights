@@ -31,6 +31,21 @@ STALE_THRESHOLD_MINUTES = 10
 class SupabaseFlightClient:
     """Handles all Supabase read/write operations for flight data."""
 
+    def record_heartbeat(
+        self, source: str, received: int, in_range: int, rows_written: int
+    ) -> None:
+        """Persist receiver activity independently of flight movement gating."""
+        self.client.table("ingestor_heartbeat").upsert(
+            {
+                "source": source,
+                "last_poll_at": datetime.now(UTC).isoformat(),
+                "aircraft_received": received,
+                "aircraft_in_range": in_range,
+                "rows_written": rows_written,
+            },
+            on_conflict="source",
+        ).execute()
+
     def __init__(self) -> None:
         self.client: Client = create_client(
             settings.supabase_url,

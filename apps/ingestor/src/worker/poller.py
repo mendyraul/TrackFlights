@@ -213,6 +213,17 @@ class Poller:
         stale_marked = self.db.mark_stale_flights(removed_own) if removed_own else 0
         archived = self.db.archive_completed_flights()
 
+        if self.provider.is_live_position_feed:
+            received, in_range = getattr(
+                self.provider, "last_snapshot_counts", (len(raw_arrivals), len(raw_arrivals))
+            )
+            try:
+                self.db.record_heartbeat(self.provider.name, received, in_range, upserted)
+            except Exception as exc:
+                # The additive heartbeat migration may not be installed yet.
+                # Its absence must not stop the existing flight ingestion.
+                logger.warning("Receiver heartbeat write failed", error_type=type(exc).__name__)
+
         for detail in diff.change_details:
             logger.debug("Flight change", flight=detail["flight_iata"], changes=detail["changes"])
 

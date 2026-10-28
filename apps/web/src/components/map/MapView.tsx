@@ -8,7 +8,7 @@ import type { Flight, FlightDirection } from "@/types/database";
 import { airportCoords } from "@/lib/airports";
 import { FlightDetailSidebar } from "@/components/map/FlightDetailSidebar";
 import { MapFilters } from "@/components/map/MapFilters";
-import { ConnectionBadge } from "@/components/ui/ConnectionBadge";
+import { DataStatusBanner } from "@/components/ui/DataStatusBanner";
 
 const FlightMap = dynamic(() => import("@/components/map/FlightMap"), {
   ssr: false,
@@ -35,7 +35,8 @@ export interface MapFilterState {
 }
 
 export function MapView() {
-  const { flights, loading, error, connectionStatus, lastUpdate, recentlyChanged } = useFlights();
+  const { flights, loading, freshness, dataUpdatedAt, now, recentlyChanged } = useFlights();
+  const stale = freshness === "offline" || freshness === "error";
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
   const [refinedRoute, setRefinedRoute] = useState<{ key: string; line: RouteLine } | null>(null);
   const [filters, setFilters] = useState<MapFilterState>({
@@ -164,11 +165,13 @@ export function MapView() {
 
       {/* Map area */}
       <div className="relative flex-1">
-        {error && (
-          <div className="absolute top-2 left-1/2 z-[1000] -translate-x-1/2 rounded bg-red-900/90 px-4 py-2 text-sm text-red-200">
-            {error}
-          </div>
-        )}
+        <DataStatusBanner
+          freshness={freshness}
+          dataUpdatedAt={dataUpdatedAt}
+          now={now}
+          showing={mappable.length > 0 ? "the last known positions, greyed out" : undefined}
+          className="absolute bottom-6 left-1/2 z-[1000] w-[min(92%,40rem)] -translate-x-1/2"
+        />
 
         {/* Filters */}
         <MapFilters
@@ -179,13 +182,6 @@ export function MapView() {
           mappableCount={mappable.length}
         />
 
-        {/* Connection status */}
-        <div className="absolute right-4 top-4 z-[1000]">
-          <div className="rounded-lg border border-gray-700 bg-mia-panel/95 px-3 py-2 shadow-lg backdrop-blur-sm">
-            <ConnectionBadge status={connectionStatus} lastUpdate={lastUpdate} />
-          </div>
-        </div>
-
         {/* Map */}
         <FlightMap
           flights={mappable}
@@ -194,6 +190,7 @@ export function MapView() {
           routeLine={routeLine}
           recentlyChanged={recentlyChanged}
           highlightedAirports={highlightedAirports}
+          stale={stale}
         />
       </div>
     </div>

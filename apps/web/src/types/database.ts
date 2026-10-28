@@ -175,6 +175,21 @@ export interface TrafficAnomaly {
 export interface Database {
   public: {
     Tables: {
+      ingestor_heartbeat: {
+        Row: {
+          source: string;
+          last_poll_at: string;
+          aircraft_received: number;
+          aircraft_in_range: number;
+        };
+        Insert: {
+          source: string;
+          last_poll_at: string;
+          aircraft_received: number;
+          aircraft_in_range: number;
+        };
+        Update: { last_poll_at?: string; aircraft_received?: number; aircraft_in_range?: number };
+      };
       flights_current: {
         Row: Flight;
         Insert: Partial<Flight> & { flight_iata: string; direction: FlightDirection };

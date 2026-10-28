@@ -1,0 +1,25 @@
+name: Ingestion health
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    # Enable after deployment and after the owner verifies Actions notifications.
+    if: github.event_name == 'workflow_dispatch' || vars.INGESTION_HEALTH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check database and ingestion separately
+        env:
+          BASE_URL: ${{ vars.TRACKFLIGHTS_HEALTH_BASE_URL || 'https://track-flights-web.vercel.app' }}
+        run: python scripts/check-ingestion-health.py "$BASE_URL"

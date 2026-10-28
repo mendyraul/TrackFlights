@@ -24,6 +24,8 @@ interface FlightMapProps {
   recentlyChanged: Set<string>;
   /** IATA codes of the selected flight's origin/destination, highlighted on the map. */
   highlightedAirports: readonly string[];
+  /** Receiver offline: draw last known positions greyed out so they don't read as live. */
+  stale?: boolean;
 }
 
 // ── Aircraft Icon ──────────────────────────────────────────────────────
@@ -31,10 +33,11 @@ interface FlightMapProps {
 function createAircraftIcon(
   heading: number | null,
   isSelected: boolean,
-  isChanged: boolean
+  isChanged: boolean,
+  stale = false
 ): L.DivIcon {
   const rotation = heading ?? 0;
-  const color = isSelected ? "#00d4ff" : isChanged ? "#f97316" : "#facc15";
+  const color = isSelected ? "#00d4ff" : isChanged ? "#f97316" : stale ? "#6b7280" : "#facc15";
   const size = isSelected ? 28 : 22;
   const glow = isChanged
     ? "drop-shadow(0 0 6px #f97316)"
@@ -149,11 +152,13 @@ function SmoothMarker({
   flight,
   isSelected,
   isChanged,
+  stale,
   onSelect,
 }: {
   flight: Flight;
   isSelected: boolean;
   isChanged: boolean;
+  stale: boolean;
   onSelect: () => void;
 }) {
   const markerRef = useRef<L.Marker>(null);
@@ -188,14 +193,14 @@ function SmoothMarker({
     }
 
     // Update icon (heading/selection/change state may have changed)
-    marker.setIcon(createAircraftIcon(flight.heading, isSelected, isChanged));
-  }, [flight.latitude, flight.longitude, flight.heading, isSelected, isChanged]);
+    marker.setIcon(createAircraftIcon(flight.heading, isSelected, isChanged, stale));
+  }, [flight.latitude, flight.longitude, flight.heading, isSelected, isChanged, stale]);
 
   return (
     <Marker
       ref={markerRef}
       position={[flight.latitude!, flight.longitude!]}
-      icon={createAircraftIcon(flight.heading, isSelected, isChanged)}
+      icon={createAircraftIcon(flight.heading, isSelected, isChanged, stale)}
       eventHandlers={{ click: onSelect }}
     >
       <Popup>
@@ -239,19 +244,20 @@ function MapBoundsUpdater({ flights }: { flights: Flight[] }) {
 
 // ── Cluster Icon ───────────────────────────────────────────────────────
 
-function createClusterIcon(cluster: any): L.DivIcon {
+function createClusterIcon(cluster: any, stale: boolean): L.DivIcon {
   const count = cluster.getChildCount();
   const size = count < 10 ? 36 : count < 50 ? 44 : 52;
+  const rgb = stale ? "156,163,175" : "250,204,21";
 
   return L.divIcon({
     html: `<div style="
       width:${size}px;height:${size}px;
-      background:rgba(250,204,21,0.15);
-      border:2px solid rgba(250,204,21,0.6);
+      background:rgba(${rgb},0.15);
+      border:2px solid rgba(${rgb},0.6);
       border-radius:50%;
       display:flex;align-items:center;justify-content:center;
-      color:#facc15;font-weight:700;font-size:13px;
-      box-shadow:0 0 12px rgba(250,204,21,0.3);
+      color:rgb(${rgb});font-weight:700;font-size:13px;
+      box-shadow:0 0 12px rgba(${rgb},0.3);
     ">${count}</div>`,
     className: "",
     iconSize: [size, size],
@@ -267,6 +273,7 @@ function FlightMapInner({
   routeLine,
   recentlyChanged,
   highlightedAirports,
+  stale = false,
 }: FlightMapProps) {
   return (
     <MapContainer
@@ -295,7 +302,9 @@ function FlightMapInner({
       {/* Aircraft markers with clustering */}
       <MarkerClusterGroup
         chunkedLoading
-        iconCreateFunction={createClusterIcon}
+        // Remount on stale flips so existing clusters pick up the new colour.
+        key={stale ? "stale" : "live"}
+        iconCreateFunction={(cluster: unknown) => createClusterIcon(cluster, stale)}
         maxClusterRadius={60}
         spiderfyOnMaxZoom
         disableClusteringAtZoom={10}
@@ -306,6 +315,7 @@ function FlightMapInner({
             flight={flight}
             isSelected={flight.id === selectedId}
             isChanged={recentlyChanged.has(flight.id)}
+            stale={stale}
             onSelect={() => onSelect(flight)}
           />
         ))}
