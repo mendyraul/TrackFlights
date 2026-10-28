@@ -16,10 +16,7 @@ interface Props {
  * Explains stale or missing data instead of an endless spinner or a
  * misleading "Live" badge. Renders nothing while data is live or loading.
  */
-export function DataStatusBanner({
-  freshness,
-  className = "",
-}: Props) {
+export function DataStatusBanner({ freshness, className = "" }: Props) {
   if (freshness === "live" || freshness === "loading") return null;
 
   const retry = `Checking again every ${CLIENT_POLL_MS / 1000} s.`;
