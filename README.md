@@ -55,7 +55,7 @@ docs/               → Architecture & development docs
 ## Quick Start
 
 ### Prerequisites
-- Node.js >= 18
+- Node.js 22.12+ (use the Node 22 release line in `.nvmrc`)
 - Python >= 3.11
 - Docker & Docker Compose
 - Supabase CLI (`npx supabase`)

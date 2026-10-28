@@ -24,12 +24,17 @@
     "smoke:schema": "./scripts/smoke-supabase-schema.sh",
     "smoke:health": "./scripts/smoke-health-endpoints.sh",
     "perf:latency:capture": "./scripts/perf/capture-health-latency.sh",
-    "perf:latency:summary": "node ./scripts/perf/summarize-latency.mjs"
+    "perf:latency:summary": "node ./scripts/perf/summarize-latency.mjs",
+    "test:browser": "playwright test --config apps/web/playwright.config.ts"
   },
   "engines": {
-    "node": ">=18"
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
   },
-  "overrides": {
-    "lodash": "4.17.21"
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitejs/plugin-react": "^5.0.2",
+    "vite": "^7.3.7",
+    "vitest": "^5.0.5",
+    "@playwright/test": "^1.55.0"
   }
 }

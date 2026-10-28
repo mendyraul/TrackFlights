@@ -37,7 +37,7 @@ export interface MapFilterState {
 export function MapView() {
   const { flights, loading, error, connectionStatus, lastUpdate, recentlyChanged } = useFlights();
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
-  const [routeLine, setRouteLine] = useState<RouteLine | null>(null);
+  const [refinedRoute, setRefinedRoute] = useState<{ key: string; line: RouteLine } | null>(null);
   const [filters, setFilters] = useState<MapFilterState>({
     direction: "all",
     status: "",
@@ -72,26 +72,24 @@ export function MapView() {
       )
     : [];
 
+  const routeKey =
+    syncedSelected?.origin_iata && syncedSelected?.destination_iata
+      ? syncedSelected.origin_iata + ":" + syncedSelected.destination_iata
+      : null;
+  const staticOrigin = airportCoords(syncedSelected?.origin_iata ?? "");
+  const staticDestination = airportCoords(syncedSelected?.destination_iata ?? "");
+  const routeLine =
+    refinedRoute?.key === routeKey
+      ? refinedRoute.line
+      : staticOrigin && staticDestination
+        ? { origin: staticOrigin, destination: staticDestination }
+        : null;
+
   useEffect(() => {
     const origin = syncedSelected?.origin_iata;
     const destination = syncedSelected?.destination_iata;
 
-    if (!origin || !destination) {
-      setRouteLine(null);
-      return;
-    }
-
-    // Draw from static reference data first so the line appears on click.
-    // Waiting on Supabase costs ~7s when the database is unreachable, and the
-    // airports table ships with only MIA seeded, so the lookup below is a
-    // refinement — not the thing the user is waiting for.
-    const staticOrigin = airportCoords(origin);
-    const staticDestination = airportCoords(destination);
-    setRouteLine(
-      staticOrigin && staticDestination
-        ? { origin: staticOrigin, destination: staticDestination }
-        : null
-    );
+    if (!origin || !destination) return;
 
     let cancelled = false;
 
@@ -129,7 +127,10 @@ export function MapView() {
       const resolvedDestination = coords(destination!);
       if (!resolvedOrigin || !resolvedDestination) return;
 
-      setRouteLine({ origin: resolvedOrigin, destination: resolvedDestination });
+      setRefinedRoute({
+        key: origin + ":" + destination,
+        line: { origin: resolvedOrigin, destination: resolvedDestination },
+      });
     }
 
     void refineFromDatabase();
