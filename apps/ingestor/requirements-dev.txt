@@ -2,6 +2,6 @@
 #   pip install -r requirements.txt -r requirements-dev.txt
 -r requirements.txt
 ruff==0.15.17
-black==26.5.1
+black==26.10.1
 pytest==9.0.3
 pre-commit
