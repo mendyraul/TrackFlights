@@ -1,6 +1,6 @@
 "use client";
 
-import { formatAge, formatMiamiTime, type Freshness } from "@/lib/freshness";
+import { type Freshness } from "@/lib/freshness";
 import { CLIENT_POLL_MS } from "@/hooks/useFlights";
 
 interface Props {
@@ -18,9 +18,6 @@ interface Props {
  */
 export function DataStatusBanner({
   freshness,
-  dataUpdatedAt,
-  now,
-  showing,
   className = "",
 }: Props) {
   if (freshness === "live" || freshness === "loading") return null;
@@ -30,25 +27,16 @@ export function DataStatusBanner({
   let title: string;
   let body: string;
 
-  if (freshness === "error") {
-    tone = "border-red-500/40 bg-red-950/90 text-red-100";
-    title = "Can't reach the flight data API";
-    body = retry;
-  } else if (freshness === "silent") {
+  if (freshness === "silent") {
     title = "No aircraft in range";
-    body = `The receiver is polling but has no current aircraft in range. ${retry}`;
-  } else if (dataUpdatedAt === null) {
-    title = "Receiver offline";
-    body = `No aircraft data has been received yet. ${retry}`;
+    body = `No aircraft are currently in range. ${retry}`;
+  } else if (freshness === "delayed") {
+    title = "Flight data is delayed";
+    body = "Please try again shortly.";
   } else {
-    const when = `${formatMiamiTime(dataUpdatedAt)} (${formatAge(now - dataUpdatedAt)})`;
-    if (freshness === "delayed") {
-      title = "Data delayed";
-      body = `Last update ${when}. The receiver may be catching up.`;
-    } else {
-      title = "Receiver offline";
-      body = `Last data received ${when}.${showing ? ` Showing ${showing}.` : ""}`;
-    }
+    tone = "border-red-500/40 bg-red-950/90 text-red-100";
+    title = "Flight data is temporarily unavailable";
+    body = "Please try again shortly.";
   }
 
   return (

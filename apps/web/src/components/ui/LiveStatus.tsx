@@ -8,8 +8,8 @@ const LABEL: Record<Freshness, { text: string; dot: string; pulse: boolean }> = 
   live: { text: "Receiver online", dot: "bg-green-400", pulse: true },
   delayed: { text: "Data delayed", dot: "bg-yellow-400", pulse: false },
   silent: { text: "No aircraft in range", dot: "bg-yellow-400", pulse: false },
-  offline: { text: "Receiver offline", dot: "bg-red-400", pulse: false },
-  error: { text: "API unreachable", dot: "bg-red-400", pulse: false },
+  offline: { text: "Flight data unavailable", dot: "bg-red-400", pulse: false },
+  error: { text: "Flight data unavailable", dot: "bg-red-400", pulse: false },
 };
 
 /** Header indicator: receiver state, aircraft tracked right now, and data age. */
@@ -30,7 +30,7 @@ export function LiveStatus() {
           <span className="font-normal text-gray-400"> · {tracked} aircraft</span>
         ) : null}
       </span>
-      {dataUpdatedAt !== null && freshness !== "loading" ? (
+      {dataUpdatedAt !== null && freshness === "live" ? (
         <span className="hidden text-gray-400 sm:inline">
           · updated {formatAge(now - dataUpdatedAt)}
         </span>
