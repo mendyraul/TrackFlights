@@ -53,7 +53,7 @@ class Poller:
         self._traffic = TrafficAccumulator()
         # Log a missing-migration failure once, not every 15 s.
         self._telemetry_warned = False
-        self._last_ping = 0.0
+        self._last_ping: float | None = None
         self._track_log = self._open_track_log()
         self._forecast = self._load_forecast()
         self._load_phase_model()
@@ -338,7 +338,10 @@ class Poller:
         """Dead-man's switch: tell an external monitor the receiver is alive."""
         url = settings.heartbeat_ping_url
         now = time.monotonic()
-        if not url or now - self._last_ping < settings.heartbeat_ping_interval_seconds:
+        if not url or (
+            self._last_ping is not None
+            and now - self._last_ping < settings.heartbeat_ping_interval_seconds
+        ):
             return
         self._last_ping = now
         try:

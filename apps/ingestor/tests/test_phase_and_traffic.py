@@ -142,7 +142,7 @@ def _poller_with(db, provider):
     poller.db = db
     poller._traffic = TrafficAccumulator()
     poller._telemetry_warned = False
-    poller._last_ping = 0.0
+    poller._last_ping = None
     poller._track_log = None
     poller._latest_weather = None
     poller._forecast = None
@@ -193,6 +193,8 @@ def test_ping_only_when_the_radio_hears_aircraft(monkeypatch):
     from src.worker import poller as poller_module
 
     pings: list[str] = []
+    clock = {"now": 1.0}
+    monkeypatch.setattr(poller_module.time, "monotonic", lambda: clock["now"])
     monkeypatch.setattr(settings, "heartbeat_ping_url", "https://hc-ping.example/abc")
     monkeypatch.setattr(poller_module.httpx, "get", lambda url, timeout: pings.append(url))
 
@@ -207,6 +209,9 @@ def test_ping_only_when_the_radio_hears_aircraft(monkeypatch):
     poller._record_receiver_telemetry({})
     poller._record_receiver_telemetry({})  # throttled to once a minute
     assert pings == ["https://hc-ping.example/abc"]
+    clock["now"] += 60
+    poller._record_receiver_telemetry({})
+    assert len(pings) == 2
 
 
 def test_track_log_receives_every_observation_and_never_breaks_a_poll(tmp_path):

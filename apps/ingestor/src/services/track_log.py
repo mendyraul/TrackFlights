@@ -170,6 +170,8 @@ class TrackLog:
             "DELETE FROM positions WHERE ts < ?", (now - self.retention_days * 86400,)
         ).rowcount
         self._db.commit()
+        # Reclaim WAL/free pages before deciding whether more rows must go.
+        self._compact()
 
         while self.size_mb() > self.max_mb:
             oldest = self._db.execute("SELECT MIN(ts) FROM positions").fetchone()[0]
@@ -188,10 +190,22 @@ class TrackLog:
         return deleted
 
     def _compact(self) -> None:
-        # Each result row frees pages; the pragma only runs as rows are fetched.
-        self._db.execute("PRAGMA incremental_vacuum").fetchall()
-        self._db.commit()
-        # Vacuuming writes to the WAL, so truncate it afterwards.
+        # Older SQLite/Python combinations reclaim only one page per call,
+        # even when all pragma rows are fetched. Continue while freelist pages
+        # decrease; batch this in a transaction to avoid a commit per page.
+        self._db.execute("BEGIN")
+        try:
+            free = self._db.execute("PRAGMA freelist_count").fetchone()[0]
+            while free:
+                self._db.execute("PRAGMA incremental_vacuum(256)").fetchall()
+                remaining = self._db.execute("PRAGMA freelist_count").fetchone()[0]
+                if remaining >= free:
+                    break
+                free = remaining
+            self._db.commit()
+        except Exception:
+            self._db.rollback()
+            raise
         self._db.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchall()
 
     # ── Reporting ───────────────────────────────────────────────────────
