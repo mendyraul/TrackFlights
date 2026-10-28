@@ -89,14 +89,25 @@ exhausts the month in ~8 days.** (This is why realtime was disabled and polling 
 **The fix — decouple viewers from Supabase reads.** `apps/web/src/app/api/flights/snapshot/route.ts`
 reads the snapshot from Supabase **once per `SNAPSHOT_REFRESH_SECONDS`**, and is edge-cached
 (`Cache-Control: s-maxage=…`). Every browser is served from Vercel's CDN (Hobby = 100 GB/mo,
-separate pool), so Supabase egress depends on the *server* refresh rate, not viewer count. The
-client (`useFlights`) polls the route every 10 s — those hits land on the CDN, not Supabase.
+separate pool), so Supabase egress depends on the *server* refresh rate and on how many CDN
+regions have viewers, not on viewer count. The client (`useFlights`) polls the route every 15 s,
+half the 30 s window — those hits land on the CDN, not Supabase.
 
-| Server refresh (`SNAPSHOT_REFRESH_SECONDS`) | Supabase egress/mo (~35 KB snapshot) | Verdict |
-|---|---|---|
-| 30 s | ~3.0 GB | ✅ headroom under 5 GB |
-| 60 s | ~1.5 GB | ✅ recommended default (safest) |
-| ≤10 s | >9 GB | ❌ over budget |
+**Measured snapshot size (2026-10-20, 250 rows, trimmed column list):** ~132 KB JSON, ~18.7 KB
+gzipped. The route's server-side `fetch` sends `Accept-Encoding: gzip, deflate` (verified on
+Node 22), so the compressed size is what leaves Supabase. Worst case below assumes a region with
+a viewer around the clock; hours without viewers cost nothing because the cache only refreshes
+on request.
+
+| Server refresh (`SNAPSHOT_REFRESH_SECONDS`) | Reads/mo per active region | Supabase egress/mo (19 KB) | Verdict |
+|---|---|---|---|
+| 30 s (current default) | 86,400 | ~1.6 GB | ✅ headroom under 5 GB for 1–2 busy regions |
+| 60 s | 43,200 | ~0.8 GB | ✅ safest |
+| ≤10 s | ≥259,200 | ≥4.8 GB | ❌ over budget |
+
+The Pi's own reads also count: the ingestor reconciles its `flights_current` cache every
+`CURRENT_CACHE_REFRESH_SECONDS` (600 s), up to PostgREST's 1,000-row cap per read. Keeping
+`flights_current` small (the pg_cron purge) keeps that read small.
 
 For the planned FlightAware AeroAPI migration (`TrackFlights#77`), the ingestor now mirrors these
 assumptions in code with `apps/ingestor/src/aeroapi_guardrails.py` and config defaults:

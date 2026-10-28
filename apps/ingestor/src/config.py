@@ -42,6 +42,23 @@ class Settings(BaseSettings):
     adsb_max_range_km: float = 200.0  # drop aircraft farther than this from MIA
     adsb_min_move_meters: float = 150.0  # skip writes for aircraft that barely moved
     adsb_max_seen_seconds: float = 60.0  # drop stale tracks (no recent position)
+    # Optional dead-man's switch (e.g. a healthchecks.io check URL). Pinged at
+    # most once a minute, and only when the decoder reported aircraft, so the
+    # check alerts on "ingestor down" *and* "radio hearing nothing".
+    heartbeat_ping_url: str = ""
+    heartbeat_ping_interval_seconds: int = 60
+    # Local position history for training the phase classifier (SQLite on
+    # the Pi's SD card or a USB drive). Empty path = off. See
+    # src/services/track_log.py and `python -m src.tools.track_log_stats`.
+    track_log_path: str = ""
+    track_log_sample_seconds: int = 30
+    track_log_retention_days: int = 30
+    track_log_max_mb: int = 1024
+    track_log_min_free_mb: int = 1024
+    # Exported traffic-forecast model (apps/ml). Empty = no forecasting.
+    forecast_model_path: str = ""
+    # Exported arrival/departure classifier (apps/ml). Empty = rule-based phase.
+    phase_model_path: str = ""
 
     # AeroAPI planning defaults for South Florida region searches.
     aeroapi_bbox: str = "25.2,-82.0,27.0,-80.0"
@@ -62,10 +79,6 @@ class Settings(BaseSettings):
     weather_enabled: bool = True
     weather_provider: str = "openmeteo"
     weather_poll_interval_seconds: int = 3600  # Temporary cost-control mode: every 60 minutes
-
-    # ML / Predictions (write-heavy; disabled by default for free-tier cost control)
-    predictions_enabled: bool = False
-    anomaly_detection_enabled: bool = False
 
     # Data retention (days)
     flights_history_retention_days: int = 7
@@ -125,10 +138,7 @@ def get_runtime_config_summary() -> dict[str, object]:
             "provider": settings.weather_provider,
             "poll_interval_seconds": settings.weather_poll_interval_seconds,
         },
-        "ml": {
-            "predictions_enabled": settings.predictions_enabled,
-            "anomaly_detection_enabled": settings.anomaly_detection_enabled,
-        },
+        "ml": {},
         "supabase": {
             "url_configured": bool(settings.supabase_url),
             "service_key_configured": bool(settings.supabase_service_role_key),

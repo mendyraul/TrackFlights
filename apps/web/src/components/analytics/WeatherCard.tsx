@@ -1,9 +1,14 @@
 "use client";
 
 import type { WeatherSnapshot } from "@/types/database";
+import { formatAge, formatMiamiTime } from "@/lib/freshness";
+
+/** Weather is polled hourly; older than this and it is labelled as stale. */
+const WEATHER_STALE_MS = 3 * 60 * 60 * 1000;
 
 interface Props {
   weather: WeatherSnapshot | null;
+  now: number;
 }
 
 function windDirection(deg: number | null): string {
@@ -12,14 +17,14 @@ function windDirection(deg: number | null): string {
   return dirs[Math.round(deg / 45) % 8];
 }
 
-export function WeatherCard({ weather }: Props) {
+export function WeatherCard({ weather, now }: Props) {
   if (!weather) {
     return (
       <div className="rounded-lg border border-gray-800 bg-mia-panel p-4">
-        <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">
-          Current Weather — MIA
+        <h3 className="text-xs font-medium uppercase tracking-wider text-gray-400">
+          Weather at MIA
         </h3>
-        <p className="mt-4 text-center text-sm text-gray-600">No weather data available</p>
+        <p className="mt-4 text-center text-sm text-gray-400">No weather data available</p>
       </div>
     );
   }
@@ -55,6 +60,10 @@ export function WeatherCard({ weather }: Props) {
     },
   ];
 
+  const observed = Date.parse(weather.observed_at);
+  const age = now - observed;
+  const stale = Number.isFinite(observed) && age > WEATHER_STALE_MS;
+
   const alerts: string[] = [];
   if (weather.is_thunderstorm) alerts.push("Thunderstorm");
   if (weather.is_fog) alerts.push("Fog");
@@ -64,11 +73,18 @@ export function WeatherCard({ weather }: Props) {
   return (
     <div className="rounded-lg border border-gray-800 bg-mia-panel p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">
-          Current Weather — MIA
+        <h3 className="text-xs font-medium uppercase tracking-wider text-gray-400">
+          Weather at MIA
         </h3>
-        <span className="text-xs text-gray-600">{weather.weather_description}</span>
+        <span className="text-xs text-gray-400">{weather.weather_description}</span>
       </div>
+      {Number.isFinite(observed) && (
+        <p className={`mt-1 text-xs ${stale ? "text-yellow-300" : "text-gray-400"}`}>
+          {stale ? "Last reading " : "Observed "}
+          {formatMiamiTime(observed)}
+          {stale ? ` (${formatAge(age)}) — the weather feed runs with the ingestor.` : ""}
+        </p>
+      )}
 
       {alerts.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -86,9 +102,9 @@ export function WeatherCard({ weather }: Props) {
       <div className="mt-3 grid grid-cols-3 gap-3 md:grid-cols-6">
         {items.map((item) => (
           <div key={item.label}>
-            <p className="text-xs text-gray-500">{item.label}</p>
+            <p className="text-xs text-gray-400">{item.label}</p>
             <p className="text-sm font-semibold text-gray-200">{item.value}</p>
-            {item.sub && <p className="text-xs text-gray-600">{item.sub}</p>}
+            {item.sub && <p className="text-xs text-gray-400">{item.sub}</p>}
           </div>
         ))}
       </div>

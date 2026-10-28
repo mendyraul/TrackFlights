@@ -49,8 +49,67 @@ test("production map mounts its lazy module and immediately draws a selected rou
   );
   await page.goto("/");
   await expect(page.locator(".leaflet-container")).toBeVisible();
-  await page.locator(".leaflet-marker-icon").last().click();
-  await expect(page.getByText("TEST101", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: /^TST101,/ }).click();
+  await expect(page.getByText("TST101", { exact: true }).first()).toBeVisible();
   await expect(page.locator('path[stroke-dasharray="8 8"]')).toBeVisible();
   expect(renderErrors).toEqual([]);
+});
+
+test("a fresh receiver heartbeat cannot hide stale positions or reveal technical errors", async ({
+  page,
+}) => {
+  await page.route("**/api/flights/snapshot", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        flights: [
+          {
+            id: "old-flight",
+            flight_iata: "TEST101",
+            flight_icao: "TST101",
+            status: "en_route",
+            latitude: 25.9,
+            longitude: -80.3,
+            altitude_ft: 4000,
+            heading: 180,
+            updated_at: "2026-07-19T11:00:00Z",
+            origin_iata: "JFK",
+            destination_iata: "MIA",
+          },
+        ],
+        receiver: { lastPollAt: new Date().toISOString(), received: 1, inRange: 1 },
+      }),
+    })
+  );
+  await page.goto("/");
+  await expect(page.locator(".leaflet-container")).toBeVisible();
+  await expect(
+    page.getByText("Flight data is temporarily unavailable", { exact: true })
+  ).toBeVisible();
+  await expect(page.getByText("Receiver online", { exact: false })).toHaveCount(0);
+  await page.getByRole("button", { name: /^TST101,/ }).click();
+  await expect(page.locator('path[stroke-dasharray="8 8"]')).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    .toBe(true);
+});
+
+test("API outages keep the map mounted with a generic public error", async ({ page }) => {
+  await page.route("**/api/flights/snapshot", (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "internal database connection stack" }),
+    })
+  );
+  await page.goto("/");
+  await expect(page.locator(".leaflet-container")).toBeVisible();
+  await expect(
+    page.getByText("Flight data is temporarily unavailable", { exact: true })
+  ).toBeVisible();
+  await expect(page.getByText("internal database connection stack", { exact: false })).toHaveCount(
+    0
+  );
 });

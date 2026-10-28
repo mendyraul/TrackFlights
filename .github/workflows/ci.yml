@@ -1,32 +1,33 @@
 name: CI
-
-on:
+"on":
   pull_request:
     paths:
-      - "apps/**"
-      - "packages/**"
-      - "package*.json"
-      - "tsconfig*.json"
-      - "apps/ingestor/**"
-      - "supabase/**"
-      - "scripts/*ingestion-health.py"
-      - ".github/workflows/ci.yml"
+      - apps/**
+      - packages/**
+      - package*.json
+      - tsconfig*.json
+      - apps/ingestor/**
+      - supabase/**
+      - scripts/*ingestion-health.py
+      - .github/workflows/ci.yml
+      - scripts/test-sql.sh
   push:
-    branches: [main, dev]
+    branches:
+      - main
+      - dev
     paths:
-      - "apps/**"
-      - "packages/**"
-      - "package*.json"
-      - "tsconfig*.json"
-      - "apps/ingestor/**"
-      - "supabase/**"
-      - "scripts/*ingestion-health.py"
-      - ".github/workflows/ci.yml"
-
+      - apps/**
+      - packages/**
+      - package*.json
+      - tsconfig*.json
+      - apps/ingestor/**
+      - supabase/**
+      - scripts/*ingestion-health.py
+      - .github/workflows/ci.yml
+      - scripts/test-sql.sh
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   ops-health-tests:
     name: ops / ingestion health probes
@@ -35,9 +36,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - run: python scripts/test-ingestion-health.py
-
   heartbeat-migration:
     name: db / receiver heartbeat permissions
     runs-on: ubuntu-latest
@@ -46,10 +46,9 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_PASSWORD: test
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U postgres" --health-interval 5s
-          --health-timeout 5s --health-retries 10
+        ports:
+          - "5432:5432"
+        options: "--health-cmd \"pg_isready -U postgres\" --health-interval 5s --health-timeout 5s --health-retries 10"
     env:
       PGHOST: localhost
       PGUSER: postgres
@@ -57,20 +56,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Apply additive migration twice and check role permissions
-        run: |
-          psql -v ON_ERROR_STOP=1 -c 'CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;'
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027120000_receiver_heartbeat.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027120000_receiver_heartbeat.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/tests/receiver_heartbeat_test.sql
+        run: >
+          psql -v ON_ERROR_STOP=1 -c 'CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role
+          BYPASSRLS;'
 
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027120000_receiver_heartbeat.sql
+
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027120000_receiver_heartbeat.sql
+
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/receiver_heartbeat_test.sql
   changes:
     runs-on: ubuntu-latest
     outputs:
       web: ${{ steps.filter.outputs.web }}
       ingestor: ${{ steps.filter.outputs.ingestor }}
+      sql: ${{ steps.filter.outputs.sql }}
+      ml: ${{ steps.filter.outputs.ml }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Detect changed areas
         id: filter
         uses: dorny/paths-filter@v3
@@ -85,10 +88,17 @@ jobs:
             ingestor:
               - 'apps/ingestor/**'
 
+            ml:
+              - 'apps/ml/**'
+              - 'apps/ingestor/src/**'
+            sql:
+              - 'supabase/**'
+              - 'scripts/test-sql.sh'
   web-lint:
     name: web / lint
     runs-on: ubuntu-latest
-    needs: [changes]
+    needs:
+      - changes
     if: needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -100,11 +110,11 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint
-
   web-typecheck:
     name: web / typecheck
     runs-on: ubuntu-latest
-    needs: [changes]
+    needs:
+      - changes
     if: needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -116,11 +126,11 @@ jobs:
         run: npm ci
       - name: Type-check
         run: npm run type-check
-
   web-build:
     name: web / build
     runs-on: ubuntu-latest
-    needs: [changes]
+    needs:
+      - changes
     if: needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -132,11 +142,11 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
-
   web-browser:
     name: web / production browser
     runs-on: ubuntu-latest
-    needs: [changes]
+    needs:
+      - changes
     if: needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -148,11 +158,11 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
-
   web-test:
     name: web / test
     runs-on: ubuntu-latest
-    needs: [changes]
+    needs:
+      - changes
     if: needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -164,11 +174,11 @@ jobs:
         run: npm ci
       - name: Test
         run: npm run test --workspace=apps/web
-
   web-format:
     name: web / format
     runs-on: ubuntu-latest
-    needs: [changes]
+    needs:
+      - changes
     if: needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -180,19 +190,19 @@ jobs:
         run: npm ci
       - name: Prettier check
         run: npm run format:check --workspace=apps/web
-
   ingestor-tests:
     name: ingestor / tests
     runs-on: ubuntu-latest
-    needs: [changes]
+    needs:
+      - changes
     if: needs.changes.outputs.ingestor == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
-          cache-dependency-path: 'apps/ingestor/requirements.txt'
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: apps/ingestor/requirements.txt
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
@@ -203,24 +213,23 @@ jobs:
           SUPABASE_URL: https://example.supabase.co
           SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-key
         run: pytest apps/ingestor/tests -q
-
   ingestor-lint:
     name: ingestor / lint
     runs-on: ubuntu-latest
-    needs: [changes]
+    needs:
+      - changes
     if: needs.changes.outputs.ingestor == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       - name: Install linters
         run: pip install ruff black
       - name: Ruff
         run: ruff check apps/ingestor/src apps/ingestor/tests
       - name: Black
         run: black --check apps/ingestor/src apps/ingestor/tests
-
   types-drift:
     name: db / types-drift
     runs-on: ubuntu-latest
@@ -230,11 +239,51 @@ jobs:
           fetch-depth: 0
       - name: Check DB types are in sync with migrations
         run: bash scripts/check-types-drift.sh
-
   no-op:
     name: no-op (non-app change)
     runs-on: ubuntu-latest
-    needs: [changes]
-    if: needs.changes.outputs.web != 'true' && needs.changes.outputs.ingestor != 'true'
+    needs:
+      - changes
+    if: >-
+      needs.changes.outputs.web != 'true' && needs.changes.outputs.ingestor != 'true' &&
+      needs.changes.outputs.sql != 'true' && needs.changes.outputs.ml != 'true'
     steps:
       - run: echo "No app changes detected; CI jobs skipped."
+  ml-tests:
+    name: ml / export parity + training tests
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+    if: needs.changes.outputs.ml == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/ml/requirements.txt
+      - name: Install deps
+        run: pip install -r apps/ml/requirements.txt
+      - name: Test
+        working-directory: apps/ml
+        run: python -m pytest tests -q
+  sql-tests:
+    name: db / migrations + SQL tests
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+    if: needs.changes.outputs.sql == 'true'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+        ports:
+          - "5432:5432"
+        options: "--health-cmd \"pg_isready -U postgres\" --health-interval 5s --health-timeout 5s --health-retries 10"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migrations and run supabase/tests
+        env:
+          DATABASE_URL: postgresql://postgres:test@localhost:5432/postgres
+        run: bash scripts/test-sql.sh

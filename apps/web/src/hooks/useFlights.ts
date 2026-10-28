@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Flight } from "@/types/database";
-import type { ConnectionStatus } from "@/services/realtime";
+export type ConnectionStatus = "connected" | "connecting" | "disconnected";
 import { logger } from "@/lib/logger";
 import {
   classifyFreshness,

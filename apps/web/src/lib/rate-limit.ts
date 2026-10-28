@@ -1,7 +1,7 @@
 // Tiny in-memory fixed-window rate limiter. Zero dependencies so it runs in
 // Edge middleware on Vercel's free tier (no KV/Redis available). Counters live
 // in module scope per instance, so this is a best-effort abuse guard, not a
-// globally-consistent limiter — see docs/security-hardening-checklist.md.
+// globally-consistent limiter. A shared store (e.g. Vercel KV) would make it exact.
 
 export interface RateLimitOptions {
   /** Max requests allowed per window. */
