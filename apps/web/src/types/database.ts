@@ -14,6 +14,10 @@ export type FlightStatus =
 
 export type FlightDirection = "arrival" | "departure";
 
+/**
+ * A flights_current row. The snapshot route selects a subset of these columns
+ * (FLIGHT_SNAPSHOT_COLUMNS); fields it doesn't select arrive undefined.
+ */
 export interface Flight {
   id: string;
   flight_iata: string;
@@ -47,6 +51,10 @@ export interface Flight {
   arrival_gate: string | null;
   baggage_belt: string | null;
   updated_at: string;
+  /** ICAO 24-bit hex address, projected from raw_data->>hex by the snapshot route. */
+  icao_hex?: string | null;
+  /** Learned-classifier phase, projected from raw_data->>phase (absent without a model). */
+  model_phase?: string | null;
 }
 
 export interface Airline {
@@ -149,7 +157,10 @@ export type AnomalyType =
   | "delay_distribution_shift"
   | "congestion"
   | "unusual_cancellations"
-  | "weather_impact";
+  | "weather_impact"
+  // 20261022120000_traffic_anomaly_detection.sql
+  | "traffic_high"
+  | "traffic_low";
 
 export type AnomalySeverity = "low" | "medium" | "high" | "critical";
 
@@ -237,4 +248,49 @@ export interface Database {
       };
     };
   };
+}
+
+// ── 20261020120000_traffic_history_and_heartbeat.sql ─────────────────────
+
+/** One hour of what the ADS-B receiver observed. */
+export interface TrafficHourly {
+  hour: string;
+  unique_aircraft: number;
+  arriving: number;
+  departing: number;
+  overflights: number;
+  on_ground: number;
+  peak_concurrent: number;
+  max_range_km: number | null;
+  polls: number;
+  updated_at: string;
+  // 20261021120000_traffic_hourly_weather.sql
+  temp_c: number | null;
+  wind_kt: number | null;
+  gust_kt: number | null;
+  precip_mm: number | null;
+  visibility_km: number | null;
+  is_thunderstorm: boolean | null;
+}
+
+/** Rewritten by each ingestor every poll. */
+export interface IngestorHeartbeat {
+  source: string;
+  last_poll_at: string;
+  aircraft_received: number;
+  aircraft_in_range: number;
+  rows_written: number;
+}
+
+// ── 20261023120000_traffic_forecast.sql ──────────────────────────────────
+
+/** Predicted distinct aircraft for an upcoming hour, from the exported model. */
+export interface TrafficForecast {
+  hour: string;
+  predicted_aircraft: number;
+  model_version: string;
+  /** The model's mean absolute error on its held-out week. */
+  model_mae: number | null;
+  /** The best simple baseline's error on the same week. */
+  baseline_mae: number | null;
 }

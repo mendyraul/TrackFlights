@@ -4,8 +4,9 @@
 import type {
   AnalyticsDaily,
   AnalyticsHourly,
-  DelayPrediction,
   TrafficAnomaly,
+  TrafficForecast,
+  TrafficHourly,
   WeatherSnapshot,
 } from "@/types/database";
 
@@ -14,8 +15,11 @@ export interface DashboardSummary {
   analyticsDaily: AnalyticsDaily[];
   weatherCurrent: WeatherSnapshot | null;
   weatherForecast: WeatherSnapshot[];
-  predictions: DelayPrediction[];
   anomalies: TrafficAnomaly[];
+  /** ADS-B traffic per hour, last 48 h, oldest first. Empty until history exists. */
+  trafficHourly: TrafficHourly[];
+  /** Model forecast for upcoming hours. Empty until a model is installed on the Pi. */
+  trafficForecast: TrafficForecast[];
   lastUpdate: number;
 }
 

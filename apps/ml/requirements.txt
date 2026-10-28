@@ -1,0 +1,10 @@
+# Training/evaluation only, on a laptop. The Pi runs exported JSON models
+# with apps/ingestor/src/ml/model_json.py and needs none of this.
+numpy==2.3.4
+pandas==2.3.3
+scikit-learn==1.7.2
+matplotlib==3.10.7
+httpx>=0.26
+pytest==9.0.3
+# Imported via the ingestor modules the training code shares
+structlog>=24.1.0

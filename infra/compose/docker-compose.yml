@@ -49,5 +49,4 @@ services:
       - AEROAPI_COST_PER_QUERY_USD=${AEROAPI_COST_PER_QUERY_USD:-0.02}
       - AEROAPI_MAX_PAGES=${AEROAPI_MAX_PAGES:-1}
       - WEATHER_ENABLED=false
-      - PREDICTIONS_ENABLED=true
     restart: unless-stopped

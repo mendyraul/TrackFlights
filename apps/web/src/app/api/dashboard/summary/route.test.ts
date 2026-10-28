@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const { queryMock } = vi.hoisted(() => ({ queryMock: vi.fn() }));
 
 // A permissive chainable stub: every builder method returns the chain, and the
-// chain resolves (thenable) with the next queued result. The route runs six
+// chain resolves (thenable) with the next queued result. The route runs seven
 // queries via Promise.all.
 vi.mock("@/lib/supabase", () => {
   const chain = () => {
@@ -38,10 +38,11 @@ describe("GET /api/dashboard/summary", () => {
       analyticsDaily: [],
       weatherCurrent: null,
       weatherForecast: [],
-      predictions: [],
       anomalies: [],
+      trafficHourly: [],
+      trafficForecast: [],
     });
-    expect(queryMock).toHaveBeenCalledTimes(6);
+    expect(queryMock).toHaveBeenCalledTimes(7);
   });
 
   it("surfaces the latest weather row as weatherCurrent", async () => {
@@ -64,5 +65,27 @@ describe("GET /api/dashboard/summary", () => {
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     const body = await res.json();
     expect(body.error).toBe("boom");
+  });
+
+  it("keeps serving the dashboard when traffic_hourly doesn't exist yet", async () => {
+    queryMock.mockReturnValue({ data: [], error: null });
+    // Sixth query (traffic_hourly) fails: table not migrated yet.
+    for (let i = 0; i < 5; i++) queryMock.mockReturnValueOnce({ data: [], error: null });
+    queryMock.mockReturnValueOnce({ data: null, error: { message: "relation does not exist" } });
+
+    const res = await GET();
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).trafficHourly).toEqual([]);
+  });
+
+  it("keeps serving the dashboard when traffic_forecast doesn't exist yet", async () => {
+    for (let i = 0; i < 6; i++) queryMock.mockReturnValueOnce({ data: [], error: null });
+    queryMock.mockReturnValueOnce({ data: null, error: { message: "relation does not exist" } });
+
+    const res = await GET();
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).trafficForecast).toEqual([]);
   });
 });

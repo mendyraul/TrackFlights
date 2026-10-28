@@ -1,16 +1,23 @@
-"""Polling worker — orchestrates flight ingestion, weather, predictions, and anomaly detection."""
+"""Polling worker: flight ingestion, receiver telemetry, weather and retention."""
 
 import time
 from dataclasses import asdict
+from datetime import UTC, datetime
 
+import httpx
 import structlog
 from supabase import create_client
 
 from src.config import settings
+from src.ml.forecast_service import ForecastService
+from src.ml.model_json import JsonModel
+from src.ml.phase_service import PhaseClassifier
 from src.providers.base_provider import BaseFlightProvider
 from src.services.flight_diff_engine import compute_diff
 from src.services.flight_normalizer import normalize_batch
 from src.services.supabase_client import SupabaseFlightClient
+from src.services.track_log import TrackLog
+from src.services.traffic_stats import TrafficAccumulator
 from src.worker.capacity import (
     CapacityThresholds,
     build_capacity_snapshot,
@@ -21,7 +28,7 @@ logger = structlog.get_logger()
 
 
 class Poller:
-    """Runs the full ingestion cycle including ML services.
+    """Runs one full ingestion cycle.
 
     Lifecycle per cycle:
         1. Fetch arrivals + departures from the flight provider
@@ -31,8 +38,8 @@ class Poller:
         5. Mark stale flights
         6. Archive completed flights to history
         7. (Periodic) Fetch weather data
-        8. (If enabled) Run delay predictions
-        9. (If enabled) Run anomaly detection
+        8. Record receiver heartbeat, hourly traffic + weather, track log
+        9. (Hourly) Forecast the next 6 hours, if a model is installed
         10. Log statistics
     """
 
@@ -43,13 +50,21 @@ class Poller:
         self._last_weather_time = 0.0
         self._last_successful_cycle_time = 0.0
         self._last_prune_time = 0.0
+        self._traffic = TrafficAccumulator()
+        # Log a missing-migration failure once, not every 15 s.
+        self._telemetry_warned = False
+        self._last_ping = 0.0
+        self._track_log = self._open_track_log()
+        self._forecast = self._load_forecast()
+        self._load_phase_model()
+        self._last_track_prune = 0.0
 
-        # Lazy-init ML services (only if enabled)
         self._weather_ingester = None
-        self._delay_predictor = None
-        self._anomaly_detector = None
+        # Latest weather this process fetched. Kept in memory: re-reading it
+        # from Supabase every poll was ~5,800 egress reads a day.
+        self._latest_weather: dict | None = None
 
-        # Get a raw supabase client for ML services
+        # Raw Supabase client for the weather ingester.
         self._supabase = create_client(
             settings.supabase_url,
             settings.supabase_service_role_key,
@@ -70,20 +85,6 @@ class Poller:
             self._weather_ingester = WeatherIngester(OpenMeteoProvider(), self._supabase)
         return self._weather_ingester
 
-    def _get_delay_predictor(self):
-        if self._delay_predictor is None:
-            from src.ml.delay_predictor import DelayPredictor
-
-            self._delay_predictor = DelayPredictor(self._supabase)
-        return self._delay_predictor
-
-    def _get_anomaly_detector(self):
-        if self._anomaly_detector is None:
-            from src.ml.anomaly_detector import AnomalyDetector
-
-            self._anomaly_detector = AnomalyDetector(self._supabase)
-        return self._anomaly_detector
-
     async def execute(self) -> dict[str, int]:
         """Run one full poll cycle. Returns stats dict."""
         self._cycle_count += 1
@@ -102,25 +103,15 @@ class Poller:
         flight_stats = await self._ingest_flights(airport)
         stats.update(flight_stats)
 
-        # Get current flights for ML services
-        current_flights = self.db.get_current_flights()
-
         # ── 7. Weather (periodic) ────────────────────────────────────
-        weather_data = None
         if settings.weather_enabled:
-            weather_data = await self._maybe_ingest_weather(stats)
-        elif settings.predictions_enabled or settings.anomaly_detection_enabled:
-            # Weather ingestion is owned by the other ingestor process; read
-            # its latest snapshot from the DB (single small row per cycle).
-            weather_data = self._get_latest_weather_from_db()
+            await self._maybe_ingest_weather(stats)
 
-        # ── 8. Predictions ───────────────────────────────────────────
-        if settings.predictions_enabled:
-            self._run_predictions(current_flights, weather_data, stats)
+        # ── 8. Heartbeat, hourly traffic (with weather), track log ────
+        self._record_receiver_telemetry(flight_stats)
 
-        # ── 9. Anomaly detection ─────────────────────────────────────
-        if settings.anomaly_detection_enabled:
-            self._run_anomaly_detection(current_flights, weather_data, stats)
+        # ── 9. Traffic forecast (hourly, if a model is installed) ──────
+        self._run_forecast()
 
         # Periodic pruning (once/day)
         if (time.time() - self._last_prune_time) >= 86400:
@@ -165,8 +156,6 @@ class Poller:
                 provider=self.provider.name,
                 cycle_duration_ms=cycle_duration_ms,
                 weather_enabled=settings.weather_enabled,
-                predictions_enabled=settings.predictions_enabled,
-                anomaly_detection_enabled=settings.anomaly_detection_enabled,
                 seconds_since_last_success=seconds_since_last_success,
                 db_status_counts=db_stats,
             )
@@ -182,6 +171,7 @@ class Poller:
 
     async def _ingest_flights(self, airport: str) -> dict[str, int]:
         """Core flight ingestion pipeline."""
+        self._heartbeat_recorded = False
         if self.provider.is_live_position_feed:
             # Position feeds (ADS-B) return one snapshot; direction is inferred
             # per-aircraft inside the provider's normalize().
@@ -219,6 +209,7 @@ class Poller:
             )
             try:
                 self.db.record_heartbeat(self.provider.name, received, in_range, upserted)
+                self._heartbeat_recorded = True
             except Exception as exc:
                 # The additive heartbeat migration may not be installed yet.
                 # Its absence must not stop the existing flight ingestion.
@@ -240,22 +231,120 @@ class Poller:
             "archived": archived,
         }
 
-    def _get_latest_weather_from_db(self) -> dict | None:
-        """Read the most recent weather snapshot written by the other process."""
+    def _record_receiver_telemetry(self, flight_stats: dict[str, int]) -> None:
+        """Heartbeat + hourly traffic for live position feeds.
+
+        Never fails the cycle: if the 20261020 migration isn't applied yet the
+        ingestor keeps working and logs one warning.
+        """
+        last_poll = getattr(self.provider, "last_poll", None)
+        if not self.provider.is_live_position_feed or last_poll is None:
+            return
+        observations = last_poll["observations"]
         try:
-            result = (
-                self._supabase.table("weather_snapshots")
-                .select("*")
-                .eq("airport_iata", settings.mia_iata_code)
-                .order("observed_at", desc=True)
-                .limit(1)
-                .execute()
-            )
-            rows = result.data or []
-            return rows[0] if rows else None
+            if not getattr(self, "_heartbeat_recorded", False):
+                self.db.record_heartbeat(
+                    source=self.provider.name,
+                    received=last_poll["received"],
+                    in_range=len(observations),
+                    rows_written=flight_stats.get("upserted", 0),
+                )
+            hour = self._traffic.add_poll(observations, weather=self._latest_weather)
+            self.db.record_traffic_hour(hour.to_rpc_params())
         except Exception:
-            logger.exception("Failed to read latest weather snapshot")
+            if not self._telemetry_warned:
+                logger.exception(
+                    "Receiver telemetry write failed (is migration 20261020120000 applied?)"
+                )
+                self._telemetry_warned = True
+
+        self._record_track_log(observations)
+
+        if last_poll["received"] > 0:
+            self._ping_heartbeat_url()
+
+    def _load_forecast(self) -> ForecastService | None:
+        if not settings.forecast_model_path or not self.provider.is_live_position_feed:
             return None
+        try:
+            service = ForecastService.from_path(settings.forecast_model_path, self.db)
+            logger.info(
+                "Forecast model loaded",
+                path=settings.forecast_model_path,
+                version=service.model.version,
+                heldout_mae=service.model.metrics.get("mae"),
+            )
+            return service
+        except Exception:
+            logger.exception("Forecast disabled: could not load model")
+            return None
+
+    def _load_phase_model(self) -> None:
+        """Attach the learned classifier to the provider; rules stay on failure."""
+        if not settings.phase_model_path or not self.provider.is_live_position_feed:
+            return
+        try:
+            classifier = PhaseClassifier(JsonModel.load(settings.phase_model_path))
+            self.provider.phase_classifier = classifier
+            logger.info(
+                "Phase model loaded",
+                path=settings.phase_model_path,
+                version=classifier.version,
+                heldout_macro_f1=classifier.model.metrics.get("macro_f1"),
+            )
+        except Exception:
+            logger.exception("Phase model disabled: could not load; using rules")
+
+    def _run_forecast(self) -> None:
+        if self._forecast is None:
+            return
+        forecast_weather = getattr(self._weather_ingester, "last_forecast", []) or []
+        try:
+            self._forecast.maybe_run(datetime.now(UTC), forecast_weather)
+        except Exception:
+            logger.exception("Traffic forecast failed")
+
+    def _open_track_log(self) -> TrackLog | None:
+        """Open the local position log if TRACK_LOG_PATH is set; never fatal."""
+        if not settings.track_log_path or not self.provider.is_live_position_feed:
+            return None
+        try:
+            log = TrackLog(
+                settings.track_log_path,
+                sample_seconds=settings.track_log_sample_seconds,
+                retention_days=settings.track_log_retention_days,
+                max_mb=settings.track_log_max_mb,
+                min_free_mb=settings.track_log_min_free_mb,
+            )
+            logger.info("Track log enabled", **log.stats())
+            return log
+        except Exception:
+            logger.exception("Track log disabled: could not open", path=settings.track_log_path)
+            return None
+
+    def _record_track_log(self, observations: list[dict]) -> None:
+        if self._track_log is None:
+            return
+        try:
+            self._track_log.record(observations)
+            if time.time() - self._last_track_prune >= 3600:
+                self._track_log.prune()
+                self._last_track_prune = time.time()
+                logger.info("Track log status", **self._track_log.stats())
+        except Exception:
+            logger.exception("Track log write failed")
+
+    def _ping_heartbeat_url(self) -> None:
+        """Dead-man's switch: tell an external monitor the receiver is alive."""
+        url = settings.heartbeat_ping_url
+        now = time.monotonic()
+        if not url or now - self._last_ping < settings.heartbeat_ping_interval_seconds:
+            return
+        self._last_ping = now
+        try:
+            httpx.get(url, timeout=5.0)
+        except Exception:
+            logger.warning("Heartbeat ping failed", url_host=httpx.URL(url).host)
 
     async def _maybe_ingest_weather(self, stats: dict) -> dict | None:
         """Fetch weather if enough time has elapsed since last fetch."""
@@ -263,15 +352,14 @@ class Poller:
         elapsed = now - self._last_weather_time
 
         if elapsed < settings.weather_poll_interval_seconds and self._last_weather_time > 0:
-            # Return cached latest
-            ingester = self._get_weather_ingester()
-            return ingester.get_latest()
+            return self._latest_weather
 
         try:
             ingester = self._get_weather_ingester()
             weather = await ingester.ingest_current()
             forecast_count = await ingester.ingest_forecast(hours=12)
             self._last_weather_time = now
+            self._latest_weather = weather
             stats["weather_forecast_hours"] = forecast_count
             stats["weather_updated"] = 1
             return weather
@@ -279,62 +367,3 @@ class Poller:
             logger.exception("Weather ingestion failed")
             stats["weather_error"] = 1
             return None
-
-    def _run_predictions(
-        self,
-        flights: list[dict],
-        weather: dict | None,
-        stats: dict,
-    ) -> None:
-        """Generate and store delay predictions."""
-        try:
-            predictor = self._get_delay_predictor()
-
-            # Only predict for upcoming flights (not landed/cancelled)
-            active_flights = [
-                f for f in flights if f.get("status") in ("scheduled", "en_route", "delayed")
-            ]
-
-            if not active_flights:
-                return
-
-            traffic_stats = {
-                "total_active": len(flights),
-                "delayed_pct": (
-                    len([f for f in flights if f.get("status") == "delayed"]) / len(flights)
-                    if flights
-                    else 0.0
-                ),
-            }
-
-            predictions = predictor.predict_batch(active_flights, weather, traffic_stats)
-            count = predictor.upsert_predictions(predictions)
-            expired = predictor.cleanup_expired()
-
-            stats["predictions_generated"] = count
-            stats["predictions_expired_cleaned"] = expired
-
-        except Exception:
-            logger.exception("Prediction generation failed")
-            stats["predictions_error"] = 1
-
-    def _run_anomaly_detection(
-        self,
-        flights: list[dict],
-        weather: dict | None,
-        stats: dict,
-    ) -> None:
-        """Run anomaly detection and store results."""
-        try:
-            detector = self._get_anomaly_detector()
-
-            anomalies = detector.detect(flights, weather)
-            count = detector.upsert_anomalies(anomalies)
-            resolved = detector.resolve_stale_anomalies()
-
-            stats["anomalies_detected"] = count
-            stats["anomalies_resolved"] = resolved
-
-        except Exception:
-            logger.exception("Anomaly detection failed")
-            stats["anomaly_error"] = 1

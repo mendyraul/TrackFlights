@@ -12,20 +12,12 @@
     "type-check": "tsc --noEmit --project apps/web/tsconfig.json",
     "db:gen-types": "npx --yes supabase@latest gen types typescript --local > apps/web/src/types/database.generated.ts",
     "db:check-types-drift": "bash scripts/check-types-drift.sh",
-    "ci:baseline": "./scripts/verify-phase1-baseline.sh",
-    "release:preflight": "./scripts/release-preflight.sh",
-    "security:baseline": "./scripts/security-baseline.sh",
-    "security:preflight": "bash scripts/security-preflight.sh",
     "security:audit:web": "npm audit --omit=dev --audit-level=high --workspace=apps/web",
-    "ops:evidence-template": "./scripts/create-alert-evidence.sh",
-    "ops:release-evidence": "./scripts/create-release-evidence.sh",
-    "ops:failover-drill": "./scripts/test-ingestor-failover.sh",
     "ops:supabase-free-tier": "./scripts/check-supabase-free-tier.sh",
     "smoke:schema": "./scripts/smoke-supabase-schema.sh",
     "smoke:health": "./scripts/smoke-health-endpoints.sh",
-    "perf:latency:capture": "./scripts/perf/capture-health-latency.sh",
-    "perf:latency:summary": "node ./scripts/perf/summarize-latency.mjs",
-    "test:browser": "playwright test --config apps/web/playwright.config.ts"
+    "test:browser": "playwright test --config apps/web/playwright.config.ts",
+    "test:sql": "bash scripts/test-sql.sh"
   },
   "engines": {
     "node": "^22.12.0 || ^24.0.0 || >=26.0.0"

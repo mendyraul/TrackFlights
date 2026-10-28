@@ -41,10 +41,10 @@ export function AnomalyAlerts({ anomalies }: Props) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">
-          Active Alerts
-        </h3>
-        <span className="text-xs text-gray-500">{anomalies.length} total</span>
+        <h2 className="text-xs font-medium uppercase tracking-wider text-gray-400">
+          Active alerts
+        </h2>
+        <span className="text-xs text-gray-400">{anomalies.length} total</span>
       </div>
 
       <div className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">
@@ -70,14 +70,14 @@ export function AnomalyAlerts({ anomalies }: Props) {
                   >
                     {anomaly.severity}
                   </span>
-                  <span className="text-xs text-gray-600">{timeAgo(anomaly.detected_at)}</span>
+                  <span className="text-xs text-gray-400">{timeAgo(anomaly.detected_at)}</span>
                 </div>
               </div>
               {anomaly.description && (
                 <p className="mt-1.5 text-xs text-gray-400">{anomaly.description}</p>
               )}
               {anomaly.affected_count > 0 && (
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-400">
                   {anomaly.affected_count} flights affected
                   {anomaly.affected_airlines.length > 0 &&
                     ` · Airlines: ${anomaly.affected_airlines.join(", ")}`}

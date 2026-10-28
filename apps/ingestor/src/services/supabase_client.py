@@ -31,21 +31,6 @@ STALE_THRESHOLD_MINUTES = 10
 class SupabaseFlightClient:
     """Handles all Supabase read/write operations for flight data."""
 
-    def record_heartbeat(
-        self, source: str, received: int, in_range: int, rows_written: int
-    ) -> None:
-        """Persist receiver activity independently of flight movement gating."""
-        self.client.table("ingestor_heartbeat").upsert(
-            {
-                "source": source,
-                "last_poll_at": datetime.now(UTC).isoformat(),
-                "aircraft_received": received,
-                "aircraft_in_range": in_range,
-                "rows_written": rows_written,
-            },
-            on_conflict="source",
-        ).execute()
-
     def __init__(self) -> None:
         self.client: Client = create_client(
             settings.supabase_url,
@@ -227,11 +212,54 @@ class SupabaseFlightClient:
         return pruned
 
     def get_flight_stats(self) -> dict[str, int]:
-        """Get counts by status for logging."""
-        result = self.client.table("flights_current").select("status").execute()
-        rows = result.data or []
+        """Counts by status for logging, from the in-process cache.
+
+        This used to select the status column of the whole table every ten
+        cycles, which is pure egress for a log line; the cache already holds
+        every row this process knows about.
+        """
         stats: dict[str, int] = {}
-        for row in rows:
-            s = row.get("status", "unknown")
+        for row in (self._current_cache or {}).values():
+            s = row.get("status") or "unknown"
             stats[s] = stats.get(s, 0) + 1
         return stats
+
+    def record_heartbeat(
+        self, source: str, received: int, in_range: int, rows_written: int
+    ) -> None:
+        """Rewrite this ingestor's heartbeat row (one small upsert; ingress)."""
+        self.client.table("ingestor_heartbeat").upsert(
+            {
+                "source": source,
+                "last_poll_at": datetime.now(UTC).isoformat(),
+                "aircraft_received": received,
+                "aircraft_in_range": in_range,
+                "rows_written": rows_written,
+            },
+            on_conflict="source",
+        ).execute()
+
+    def get_traffic_counts(self, hours: list[datetime]) -> dict[datetime, tuple[int, int]]:
+        """(unique_aircraft, polls) for the given hours, for forecast lag features."""
+        if not hours:
+            return {}
+        result = (
+            self.client.table("traffic_hourly")
+            .select("hour,unique_aircraft,polls")
+            .in_("hour", [h.isoformat() for h in hours])
+            .execute()
+        )
+        return {
+            datetime.fromisoformat(row["hour"]).astimezone(UTC): (
+                row["unique_aircraft"],
+                row["polls"],
+            )
+            for row in result.data or []
+        }
+
+    def upsert_traffic_forecast(self, rows: list[dict[str, Any]]) -> None:
+        self.client.table("traffic_forecast").upsert(rows, on_conflict="hour").execute()
+
+    def record_traffic_hour(self, params: dict[str, Any]) -> None:
+        """Merge the current hour's traffic stats (see record_traffic_hour SQL)."""
+        self.client.rpc("record_traffic_hour", params).execute()

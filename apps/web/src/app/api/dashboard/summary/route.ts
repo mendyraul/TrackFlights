@@ -3,12 +3,13 @@ import {
   ANALYTICS_DAILY_COLUMNS,
   ANALYTICS_HOURLY_COLUMNS,
   ANOMALY_COLUMNS,
-  PREDICTION_COLUMNS,
+  TRAFFIC_FORECAST_COLUMNS,
+  TRAFFIC_HOURLY_COLUMNS,
   WEATHER_COLUMNS,
 } from "@/lib/dashboard-selects";
 
 // One CDN-cached response bundles every non-flight dashboard read (weather,
-// analytics, predictions, anomalies). Browsers hit this route instead of
+// analytics, anomalies, traffic history). Browsers hit this route instead of
 // Supabase directly, so dashboard egress is bounded by the refresh window
 // rather than the audience size — same pattern as /api/flights/snapshot.
 const parsedRefreshSeconds = Number(process.env.DASHBOARD_SUMMARY_REFRESH_SECONDS);
@@ -21,7 +22,9 @@ export async function GET() {
   const nowIso = new Date().toISOString();
   const anomalyCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [hourly, daily, weatherCurrent, weatherForecast, predictions, anomalies] =
+  const trafficCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
+  const [hourly, daily, weatherCurrent, weatherForecast, anomalies, traffic, forecast] =
     await Promise.all([
       supabase
         .from("analytics_hourly")
@@ -48,22 +51,30 @@ export async function GET() {
         .order("observed_at", { ascending: true })
         .limit(12),
       supabase
-        .from("delay_predictions")
-        .select(PREDICTION_COLUMNS)
-        .gte("expires_at", nowIso)
-        .order("predicted_value", { ascending: false })
-        .limit(500),
-      supabase
         .from("traffic_anomalies")
         .select(ANOMALY_COLUMNS)
         .gte("detected_at", anomalyCutoff)
         .order("detected_at", { ascending: false })
         .limit(200),
+      // ADS-B traffic history (migration 20261020120000). Optional: a missing
+      // table must not take down the rest of the dashboard.
+      supabase
+        .from("traffic_hourly")
+        .select(TRAFFIC_HOURLY_COLUMNS)
+        .gte("hour", trafficCutoff)
+        .order("hour", { ascending: true })
+        .limit(48),
+      // Model forecast for the coming hours (migration 20261023120000). Optional.
+      supabase
+        .from("traffic_forecast")
+        .select(TRAFFIC_FORECAST_COLUMNS)
+        .gte("hour", nowIso)
+        .order("hour", { ascending: true })
+        .limit(8),
     ]);
 
-  const firstError = [hourly, daily, weatherCurrent, weatherForecast, predictions, anomalies].find(
-    (res) => res.error
-  )?.error;
+  const required = [hourly, daily, weatherCurrent, weatherForecast, anomalies];
+  const firstError = required.find((res) => res.error)?.error;
 
   if (firstError) {
     return Response.json(
@@ -78,8 +89,9 @@ export async function GET() {
       analyticsDaily: daily.data ?? [],
       weatherCurrent: weatherCurrent.data?.[0] ?? null,
       weatherForecast: weatherForecast.data ?? [],
-      predictions: predictions.data ?? [],
       anomalies: anomalies.data ?? [],
+      trafficHourly: traffic.error ? [] : (traffic.data ?? []),
+      trafficForecast: forecast.error ? [] : (forecast.data ?? []),
       lastUpdate: Date.now(),
     },
     {
