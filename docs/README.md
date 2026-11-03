@@ -5,5 +5,6 @@
 - [Hardware](hardware-adsb-ingest.md): the receiver, and what to buy if you build one
 - [Deployment](deployment.md): Vercel, Supabase, and the ingestor on the Pi
 - [Runbook](runbook.md): what to check when the map goes stale
+- [Browser validation](browser-validation.md): desktop/mobile journeys and replaying current data
 - ADRs: [0001 ingestor scale/failover](adr/0001-ingestor-scale-failover.md),
   [0002 single-Pi risk matrix](adr/0002-single-pi-ingestor-risk-matrix.md)

@@ -21,6 +21,7 @@ export function DelayTrendsChart({ hourly }: Props) {
     .sort((a, b) => a.hour.localeCompare(b.hour))
     .map((h) => ({
       time: new Date(h.hour).toLocaleTimeString("en-US", {
+        timeZone: "America/New_York",
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,

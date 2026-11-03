@@ -1,0 +1,31 @@
+{
+  "analyticsHourly": [],
+  "analyticsDaily": [],
+  "weatherCurrent": {
+    "id": "62480ef5-5b82-408f-830a-e58939f3edc6",
+    "airport_iata": "MIA",
+    "observed_at": "2026-07-19T20:00:00+00:00",
+    "temperature_c": 33.1,
+    "feels_like_c": 37.1,
+    "humidity_pct": 61,
+    "pressure_hpa": 1014.8,
+    "wind_speed_knots": 14.4,
+    "wind_gust_knots": 19.8,
+    "wind_direction_deg": 147,
+    "visibility_km": 26.3,
+    "cloud_coverage_pct": 9,
+    "weather_code": 0,
+    "weather_description": "Clear sky",
+    "is_thunderstorm": false,
+    "is_fog": false,
+    "is_freezing": false,
+    "precipitation_mm": 0,
+    "precipitation_probability": 0.06,
+    "data_source": "openmeteo"
+  },
+  "weatherForecast": [],
+  "anomalies": [],
+  "trafficHourly": [],
+  "trafficForecast": [],
+  "lastUpdate": 1793723358383
+}

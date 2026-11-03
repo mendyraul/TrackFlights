@@ -142,6 +142,18 @@ cd apps/ml && pip install -r requirements.txt && python -m pytest tests -q   # m
 ./scripts/test-sql.sh   # all migrations + SQL tests on a throwaway Postgres (needs Docker)
 ```
 
+Browser checks run against the production build on desktop and mobile:
+
+```bash
+npx playwright install chromium  # once per machine
+npm run build
+npm run test:browser
+```
+
+They cover every page, aircraft selection and refreshed details, flight-board filters and
+sorting, populated analytics, and empty/error states. See [Browser validation](docs/browser-validation.md)
+to replay a complete capture of the site's current data without changing the database.
+
 ## Repository layout
 
 ```

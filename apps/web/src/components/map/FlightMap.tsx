@@ -172,6 +172,7 @@ function SmoothMarker({
 }) {
   const markerRef = useRef<L.Marker>(null);
   const prevPos = useRef<[number, number]>([flight.latitude!, flight.longitude!]);
+  const title = markerTitle(flight);
 
   useEffect(() => {
     const marker = markerRef.current;
@@ -202,8 +203,11 @@ function SmoothMarker({
     }
 
     // Update icon (heading/selection/change state may have changed)
+    // React Leaflet does not update Marker.title after mount. Keep the
+    // tooltip and accessible name in sync with the current telemetry.
+    marker.options.title = title;
     marker.setIcon(createAircraftIcon(flight.heading, isSelected, isChanged, stale));
-  }, [flight.latitude, flight.longitude, flight.heading, isSelected, isChanged, stale]);
+  }, [flight.latitude, flight.longitude, flight.heading, title, isSelected, isChanged, stale]);
 
   return (
     <Marker
@@ -212,7 +216,7 @@ function SmoothMarker({
       icon={createAircraftIcon(flight.heading, isSelected, isChanged, stale)}
       // Details open in the side panel / bottom sheet, so no popup here.
       // Leaflet uses title as the focusable marker's accessible name.
-      title={markerTitle(flight)}
+      title={title}
       eventHandlers={{
         click: onSelect,
         keypress: (e) => {
@@ -249,7 +253,9 @@ function MapBoundsUpdater({ flights }: { flights: Flight[] }) {
       flights.map((f) => [f.latitude!, f.longitude!] as [number, number])
     );
     bounds.extend(MIA_CENTER);
-    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 10 });
+    // Initial framing is immediate. Leaflet's deferred zoom completion can
+    // otherwise run after navigation has removed the map pane.
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 10, animate: false });
     hasFitted.current = true;
   }, [flightCount, flights, map]);
 

@@ -37,7 +37,7 @@ test("production map mounts its lazy module and immediately draws a selected rou
     })
   );
   // Tile availability is independent of the lazy JS module and route rendering.
-  await page.route("**/*basemaps.cartocdn.com/**", (route) =>
+  await page.route(/basemaps\.cartocdn\.com|services\.arcgisonline\.com/, (route) =>
     route.fulfill({
       status: 200,
       contentType: "image/png",

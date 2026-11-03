@@ -22,6 +22,9 @@ export function TrafficVolumeChart({ daily }: Props) {
 
   for (const d of daily) {
     const dateStr = new Date(d.date).toLocaleDateString("en-US", {
+      // Postgres DATE is a calendar day, parsed as UTC midnight by JS.
+      // Preserve that day instead of shifting it to the previous US evening.
+      timeZone: "UTC",
       month: "short",
       day: "numeric",
     });
