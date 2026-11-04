@@ -1,5 +1,6 @@
 "use client";
 
+import { SourceFilter } from "@/components/ui/SourceFilter";
 import { useState } from "react";
 import type { MapFilterState } from "@/components/map/MapView";
 import { PHASE_LABEL, type FlightPhase } from "@/lib/phase";
@@ -20,7 +21,11 @@ export function MapFilters({ filters, onChange, operators, totalCount, mappableC
   const update = (patch: Partial<MapFilterState>) => onChange({ ...filters, ...patch });
   // Collapsed by default on phones so the controls don't cover half the map.
   const [open, setOpen] = useState(false);
-  const active = filters.phase !== "all" || Boolean(filters.operator) || Boolean(filters.search);
+  const active =
+    (filters.source && filters.source !== "all") ||
+    filters.phase !== "all" ||
+    Boolean(filters.operator) ||
+    Boolean(filters.search);
 
   return (
     <div className="absolute left-3 right-3 top-3 z-[1000] flex flex-col items-start gap-2 sm:right-auto">
@@ -39,6 +44,7 @@ export function MapFilters({ filters, onChange, operators, totalCount, mappableC
         id="map-filters"
         className={`${open ? "flex" : "hidden"} w-full flex-wrap items-end gap-2 rounded-lg border border-gray-700 bg-mia-panel/95 px-3 py-2 shadow-lg backdrop-blur-sm sm:flex sm:w-auto`}
       >
+        <SourceFilter value={filters.source ?? "all"} onChange={(source) => update({ source })} />
         <label className="flex flex-col gap-0.5 text-[11px] text-gray-400">
           Phase
           <select
@@ -85,6 +91,8 @@ export function MapFilters({ filters, onChange, operators, totalCount, mappableC
 
       <div className="hidden rounded-lg border border-gray-700 bg-mia-panel/95 px-3 py-1.5 text-xs text-gray-300 shadow-lg backdrop-blur-sm sm:block">
         {mappableCount} on map · {totalCount} total
+        <span className="ml-3 text-[#39FF14]">● My receiver</span> ·{" "}
+        <span className="text-[#FFFF00]">● FlightAware daily snapshot</span>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { readReceiverObservationTime } from "@/lib/source-observations";
 import { supabase } from "@/lib/supabase";
 import { withinDeadline } from "@/lib/health";
 import { readReceiver } from "@/lib/receiver";
@@ -9,20 +10,22 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const now = Date.now();
   try {
-    const [result, receiver] = await Promise.all([
+    const [result, receiver, observations] = await Promise.all([
       withinDeadline((signal) =>
         supabase
           .from("flights_current")
           .select("updated_at")
+          .eq("data_source", "adsb1090")
           .order("updated_at", { ascending: false })
           .limit(1)
           .abortSignal(signal)
       ),
       readReceiver(),
+      readReceiverObservationTime(),
     ]);
     if (result.error) throw new Error("Database unavailable");
     const rows = result.data as { updated_at: string }[] | null;
-    const date = rows?.[0]?.updated_at ?? null;
+    const date = observations ?? rows?.[0]?.updated_at ?? null;
     const parsed = date ? Date.parse(date) : NaN;
     const dataUpdatedAt = Number.isFinite(parsed) ? parsed : null;
     const freshness = classifyFreshness({

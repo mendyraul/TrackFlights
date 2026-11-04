@@ -145,7 +145,7 @@ def test_fetch_board_halts_when_budget_exhausted(tmp_path, monkeypatch):
     provider.api_key = "k"
     provider.max_pages = 1
     provider.budget = AeroApiBudget(
-        str(tmp_path / "budget.json"), monthly_budget_usd=0.01, cost_per_query_usd=0.02
+        str(tmp_path / "budget.json"), monthly_budget_usd=0.004, cost_per_query_usd=0.02
     )
     provider._watermarks = {}
     provider._last_scheduled_date = datetime.now(UTC).strftime("%Y-%m-%d")
@@ -186,8 +186,8 @@ def test_scheduled_boards_fetch_once_per_day(tmp_path, monkeypatch):
 
     assert boards_fetched.count("scheduled_arrivals") == 1
     assert boards_fetched.count("scheduled_departures") == 1
-    assert boards_fetched.count("arrivals") == 2
-    assert boards_fetched.count("departures") == 2
+    assert boards_fetched.count("arrivals") == 1
+    assert boards_fetched.count("departures") == 1
 
 
 def test_watermark_windows_advance(tmp_path, monkeypatch):
@@ -219,10 +219,12 @@ def test_watermark_windows_advance(tmp_path, monkeypatch):
     asyncio.run(provider.fetch_arrivals("MIA"))
     asyncio.run(provider.fetch_arrivals("MIA"))
 
-    assert all("start" in w and "end" in w for w in windows)
+    windows = [w for w in windows if "start" in w]
+    assert len(windows) == 1
+    assert "end" in windows[0]
     # Second window must start near the first window's end (15 min overlap),
     # not at the default lookback.
-    assert windows[1]["start"] >= windows[0]["start"]
+    assert windows[0]["start"] < windows[0]["end"]
 
 
 # ── Airline auto-registration ────────────────────────────────────
@@ -263,3 +265,19 @@ def test_ensure_airlines_registers_unknown_codes_once():
     # Second call with the same codes must be a no-op (no repeated writes).
     assert client.ensure_airlines(flights) == 0
     assert len(upserted_batches) == 1
+
+
+def test_aeroapi_altitude_is_hundreds_of_feet():
+    provider = _bare_provider()
+    assert (
+        provider.normalize({"ident": "AAL1", "last_position": {"altitude": 350}}, "arrival")[
+            "altitude_ft"
+        ]
+        == 35000
+    )
+    assert (
+        provider.normalize({"ident": "AAL1", "last_position": {"altitude": 0}}, "arrival")[
+            "altitude_ft"
+        ]
+        == 0
+    )

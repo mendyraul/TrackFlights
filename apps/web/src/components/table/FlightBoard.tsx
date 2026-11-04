@@ -1,5 +1,7 @@
 "use client";
 
+import { SourceSummary } from "@/components/ui/SourceSummary";
+import { SourceFilter, SourceLabel, type SourceFilterValue } from "@/components/ui/SourceFilter";
 import { useMemo, useState } from "react";
 import { useFlights } from "@/hooks/useFlights";
 import { DataStatusBanner } from "@/components/ui/DataStatusBanner";
@@ -65,6 +67,7 @@ function sortValue(a: Aircraft, field: SortField): string | number {
 
 export function FlightBoard() {
   const { flights, loading, freshness, dataUpdatedAt, now, recentlyChanged } = useFlights();
+  const [source, setSource] = useState<SourceFilterValue>("all");
   const [phase, setPhase] = useState<PhaseFilter>("all");
   const [operator, setOperator] = useState("");
   const [search, setSearch] = useState("");
@@ -92,6 +95,7 @@ export function FlightBoard() {
   const rows = useMemo(() => {
     const q = search.trim().toUpperCase();
     return aircraft
+      .filter((a) => source === "all" || (a.flight.data_source ?? "adsb1090") === source)
       .filter((a) => phase === "all" || a.phase === phase)
       .filter((a) => !operator || a.operator.label === operator)
       .filter(
@@ -110,7 +114,7 @@ export function FlightBoard() {
             : String(av).localeCompare(String(bv));
         return sort.dir === "asc" ? cmp : -cmp;
       });
-  }, [aircraft, phase, operator, search, sort]);
+  }, [aircraft, phase, operator, search, sort, source]);
 
   const toggleSort = (field: SortField) =>
     setSort((prev) =>
@@ -144,6 +148,7 @@ export function FlightBoard() {
   return (
     <div className="px-4 py-5 sm:px-6">
       <div className="mb-4 flex flex-wrap items-end gap-3">
+        <SourceFilter value={source} onChange={setSource} />
         <div
           role="group"
           aria-label="Flight phase"
@@ -200,6 +205,7 @@ export function FlightBoard() {
         </p>
       </div>
 
+      <SourceSummary flights={aircraft.map((a) => a.flight)} now={now} />
       <DataStatusBanner
         freshness={freshness}
         dataUpdatedAt={dataUpdatedAt}
@@ -272,6 +278,9 @@ export function FlightBoard() {
                   </td>
                   <td className="px-3 py-2.5 font-mono font-semibold text-white">
                     {a.callsign ?? <span className="text-gray-400">—</span>}
+                    <div className="font-sans text-xs">
+                      <SourceLabel source={a.flight.data_source} />
+                    </div>
                   </td>
                   <td className="px-3 py-2.5 font-mono text-gray-300">{a.hex ?? "—"}</td>
                   <td className="px-3 py-2.5">

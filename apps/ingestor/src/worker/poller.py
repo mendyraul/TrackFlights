@@ -3,6 +3,7 @@
 import time
 from dataclasses import asdict
 from datetime import UTC, datetime
+from pathlib import Path
 
 import httpx
 import structlog
@@ -69,6 +70,8 @@ class Poller:
             settings.supabase_url,
             settings.supabase_service_role_key,
         )
+        if provider.name == "flightaware":
+            provider.schedule_client = self._supabase
         self._capacity_thresholds = CapacityThresholds(
             cycle_lag_warn_seconds=settings.capacity_cycle_lag_warn_seconds,
             queue_depth_warn=settings.capacity_queue_depth_warn,
@@ -103,6 +106,14 @@ class Poller:
         flight_stats = await self._ingest_flights(airport)
         stats.update(flight_stats)
 
+        if self.provider.name == "flightaware":
+            from src.services.regional_snapshot import fetch_regional_snapshot
+
+            try:
+                await fetch_regional_snapshot(self.provider, self._supabase)
+            except Exception:
+                logger.exception("Regional snapshot failed; budget reservation retained")
+
         # ── 7. Weather (periodic) ────────────────────────────────────
         if settings.weather_enabled:
             await self._maybe_ingest_weather(stats)
@@ -117,6 +128,11 @@ class Poller:
         if (time.time() - self._last_prune_time) >= 86400:
             try:
                 prune_stats = self.db.prune_old_data()
+                from datetime import timedelta
+
+                self._supabase.table("aircraft_observations").delete().lt(
+                    "observed_at", (datetime.now(UTC) - timedelta(hours=48)).isoformat()
+                ).execute()
                 stats.update(prune_stats)
                 self._last_prune_time = time.time()
             except Exception:
@@ -190,6 +206,38 @@ class Poller:
             arrivals=len(raw_arrivals),
             departures=len(raw_departures),
         )
+
+        if self.provider.name == "adsb1090":
+            from src.services.observations import write_observations
+
+            try:
+                from datetime import timedelta
+
+                records = []
+                for raw in getattr(self.provider, "last_poll", {}).get("raw", []):
+                    record = self.provider.normalize(raw, "live")
+                    record["observed_at"] = (
+                        datetime.now(UTC)
+                        - timedelta(seconds=raw.get("seen_pos", raw.get("seen", 0)) or 0)
+                    ).isoformat()
+                    records.append(record)
+                write_observations(self._supabase, "adsb1090", records)
+            except Exception:
+                logger.exception("Source observation write failed; apply source migration")
+        else:
+            for record in all_normalized:
+                for field in (
+                    "latitude",
+                    "longitude",
+                    "altitude_ft",
+                    "heading",
+                    "ground_speed_knots",
+                    "vertical_speed_fpm",
+                ):
+                    record.pop(field, None)
+
+        if self.provider.name == "flightaware":
+            return {"upserted": 0, "normalized": len(all_normalized)}
 
         current_db = self.db.get_current_flights()
         diff = compute_diff(all_normalized, current_db)
@@ -309,6 +357,7 @@ class Poller:
         if not settings.track_log_path or not self.provider.is_live_position_feed:
             return None
         try:
+            Path(settings.track_log_path).parent.mkdir(parents=True, exist_ok=True)
             log = TrackLog(
                 settings.track_log_path,
                 sample_seconds=settings.track_log_sample_seconds,

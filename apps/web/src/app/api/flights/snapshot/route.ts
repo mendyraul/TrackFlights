@@ -1,3 +1,4 @@
+import { readObservations, readSchedules } from "@/lib/source-observations";
 import { supabase } from "@/lib/supabase";
 import { FLIGHT_SNAPSHOT_COLUMNS } from "@/lib/dashboard-selects";
 import { readReceiver } from "@/lib/receiver";
@@ -14,7 +15,7 @@ const REFRESH_SECONDS =
 export const dynamic = "force-dynamic";
 
 async function snapshot() {
-  const [result, receiver] = await Promise.all([
+  const [result, receiver, observations, boardSchedules] = await Promise.all([
     withinDeadline((signal) =>
       supabase
         .from("flights_current")
@@ -24,6 +25,8 @@ async function snapshot() {
         .abortSignal(signal)
     ),
     readReceiver(),
+    readObservations(),
+    readSchedules(),
   ]);
   const { data, error } = result;
 
@@ -34,13 +37,40 @@ async function snapshot() {
     );
   }
 
-  const flights = data ?? [];
+  const legacy = (data ?? []) as unknown as import("@/types/database").Flight[];
+  const local = observations.filter((f) => f.data_source === "adsb1090");
+  const flights = [
+    ...(local.length ? local : legacy.filter((f) => f.data_source !== "flightaware")),
+    ...observations.filter((f) => f.data_source === "flightaware"),
+  ];
+  const schedules = boardSchedules.length
+    ? boardSchedules
+    : legacy.filter((f) => f.data_source === "flightaware");
   // Rows are newest-first, so the first row's updated_at is the data age the
   // UI reports. lastUpdate is only when this response was generated.
-  const newest = flights[0] as { updated_at?: string } | undefined;
+  const newest = flights.find((f) => f.data_source !== "flightaware") as
+    | { updated_at?: string }
+    | undefined;
 
   return Response.json(
-    { flights, dataUpdatedAt: newest?.updated_at ?? null, receiver, lastUpdate: Date.now() },
+    {
+      flights,
+      schedules,
+      schedulePartial: true,
+      regionalSnapshot: {
+        partial: true,
+        capturedAt:
+          observations
+            .filter((f) => f.data_source === "flightaware")
+            .map((f) => f.fetched_at)
+            .filter(Boolean)
+            .sort()
+            .at(-1) ?? null,
+      },
+      dataUpdatedAt: newest?.updated_at ?? null,
+      receiver,
+      lastUpdate: Date.now(),
+    },
     {
       status: 200,
       headers: {

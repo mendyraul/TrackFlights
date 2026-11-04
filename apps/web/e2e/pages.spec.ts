@@ -16,7 +16,7 @@ test("all pages populate through the main navigation", async ({ page }) => {
   await expectNoOverflow(page);
   const nav = page.getByRole("navigation", { name: "Main", exact: true });
   for (const [label, url, heading] of [
-    ["Flights", "/table", "Aircraft in range"],
+    ["Flights", "/table", "Regional aircraft"],
     ["Analytics", "/analytics", "Analytics"],
     ["Behind the Scenes", "/behind-the-scenes", "Behind the Scenes"],
     ["Map", "/", "Live map of aircraft around Miami International"],
@@ -40,7 +40,7 @@ test("airplane details show telemetry, identity, route, schedule and coordinates
 }) => {
   await mockData(page, { flights: [sampleFlight()] });
   await page.goto("/");
-  await page.getByRole("button", { name: "AAL101, 4,500 ft", exact: true }).click();
+  await page.getByRole("button", { name: "AAL101, 4,500 ft, My receiver", exact: true }).click();
   const panel = page.getByRole("complementary", { name: "Details for AAL101" });
   await expect(panel).toBeVisible();
   for (const value of [
@@ -78,7 +78,7 @@ test("ground and incomplete aircraft keep zero values and avoid invented details
   await page.goto("/");
   await showMapFilters(page);
   await page.getByRole("searchbox").fill("N123AB");
-  await page.getByRole("button", { name: "N123AB, on ground", exact: true }).click();
+  await page.getByRole("button", { name: "N123AB, on ground, My receiver", exact: true }).click();
   let panel = page.getByRole("complementary");
   await expect(panel.getByText("GND", { exact: true })).toBeAttached();
   await expect(panel.getByText("0kt", { exact: true })).toBeAttached();
@@ -88,7 +88,9 @@ test("ground and incomplete aircraft keep zero values and avoid invented details
   await expect(panel.getByRole("heading", { name: "Route (schedule feed)" })).toHaveCount(0);
   await page.getByRole("button", { name: "Close details" }).click();
   await page.getByRole("searchbox").fill("ABCDEF");
-  await page.getByRole("button", { name: "ABCDEF, altitude unknown", exact: true }).click();
+  await page
+    .getByRole("button", { name: "ABCDEF, altitude unknown, My receiver", exact: true })
+    .click();
   panel = page.getByRole("complementary", { name: "Details for ABCDEF" });
   await expect(panel).toBeVisible();
   await expect(panel.getByText("Aircraft type", { exact: true })).toHaveCount(0);
@@ -105,7 +107,7 @@ test("selected airplane refreshes without mixing another airplane's details", as
   await mockData(page);
   await page.route("**/api/flights/snapshot", (route) => route.fulfill({ json: { flights } }));
   await page.goto("/");
-  await page.getByRole("button", { name: "AAL101, 4,500 ft", exact: true }).click();
+  await page.getByRole("button", { name: "AAL101, 4,500 ft, My receiver", exact: true }).click();
   const panel = page.getByRole("complementary", { name: "Details for AAL101" });
   flights = [
     sampleFlight({
@@ -121,7 +123,9 @@ test("selected airplane refreshes without mixing another airplane's details", as
   await expect(panel.getByText("210kt", { exact: true })).toBeVisible();
   await expect(panel.getByText("↓ 512 fpm", { exact: true })).toBeAttached();
   await expect(panel.getByText("4,500ft", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "AAL101, 3,250 ft", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "AAL101, 3,250 ft, My receiver", exact: true })
+  ).toBeVisible();
 });
 
 test("map filters control which aircraft can be selected", async ({ page }) => {

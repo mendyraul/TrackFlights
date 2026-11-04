@@ -35,7 +35,12 @@ export function Dashboard() {
 
   // Same cached snapshot as the map: no extra database reads for this section.
   const aircraft = useMemo(
-    () => visibleFlights(flights, freshness, now).map(toAircraft),
+    () =>
+      visibleFlights(
+        flights.filter((f) => f.data_source !== "flightaware"),
+        freshness,
+        now
+      ).map(toAircraft),
     // `now` ticks every second; recompute only when a snapshot arrives.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [flights, freshness]

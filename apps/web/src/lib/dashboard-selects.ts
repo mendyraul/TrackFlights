@@ -8,6 +8,7 @@
 // not selected (about 40% of the raw payload was nulls for those columns).
 export const FLIGHT_SNAPSHOT_COLUMNS = [
   "id",
+  "data_source",
   "flight_iata",
   "flight_icao",
   "aircraft_icao",

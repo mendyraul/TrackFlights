@@ -16,7 +16,10 @@ const LABEL: Record<Freshness, { text: string; dot: string; pulse: boolean }> = 
 export function LiveStatus() {
   const { flights, freshness, dataUpdatedAt, now } = useFlights();
   const cfg = LABEL[freshness];
-  const tracked = trackedNow(flights, now).length;
+  const tracked = trackedNow(
+    flights.filter((f) => f.data_source !== "flightaware"),
+    now
+  ).length;
 
   return (
     <div className="flex items-center gap-2 text-xs" data-testid="live-status">

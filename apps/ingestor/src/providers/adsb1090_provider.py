@@ -118,6 +118,7 @@ class Adsb1090Provider(BaseFlightProvider):
         kept: list[dict[str, Any]] = []
         active_hexes: set[str] = set()
         observations: list[dict[str, Any]] = []
+        observation_raw: list[dict[str, Any]] = []
         max_range_m = self.max_range_km * 1000.0
 
         for ac in raw_aircraft:
@@ -135,6 +136,7 @@ class Adsb1090Provider(BaseFlightProvider):
             if distance_m > max_range_m:
                 continue
 
+            observation_raw.append(ac)
             active_hexes.add(hex_id)
             alt_baro = ac.get("alt_baro")
             on_ground = alt_baro == "ground"
@@ -172,7 +174,11 @@ class Adsb1090Provider(BaseFlightProvider):
 
         classifier = getattr(self, "phase_classifier", None)
         self._model_phases = classifier.apply(observations, time.time()) if classifier else {}
-        self.last_poll = {"received": len(raw_aircraft), "observations": observations}
+        self.last_poll = {
+            "received": len(raw_aircraft),
+            "observations": observations,
+            "raw": observation_raw,
+        }
         self.last_snapshot_counts = (len(raw_aircraft), len(observations))
 
         logger.info(

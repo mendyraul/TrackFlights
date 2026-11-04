@@ -1,120 +1,115 @@
-"""Hard monthly spend guard for FlightAware AeroAPI queries.
+"""Conservative, durable AeroAPI accounting. Credit eligibility is account-specific."""
 
-AeroAPI bills per query (a board fetch with max_pages=N bills N queries). The
-free credit is $10/month; this guard stops the provider from issuing queries
-once projected spend reaches the configured budget, so a wrong per-query price
-assumption can never cause an overage.
-
-The counter persists to a local JSON state file on the Pi (zero egress,
-survives restarts) and rolls over automatically on month boundaries.
-"""
-
+import fcntl
 import json
+import os
+from contextlib import contextmanager
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 
-import structlog
 
-logger = structlog.get_logger()
+def units(value: float) -> int:
+    return int(Decimal(str(value)) * 10000)
 
 
 class AeroApiBudget:
-    """Tracks query spend for the current calendar month (UTC)."""
-
-    def __init__(
-        self,
-        state_path: str,
-        monthly_budget_usd: float,
-        cost_per_query_usd: float,
-    ) -> None:
+    def __init__(self, state_path: str, monthly_budget_usd: float, cost_per_query_usd: float):
         self.state_path = Path(state_path)
         self.monthly_budget_usd = monthly_budget_usd
         self.cost_per_query_usd = cost_per_query_usd
-        self._month = self._current_month()
-        self._queries = 0
-        self._load()
 
     @staticmethod
     def _current_month() -> str:
         return datetime.now(UTC).strftime("%Y-%m")
 
-    def _load(self) -> None:
+    @contextmanager
+    def _locked(self):
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.state_path.with_suffix(".lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock, fcntl.LOCK_UN)
+
+    def _read(self):
         try:
             state = json.loads(self.state_path.read_text())
-            if state.get("month") == self._current_month():
-                self._month = state["month"]
-                self._queries = int(state.get("queries", 0))
+            if not isinstance(state, dict) or not isinstance(state.get("month"), str):
+                raise ValueError("Invalid budget ledger")
+            queries = state.get("queries", 0)
+            if not isinstance(queries, int) or queries < 0:
+                raise ValueError("Invalid query count")
+            # Older counters used one price for everything. Migrate conservatively.
+            spent = state.get("spent_units", queries * max(units(self.cost_per_query_usd), 500))
+            if not isinstance(spent, int) or spent < 0:
+                raise ValueError("Invalid spend")
+            if state["month"] == self._current_month():
+                return {**state, "spent_units": spent}
         except FileNotFoundError:
             pass
-        except (ValueError, KeyError, OSError):
-            logger.warning("Unreadable AeroAPI budget state, starting fresh")
+        return {"month": self._current_month(), "queries": 0, "spent_units": 0, "windows": {}}
 
-    def _persist(self) -> None:
+    def _write(self, state):
+        temp = self.state_path.with_suffix(".tmp")
+        with temp.open("w") as output:
+            json.dump(state, output)
+            output.flush()
+            os.fsync(output.fileno())
+        temp.replace(self.state_path)
+        directory = os.open(self.state_path.parent, os.O_RDONLY)
         try:
-            self.state_path.parent.mkdir(parents=True, exist_ok=True)
-            self.state_path.write_text(json.dumps({"month": self._month, "queries": self._queries}))
-        except OSError:
-            logger.exception("Failed to persist AeroAPI budget state")
+            os.fsync(directory)
+        finally:
+            os.close(directory)
 
-    def _rollover_if_needed(self) -> None:
-        month = self._current_month()
-        if month != self._month:
-            logger.info(
-                "AeroAPI budget month rollover",
-                previous_month=self._month,
-                previous_queries=self._queries,
-            )
-            self._month = month
-            self._queries = 0
-            self._persist()
+    def reserve(self, pages: int, price: float, window: str | None = None) -> bool:
+        if pages <= 0 or price <= 0:
+            raise ValueError("Positive pages and price required")
+        with self._locked():
+            state = self._read()
+            if window and window in state.get("windows", {}):
+                return False
+            cost = pages * units(price)
+            if state["spent_units"] + cost > units(self.monthly_budget_usd):
+                return False
+            state["spent_units"] += cost
+            state["queries"] += pages
+            # Reserve the polling window before HTTP too: crash/restart cannot duplicate it.
+            if window:
+                state.setdefault("windows", {})[window] = True
+            self._write(state)
+            return True
 
     @property
-    def month_queries(self) -> int:
-        self._rollover_if_needed()
-        return self._queries
+    def month_queries(self):
+        with self._locked():
+            return self._read()["queries"]
 
     @property
-    def month_spend_usd(self) -> float:
-        return round(self.month_queries * self.cost_per_query_usd, 4)
+    def month_spend_usd(self):
+        with self._locked():
+            return self._read()["spent_units"] / 10000
 
-    def allow(self, queries: int = 1) -> bool:
-        """Whether issuing `queries` more billed queries stays within budget."""
-        self._rollover_if_needed()
-        projected = (self._queries + queries) * self.cost_per_query_usd
-        if projected > self.monthly_budget_usd:
-            logger.warning(
-                "AeroAPI budget exhausted — polling halted until month rollover",
-                month=self._month,
-                queries_this_month=self._queries,
-                spend_usd=self.month_spend_usd,
-                budget_usd=self.monthly_budget_usd,
-            )
-            return False
-        return True
+    def allow(self, queries=1):
+        return self.month_spend_usd + queries * self.cost_per_query_usd <= self.monthly_budget_usd
 
-    def record(self, queries: int = 1) -> None:
-        self._rollover_if_needed()
-        self._queries += queries
-        self._persist()
+    def record(self, queries=1):
+        if not self.reserve(queries, self.cost_per_query_usd):
+            raise ValueError("Budget exhausted")
 
-    def projected_month_end_usd(self) -> float:
-        """Naive linear projection of month-end spend from the burn rate so far."""
+    def projected_month_end_usd(self):
         now = datetime.now(UTC)
-        day_fraction = (now.day - 1 + now.hour / 24) or 0.04
-        days_in_month = 30
-        return round(self.month_spend_usd * days_in_month / day_fraction, 2)
+        return round(self.month_spend_usd * 31 / max(now.day - 1 + now.hour / 24, 0.04), 2)
 
-    def snapshot(self) -> dict[str, object]:
-        """Structured log payload for the per-cycle spend projection."""
+    def snapshot(self):
+        spent = self.month_spend_usd
         return {
-            "aeroapi_month": self._month,
+            "aeroapi_month": self._current_month(),
             "aeroapi_queries_mtd": self.month_queries,
-            "aeroapi_spend_mtd_usd": self.month_spend_usd,
-            "aeroapi_projected_month_usd": self.projected_month_end_usd(),
+            "aeroapi_spend_mtd_usd": spent,
             "aeroapi_budget_usd": self.monthly_budget_usd,
-            "aeroapi_budget_used_pct": (
-                round(100 * self.month_spend_usd / self.monthly_budget_usd, 1)
-                if self.monthly_budget_usd
-                else 0.0
-            ),
+            "aeroapi_projected_month_usd": self.projected_month_end_usd(),
+            "aeroapi_budget_used_pct": round(100 * spent / self.monthly_budget_usd, 1),
         }

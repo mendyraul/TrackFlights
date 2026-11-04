@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { limitMock } = vi.hoisted(() => ({ limitMock: vi.fn() }));
+const { limitMock, observationsMock } = vi.hoisted(() => ({
+  limitMock: vi.fn(),
+  observationsMock: vi.fn(),
+}));
 
 // Replace the Supabase client so the route's only DB read is controllable and
 // the real client (createClient) never runs.
@@ -14,12 +17,17 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
+vi.mock("@/lib/source-observations", () => ({
+  readObservations: observationsMock,
+  readSchedules: async () => [],
+}));
 import { GET } from "./route";
 vi.mock("@/lib/receiver", () => ({ readReceiver: async () => null }));
 
 describe("GET /api/flights/snapshot", () => {
   beforeEach(() => {
     limitMock.mockReset();
+    observationsMock.mockResolvedValue([]);
   });
 
   it("returns the snapshot with an edge-cache header", async () => {
@@ -51,4 +59,16 @@ describe("GET /api/flights/snapshot", () => {
     const body = await res.json();
     expect(body.error).toBe("Flight data unavailable");
   });
+});
+
+it("supplemental-only data cannot make receiver freshness live", async () => {
+  limitMock.mockResolvedValue({ data: [], error: null });
+  observationsMock.mockResolvedValue([
+    { id: "remote", data_source: "flightaware", updated_at: new Date().toISOString() },
+  ]);
+  const response = await GET();
+  const body = await response.json();
+  expect(body.flights).toHaveLength(1);
+  expect(body.dataUpdatedAt).toBeNull();
+  expect(body.regionalSnapshot.partial).toBe(true);
 });

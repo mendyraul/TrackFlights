@@ -175,6 +175,10 @@ caching at the CDN to stay inside Supabase's free egress, and inferring arrivals
 from ADS-B alone. I wrote a lot of the code with Claude Code as a pair programmer, and the commit
 history shows it. I review what it writes, and I can walk through any part of this repo.
 
+## FlightAware regional snapshots
+
+The optional AeroAPI worker adds a daily, partial snapshot from Orlando through the Keys and MIA schedules every six hours under a shared **$9.50/month usage cap**. Highlighter green aircraft come from the receiver; highlighter yellow aircraft are dated FlightAware observations. Use the source filter on the map or aircraft table. Snapshot positions are historical, fade after five minutes, and expire after 48 hours. See [rollout and budget details](docs/flightaware-rollout.md).
+
 ## Known limitations
 
 - Rows are keyed by flight ident rather than ICAO hex, so one aircraft can briefly own two rows

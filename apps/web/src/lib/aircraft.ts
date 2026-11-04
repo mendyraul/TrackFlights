@@ -47,8 +47,28 @@ export function toAircraft(flight: Flight): Aircraft {
  * the page can show the last known picture under an "offline" banner.
  */
 export function visibleFlights(flights: Flight[], freshness: Freshness, now: number): Flight[] {
-  const rows = freshness === "live" || freshness === "delayed" ? trackedNow(flights, now) : flights;
-  return dedupeByHex(rows);
+  const local = flights.filter((f) => f.data_source !== "flightaware");
+  const current = trackedNow(local, now);
+  const provider = flights.filter(
+    (f) =>
+      f.data_source === "flightaware" &&
+      now - Date.parse(f.observed_at ?? f.updated_at) >= -30_000 &&
+      now - Date.parse(f.observed_at ?? f.updated_at) < 48 * 3600_000
+  );
+  const overlaps = (a: Flight, b: Flight) =>
+    Boolean(
+      (a.icao_hex && b.icao_hex && a.icao_hex.toUpperCase() === b.icao_hex.toUpperCase()) ||
+      ((!a.icao_hex || !b.icao_hex) &&
+        a.aircraft_registration &&
+        b.aircraft_registration &&
+        a.aircraft_registration.toUpperCase() === b.aircraft_registration.toUpperCase())
+    );
+  const supplemental = provider.filter((f) => !current.some((local) => overlaps(f, local)));
+  const locals =
+    freshness === "live" || freshness === "delayed" || freshness === "silent"
+      ? current
+      : local.filter((f) => !supplemental.some((remote) => overlaps(f, remote)));
+  return dedupeByHex([...locals, ...supplemental]);
 }
 
 /**

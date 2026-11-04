@@ -1,18 +1,7 @@
-"""FlightAware AeroAPI provider — KMIA airport boards under a hard budget.
+"""FlightAware airport boards with persisted six-hour windows and a shared budget.
 
-Board endpoints (`/airports/{code}/flights/{board}`) supply what the metrics
-dashboard needs and ADS-B cannot: scheduled/actual times, cancellations,
-delays, gates. Live positions come from the free local ADS-B feed, so this
-provider intentionally polls slowly (default every 4h) and samples one page
-(15 flights) per board.
-
-Cost controls:
-  * every board fetch passes through AeroApiBudget (bills max_pages queries;
-    polling halts for the month when the budget is reached),
-  * arrivals/departures use a start/end watermark window so each poll bills
-    one page of fresh results instead of re-reading the whole board,
-  * scheduled_* boards (future flights, feeds delay predictions) fetch only
-    once per UTC day.
+The regional snapshot service shares this provider's accounting ledger. Endpoint
+prices are configurable and reservations precede every paid HTTP attempt.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -20,7 +9,6 @@ from typing import Any
 
 import httpx
 import structlog
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.config import settings
 from src.providers.base_provider import BaseFlightProvider
@@ -53,7 +41,6 @@ class FlightAwareProvider(BaseFlightProvider):
     def name(self) -> str:
         return "flightaware"
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=30))
     async def _request_board(
         self, airport_code: str, board: str, params: dict[str, Any]
     ) -> list[dict[str, Any]]:
@@ -75,17 +62,42 @@ class FlightAwareProvider(BaseFlightProvider):
         end: datetime | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch one airport board, spending from the monthly budget."""
-        if not self.budget.allow(self.max_pages):
+        window = datetime.now(UTC).strftime("%Y-%m-%d") + f":{datetime.now(UTC).hour // 6}:{board}"
+        if not self.budget.reserve(1, settings.aeroapi_board_cost_per_page_usd, window):
             return []
 
-        params: dict[str, Any] = {"max_pages": self.max_pages}
+        params: dict[str, Any] = {"max_pages": 1}
         if start is not None:
             params["start"] = start.strftime("%Y-%m-%dT%H:%M:%SZ")
         if end is not None:
             params["end"] = end.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         flights = await self._request_board(airport_code, board, params)
-        self.budget.record(self.max_pages)
+        if hasattr(self, "schedule_client"):
+            normalized = [
+                self.normalize(raw, "arrival" if "arrivals" in board else "departure")
+                for raw in flights
+            ]
+            for index, record in enumerate(normalized):
+                record["id"] = flights[index].get("fa_flight_id") or f"{board}:{index}:{window}"
+                for field in (
+                    "latitude",
+                    "longitude",
+                    "altitude_ft",
+                    "heading",
+                    "ground_speed_knots",
+                    "vertical_speed_fpm",
+                ):
+                    record.pop(field, None)
+            self.schedule_client.table("airport_schedule_snapshots").upsert(
+                {
+                    "airport": airport_code,
+                    "board": board,
+                    "fetched_at": datetime.now(UTC).isoformat(),
+                    "flights": normalized,
+                },
+                on_conflict="airport,board",
+            ).execute()
         logger.info(
             "AeroAPI board fetched",
             board=board,
@@ -97,13 +109,13 @@ class FlightAwareProvider(BaseFlightProvider):
     def _board_window(self, board: str) -> tuple[datetime, datetime]:
         """Watermark window for a completed-flights board: last poll -> now."""
         now = datetime.now(UTC)
-        default_lookback = timedelta(seconds=settings.poll_interval_seconds)
-        start = self._watermarks.get(board, now - default_lookback)
+        default_lookback = timedelta(hours=6)
+        start = now - default_lookback - WATERMARK_OVERLAP
         self._watermarks[board] = now - WATERMARK_OVERLAP
         return start, now
 
     def _scheduled_boards_due(self) -> bool:
-        return self._last_scheduled_date != datetime.now(UTC).strftime("%Y-%m-%d")
+        return True
 
     async def fetch_arrivals(self, airport_iata: str) -> list[dict[str, Any]]:
         start, end = self._board_window("arrivals")
@@ -130,7 +142,7 @@ class FlightAwareProvider(BaseFlightProvider):
         airline_iata = _first_truthy(raw, "operator_iata", "airline_iata")
         flight_number = raw.get("flight_number") or _extract_flight_number(flight_iata)
 
-        return {
+        record = {
             "flight_iata": flight_iata,
             "flight_icao": _first_truthy(raw, "ident_icao", "ident"),
             "flight_number": flight_number,
@@ -172,7 +184,11 @@ class FlightAwareProvider(BaseFlightProvider):
             "delay_minutes": _delay_minutes(raw),
             "latitude": _first_truthy(position, "latitude", "lat"),
             "longitude": _first_truthy(position, "longitude", "lon"),
-            "altitude_ft": _to_int(_first_truthy(position, "altitude", "altitude_ft")),
+            "altitude_ft": (
+                int(position["altitude"]) * 100
+                if position.get("altitude") is not None
+                else _to_int(position.get("altitude_ft"))
+            ),
             "heading": _to_float(_first_truthy(position, "heading", "track")),
             "ground_speed_knots": _to_int(
                 _first_truthy(position, "groundspeed", "ground_speed", "ground_speed_knots")
@@ -187,6 +203,8 @@ class FlightAwareProvider(BaseFlightProvider):
             "baggage_belt": _first_truthy(raw, "baggage_claim", "baggage_belt"),
             "data_source": self.name,
         }
+
+        return record
 
     @staticmethod
     def _extract_board(payload: dict[str, Any], board: str) -> list[dict[str, Any]]:

@@ -3,10 +3,13 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 const { query, receiver } = vi.hoisted(() => ({ query: vi.fn(), receiver: vi.fn() }));
 vi.mock("@/lib/supabase", () => ({
   supabase: {
-    from: () => ({ select: () => ({ order: () => ({ limit: () => ({ abortSignal: query }) }) }) }),
+    from: () => ({
+      select: () => ({ eq: () => ({ order: () => ({ limit: () => ({ abortSignal: query }) }) }) }),
+    }),
   },
 }));
 vi.mock("@/lib/receiver", () => ({ readReceiver: receiver }));
+vi.mock("@/lib/source-observations", () => ({ readReceiverObservationTime: async () => null }));
 import { GET } from "./route";
 
 const NOW = Date.parse("2026-10-27T14:00:00Z");

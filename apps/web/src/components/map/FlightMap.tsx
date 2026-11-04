@@ -24,6 +24,7 @@ const DEFAULT_ZOOM = 7;
 
 interface FlightMapProps {
   flights: Flight[];
+  now: number;
   onSelect: (flight: Flight) => void;
   selectedId: string | null;
   routeLine: {
@@ -43,21 +44,24 @@ function createAircraftIcon(
   heading: number | null,
   isSelected: boolean,
   isChanged: boolean,
-  stale = false
+  stale = false,
+  source = "adsb1090"
 ): L.DivIcon {
   const rotation = heading ?? 0;
-  const color = isSelected ? "#00d4ff" : isChanged ? "#f97316" : stale ? "#6b7280" : "#facc15";
+  const color = source === "flightaware" ? "#FFFF00" : "#39FF14";
   const size = isSelected ? 28 : 22;
-  const glow = isChanged
-    ? "drop-shadow(0 0 6px #f97316)"
-    : "drop-shadow(0 1px 2px rgba(0,0,0,0.6))";
+  const glow = isSelected
+    ? "drop-shadow(0 0 6px white)"
+    : isChanged
+      ? "drop-shadow(0 0 6px #f97316)"
+      : "drop-shadow(0 1px 2px rgba(0,0,0,0.6))";
 
   return L.divIcon({
     className: "",
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     html: `<div style="transform:rotate(${rotation}deg);width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;transition:transform 1s ease;">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" fill="${color}" style="filter:${glow};transition:fill 0.5s ease;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" fill="${color}" opacity="${stale ? 0.45 : 1}" style="filter:${glow};transition:fill 0.5s ease;">
         <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
       </svg>
     </div>`,
@@ -159,12 +163,14 @@ function AirportLayer({ highlighted }: { highlighted: readonly string[] }) {
 
 function SmoothMarker({
   flight,
+  now,
   isSelected,
   isChanged,
   stale,
   onSelect,
 }: {
   flight: Flight;
+  now: number;
   isSelected: boolean;
   isChanged: boolean;
   stale: boolean;
@@ -181,7 +187,10 @@ function SmoothMarker({
     const newPos: [number, number] = [flight.latitude!, flight.longitude!];
 
     // Animate if position changed
-    if (prevPos.current[0] !== newPos[0] || prevPos.current[1] !== newPos[1]) {
+    if (flight.data_source === "flightaware") {
+      marker.setLatLng(newPos);
+      prevPos.current = newPos;
+    } else if (prevPos.current[0] !== newPos[0] || prevPos.current[1] !== newPos[1]) {
       const start = prevPos.current;
       const end = newPos;
       const duration = 1000; // 1 second transition
@@ -206,14 +215,43 @@ function SmoothMarker({
     // React Leaflet does not update Marker.title after mount. Keep the
     // tooltip and accessible name in sync with the current telemetry.
     marker.options.title = title;
-    marker.setIcon(createAircraftIcon(flight.heading, isSelected, isChanged, stale));
-  }, [flight.latitude, flight.longitude, flight.heading, title, isSelected, isChanged, stale]);
+    marker.setIcon(
+      createAircraftIcon(
+        flight.heading,
+        isSelected,
+        isChanged,
+        flight.data_source === "flightaware"
+          ? now - Date.parse(flight.updated_at) > 300_000
+          : stale,
+        flight.data_source
+      )
+    );
+  }, [
+    flight.latitude,
+    flight.longitude,
+    flight.heading,
+    title,
+    isSelected,
+    isChanged,
+    stale,
+    flight.data_source,
+    flight.updated_at,
+    now,
+  ]);
 
   return (
     <Marker
       ref={markerRef}
       position={[flight.latitude!, flight.longitude!]}
-      icon={createAircraftIcon(flight.heading, isSelected, isChanged, stale)}
+      icon={createAircraftIcon(
+        flight.heading,
+        isSelected,
+        isChanged,
+        flight.data_source === "flightaware"
+          ? now - Date.parse(flight.updated_at) > 300_000
+          : stale,
+        flight.data_source
+      )}
       // Details open in the side panel / bottom sheet, so no popup here.
       // Leaflet uses title as the focusable marker's accessible name.
       title={title}
@@ -236,7 +274,7 @@ function markerTitle(flight: Flight): string {
       : flight.altitude_ft != null
         ? `${flight.altitude_ft.toLocaleString()} ft`
         : "altitude unknown";
-  return `${ident}, ${alt}`;
+  return `${ident}, ${alt}, ${flight.data_source === "flightaware" ? "FlightAware historical snapshot, position " + flight.updated_at : "My receiver"}`;
 }
 
 // ── Bounds Updater ─────────────────────────────────────────────────────
@@ -288,6 +326,7 @@ function createClusterIcon(cluster: any, stale: boolean): L.DivIcon {
 
 function FlightMapInner({
   flights,
+  now,
   onSelect,
   selectedId,
   routeLine,
@@ -336,6 +375,7 @@ function FlightMapInner({
           <SmoothMarker
             key={flight.id}
             flight={flight}
+            now={now}
             isSelected={flight.id === selectedId}
             isChanged={recentlyChanged.has(flight.id)}
             stale={stale}

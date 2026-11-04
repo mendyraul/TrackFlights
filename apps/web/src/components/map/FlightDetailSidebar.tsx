@@ -1,5 +1,6 @@
 "use client";
 
+import { SourceLabel } from "@/components/ui/SourceFilter";
 import { useEffect, useRef } from "react";
 import { AirlineLogo } from "@/components/ui/AirlineLogo";
 import { formatCoords, formatVerticalSpeed } from "@/lib/geo";
@@ -66,6 +67,15 @@ export function FlightDetailSidebar({ aircraft: a, now, isUpdating, onClose }: P
             <div className="min-w-0">
               <h2 className="truncate font-mono text-xl font-bold text-mia-accent">{a.ident}</h2>
               <p className="truncate text-sm text-gray-300">{a.operator.label}</p>
+              <p className="text-xs">
+                <SourceLabel source={f.data_source} />
+              </p>
+              {f.data_source === "flightaware" && (
+                <p className="text-xs text-gray-400">
+                  Historical snapshot · position {formatMiamiTime(Date.parse(f.updated_at))} (
+                  {formatAge(now - Date.parse(f.updated_at))})
+                </p>
+              )}
             </div>
             {isUpdating && (
               <span className="h-2 w-2 shrink-0 rounded-full bg-orange-400 motion-safe:animate-ping" />

@@ -28,11 +28,10 @@ class Settings(BaseSettings):
     # Provider: "aviationstack", "example" (mock), or "adsb1090" (self-hosted ADS-B)
     flight_provider: str = "aviationstack"
 
-    # FlightAware AeroAPI (used when flight_provider=flightaware).
-    # Cost per query is an assumption — verify against the FlightAware portal's
-    # usage page and recalibrate. The budget guard halts polling at the cap
-    # regardless, so a wrong price can't cause an overage.
-    aeroapi_monthly_budget_usd: float = 9.0
+    # Shared usage ceiling; feeder credit must be verified in the account portal.
+    aeroapi_monthly_budget_usd: float = 9.50
+    aeroapi_search_cost_per_page_usd: float = 0.05
+    aeroapi_board_cost_per_page_usd: float = 0.005
     aeroapi_cost_per_query_usd: float = 0.02
     aeroapi_max_pages: int = 1  # 15 results per page; each page bills one query
     aeroapi_budget_state_path: str = str(_PROJECT_ROOT / ".state" / "aeroapi_budget.json")
@@ -61,7 +60,7 @@ class Settings(BaseSettings):
     phase_model_path: str = ""
 
     # AeroAPI planning defaults for South Florida region searches.
-    aeroapi_bbox: str = "25.2,-82.0,27.0,-80.0"
+    aeroapi_bbox: str = "24.3,-83.0,28.7,-79.8"
     aeroapi_search_limit: int = 15
     aeroapi_max_pages_per_poll: int = 4
     aeroapi_snapshot_size_kib: float = 35.0
@@ -104,6 +103,9 @@ settings = Settings()  # type: ignore[call-arg]
 def get_runtime_config_summary() -> dict[str, object]:
     """Return a sanitized runtime config payload for startup logging."""
     aeroapi_plan = {
+        "monthly_budget_usd": settings.aeroapi_monthly_budget_usd,
+        "search_price_usd": settings.aeroapi_search_cost_per_page_usd,
+        "board_price_usd": settings.aeroapi_board_cost_per_page_usd,
         "bbox": settings.aeroapi_bbox,
         "search_limit": settings.aeroapi_search_limit,
         "max_pages_per_poll": settings.aeroapi_max_pages_per_poll,
@@ -177,6 +179,11 @@ def validate_runtime_settings() -> None:
             )
         if settings.aeroapi_monthly_budget_usd <= 0:
             errors.append("aeroapi_monthly_budget_usd must be > 0")
+        if (
+            settings.aeroapi_search_cost_per_page_usd <= 0
+            or settings.aeroapi_board_cost_per_page_usd <= 0
+        ):
+            errors.append("AeroAPI endpoint prices must be positive")
         if settings.aeroapi_max_pages <= 0:
             errors.append("aeroapi_max_pages must be > 0")
 

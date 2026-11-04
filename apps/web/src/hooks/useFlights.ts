@@ -25,6 +25,7 @@ const HIGHLIGHT_MS = 2_500;
 
 interface SnapshotState {
   flights: Flight[];
+  schedules: Flight[];
   loading: boolean;
   error: string | null;
   connectionStatus: ConnectionStatus;
@@ -39,6 +40,7 @@ interface SnapshotState {
 
 const initialState: SnapshotState = {
   flights: [],
+  schedules: [],
   loading: true,
   error: null,
   connectionStatus: "disconnected",
@@ -70,6 +72,7 @@ async function fetchSnapshot() {
     }
     const body = (await resp.json()) as {
       flights?: Flight[];
+      schedules?: Flight[];
       dataUpdatedAt?: string | null;
       receiver?: ReceiverStatus | null;
     };
@@ -85,11 +88,14 @@ async function fetchSnapshot() {
     const fromServer = body.dataUpdatedAt ? Date.parse(body.dataUpdatedAt) : NaN;
     setState({
       flights,
+      schedules: body.schedules ?? [],
       loading: false,
       error: null,
       connectionStatus: "connected",
       lastUpdate: Date.now(),
-      dataUpdatedAt: Number.isFinite(fromServer) ? fromServer : newestUpdate(flights),
+      dataUpdatedAt: Number.isFinite(fromServer)
+        ? fromServer
+        : newestUpdate(flights.filter((f) => f.data_source !== "flightaware")),
       recentlyChanged: changed,
       receiver: body.receiver ?? null,
     });

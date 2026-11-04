@@ -19,6 +19,9 @@ export type FlightDirection = "arrival" | "departure";
  * (FLIGHT_SNAPSHOT_COLUMNS); fields it doesn't select arrive undefined.
  */
 export interface Flight {
+  data_source?: "adsb1090" | "flightaware";
+  observed_at?: string;
+  fetched_at?: string;
   id: string;
   flight_iata: string;
   flight_icao: string | null;
@@ -186,6 +189,32 @@ export interface TrafficAnomaly {
 export interface Database {
   public: {
     Tables: {
+      airport_schedule_snapshots: {
+        Row: {
+          airport: string;
+          board: string;
+          fetched_at: string;
+          flights: Record<string, unknown>[];
+        };
+        Insert: { airport: string; board: string; flights: Record<string, unknown>[] };
+        Update: { fetched_at?: string };
+      };
+      aircraft_observations: {
+        Row: {
+          source: "adsb1090" | "flightaware";
+          aircraft_key: string;
+          observed_at: string;
+          fetched_at: string;
+          payload: Record<string, unknown>;
+        };
+        Insert: {
+          source: string;
+          aircraft_key: string;
+          observed_at: string;
+          payload: Record<string, unknown>;
+        };
+        Update: { observed_at?: string; payload?: Record<string, unknown> };
+      };
       ingestor_heartbeat: {
         Row: {
           source: string;

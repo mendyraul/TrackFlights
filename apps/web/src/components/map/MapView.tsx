@@ -1,5 +1,6 @@
 "use client";
 
+import { SourceSummary } from "@/components/ui/SourceSummary";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useFlights } from "@/hooks/useFlights";
@@ -17,6 +18,7 @@ const FlightMap = dynamic(() => import("@/components/map/FlightMap"), {
 });
 
 export interface MapFilterState {
+  source?: "all" | "adsb1090" | "flightaware";
   phase: FlightPhase | "all";
   operator: string;
   search: string;
@@ -33,6 +35,7 @@ export function MapView() {
   } = useFlights();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filters, setFilters] = useState<MapFilterState>({
+    source: "all",
     phase: "all",
     operator: "",
     search: "",
@@ -56,6 +59,9 @@ export function MapView() {
     const q = filters.search.trim().toUpperCase();
     return aircraft.filter(
       (a) =>
+        (!filters.source ||
+          filters.source === "all" ||
+          (a.flight.data_source ?? "adsb1090") === filters.source) &&
         (filters.phase === "all" || a.phase === filters.phase) &&
         (!filters.operator || a.operator.label === filters.operator) &&
         (!q || a.ident.toUpperCase().includes(q) || (a.hex ?? "").includes(q))
@@ -102,6 +108,9 @@ export function MapView() {
     // Header (3.5rem) + nav (2.75rem) = 6.25rem. dvh keeps the map from
     // sliding under mobile browser toolbars; vh is the fallback.
     <div className="relative flex h-[calc(100vh-6.25rem)] supports-[height:100dvh]:h-[calc(100dvh-6.25rem)]">
+      <div className="absolute bottom-3 left-3 z-[1000] max-w-[75%]">
+        <SourceSummary flights={aircraft.map((a) => a.flight)} now={now} />
+      </div>
       {selected && (
         <FlightDetailSidebar
           aircraft={selected}
@@ -138,6 +147,7 @@ export function MapView() {
         )}
 
         <FlightMap
+          now={now}
           flights={mappable}
           onSelect={onSelect}
           selectedId={selectedId}
