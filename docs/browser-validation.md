@@ -7,6 +7,8 @@ runs this suite in the `web / production browser` job.
 
 The suite checks:
 
+- Airport marker clicks (including a grounded aircraft overlapping the dot), desktop panels/mobile sheets, full airport pages, partial morning boards, independent official/observed statuses, expandable details, and unsupported-airport states.
+
 - Navigation through Map, Flights, Analytics, and Behind the Scenes, including active
   tabs, populated content, uncaught browser errors, and horizontal page overflow.
 - Selecting aircraft and checking callsign, operator, altitude, speed, track, vertical

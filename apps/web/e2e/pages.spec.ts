@@ -76,6 +76,7 @@ test("ground and incomplete aircraft keep zero values and avoid invented details
   const flights = sampleFlights().filter((f) => ["ground", "missing"].includes(f.id));
   await mockData(page, { flights });
   await page.goto("/");
+  await expect(page.getByRole("button", { name: /^ABCDEF,/ })).toBeVisible();
   await showMapFilters(page);
   await page.getByRole("searchbox").fill("N123AB");
   await page.getByRole("button", { name: "N123AB, on ground, My receiver", exact: true }).click();
@@ -147,7 +148,7 @@ test("map filters control which aircraft can be selected", async ({ page }) => {
   await page.getByRole("searchbox").fill("abcdef");
   await expect(page.getByRole("button", { name: /^ABCDEF,/ })).toBeVisible();
   await page.getByRole("searchbox").fill("NO-SUCH-AIRCRAFT");
-  await expect(page.locator(".leaflet-marker-icon[role=button]")).toHaveCount(0);
+  await expect(page.locator('.leaflet-marker-icon[role=button][title*=","]')).toHaveCount(0);
 });
 
 test("flight board populates, sorts and combines search, operator and phase filters", async ({

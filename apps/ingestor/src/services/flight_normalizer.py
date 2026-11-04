@@ -1,11 +1,14 @@
 """Flight normalization service — orchestrates provider.normalize() calls."""
 
+from __future__ import annotations
+
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from src.providers.base_provider import BaseFlightProvider
+if TYPE_CHECKING:
+    from src.providers.base_provider import BaseFlightProvider
 
 logger = structlog.get_logger()
 

@@ -133,6 +133,9 @@ class Poller:
                 self._supabase.table("aircraft_observations").delete().lt(
                     "observed_at", (datetime.now(UTC) - timedelta(hours=48)).isoformat()
                 ).execute()
+                self._supabase.table("airport_schedule_baselines").delete().lt(
+                    "service_date", (datetime.now(UTC) - timedelta(days=7)).date().isoformat()
+                ).execute()
                 stats.update(prune_stats)
                 self._last_prune_time = time.time()
             except Exception:
@@ -188,6 +191,11 @@ class Poller:
     async def _ingest_flights(self, airport: str) -> dict[str, int]:
         """Core flight ingestion pipeline."""
         self._heartbeat_recorded = False
+        if self.provider.name == "flightaware":
+            from src.services.morning_board import collect_morning_boards
+
+            count = await collect_morning_boards(self.provider, self._supabase)
+            return {"normalized": count, "upserted": 0}
         if self.provider.is_live_position_feed:
             # Position feeds (ADS-B) return one snapshot; direction is inferred
             # per-aircraft inside the provider's normalize().
@@ -222,8 +230,15 @@ class Poller:
                     ).isoformat()
                     records.append(record)
                 write_observations(self._supabase, "adsb1090", records)
+                from src.services.airport_progress import AirportProgress
+
+                if not hasattr(self, "_airport_progress"):
+                    self._airport_progress = AirportProgress(self._supabase)
+                self._airport_progress.record(records)
             except Exception:
-                logger.exception("Source observation write failed; apply source migration")
+                logger.exception(
+                    "Source observations or airport progress failed; check migrations and grants"
+                )
         else:
             for record in all_normalized:
                 for field in (

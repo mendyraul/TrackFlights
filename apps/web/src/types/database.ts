@@ -189,6 +189,44 @@ export interface TrafficAnomaly {
 export interface Database {
   public: {
     Tables: {
+      airport_schedule_baselines: {
+        Row: {
+          airport: string;
+          service_date: string;
+          board: string;
+          fetched_at: string;
+          partial: boolean;
+          page_limit: number;
+          flights: Record<string, unknown>[];
+        };
+        Insert: {
+          airport: string;
+          service_date: string;
+          board: string;
+          flights: Record<string, unknown>[];
+        };
+        Update: { fetched_at?: string };
+      };
+      airport_flight_progress: {
+        Row: {
+          airport: string;
+          service_date: string;
+          board: string;
+          flight_key: string;
+          state: string;
+          observed_at: string;
+          evidence: Record<string, unknown>;
+        };
+        Insert: {
+          airport: string;
+          service_date: string;
+          board: string;
+          flight_key: string;
+          state: string;
+          observed_at: string;
+        };
+        Update: { state?: string };
+      };
       airport_schedule_snapshots: {
         Row: {
           airport: string;

@@ -37,16 +37,24 @@ export async function readSchedules(): Promise<Flight[]> {
   try {
     const { data, error } = await withinDeadline((signal) =>
       supabase
-        .from("airport_schedule_snapshots")
-        .select("flights,fetched_at")
+        .from("airport_schedule_baselines")
+        .select("flights,fetched_at,service_date")
         .eq("airport", "MIA")
         .gte("fetched_at", new Date(Date.now() - 48 * 3600_000).toISOString())
         .abortSignal(signal)
     );
     if (error) return [];
-    const rows = (data ?? []) as unknown as { flights: Flight[]; fetched_at: string }[];
+    const rows = (data ?? []) as unknown as {
+      flights: Flight[];
+      fetched_at: string;
+      service_date: string;
+    }[];
+    const latestDay = rows
+      .map((r) => r.service_date)
+      .sort()
+      .at(-1);
     const unique = new Map<string, Flight>();
-    for (const row of rows)
+    for (const row of rows.filter((r) => r.service_date === latestDay))
       for (const flight of row.flights)
         unique.set(flight.id, { ...flight, fetched_at: row.fetched_at });
     return [...unique.values()];

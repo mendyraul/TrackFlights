@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { AirportBoard } from "@/components/table/AirportBoard";
 import { SourceSummary } from "@/components/ui/SourceSummary";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useFlights } from "@/hooks/useFlights";
 import type { Flight } from "@/types/database";
@@ -25,6 +28,8 @@ export interface MapFilterState {
 }
 
 export function MapView() {
+  const searchParams = useSearchParams();
+  const airportCloseRef = useRef<HTMLButtonElement>(null);
   const {
     flights: allFlights,
     loading,
@@ -33,12 +38,13 @@ export function MapView() {
     now,
     recentlyChanged,
   } = useFlights();
+  const [selectedAirport, setSelectedAirport] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filters, setFilters] = useState<MapFilterState>({
     source: "all",
     phase: "all",
     operator: "",
-    search: "",
+    search: searchParams.get("flight") ?? "",
   });
 
   // Live: only aircraft heard recently. Offline: the last known picture, greyed.
@@ -94,7 +100,28 @@ export function MapView() {
       routeLine: origin && destination ? { origin, destination } : null,
     };
   }, [selected]);
-  const onSelect = useCallback((f: Flight) => setSelectedId(f.id), []);
+  const onSelect = useCallback((f: Flight) => {
+    setSelectedAirport(null);
+    setSelectedId(f.id);
+  }, []);
+  const onAirportSelect = useCallback((code: string) => {
+    setSelectedId(null);
+    setSelectedAirport(code);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedAirport) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    airportCloseRef.current?.focus();
+    const close = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedAirport(null);
+    };
+    window.addEventListener("keydown", close);
+    return () => {
+      window.removeEventListener("keydown", close);
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [selectedAirport]);
 
   // Escape closes the detail panel.
   useEffect(() => {
@@ -111,6 +138,29 @@ export function MapView() {
       <div className="absolute bottom-3 left-3 z-[1000] max-w-[75%]">
         <SourceSummary flights={aircraft.map((a) => a.flight)} now={now} />
       </div>
+      {selectedAirport && (
+        <aside
+          role="dialog"
+          aria-label={`${selectedAirport} airport board panel`}
+          className="absolute inset-x-0 bottom-0 z-[1200] max-h-[70%] overflow-auto border border-gray-700 bg-mia-panel shadow-xl sm:inset-y-0 sm:left-0 sm:right-auto sm:max-h-none sm:w-[min(900px,85%)]"
+        >
+          <div className="sticky top-0 z-10 flex justify-between bg-mia-panel p-3">
+            <Link className="text-mia-accent underline" href={`/airports/${selectedAirport}`}>
+              Open full airport page
+            </Link>
+            <button
+              type="button"
+              onClick={() => setSelectedAirport(null)}
+              ref={airportCloseRef}
+              aria-label="Close airport board"
+              className="min-h-11 px-3"
+            >
+              Close
+            </button>
+          </div>
+          <AirportBoard key={selectedAirport} iata={selectedAirport} />
+        </aside>
+      )}
       {selected && (
         <FlightDetailSidebar
           aircraft={selected}
@@ -148,6 +198,7 @@ export function MapView() {
 
         <FlightMap
           now={now}
+          onAirportSelect={onAirportSelect}
           flights={mappable}
           onSelect={onSelect}
           selectedId={selectedId}

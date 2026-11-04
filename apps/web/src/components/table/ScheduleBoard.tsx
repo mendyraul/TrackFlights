@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useFlights } from "@/hooks/useFlights";
 import { formatMiamiTime } from "@/lib/freshness";
 export function ScheduleBoard() {
@@ -11,12 +12,17 @@ export function ScheduleBoard() {
     <section className="px-4 py-5 sm:px-6" aria-label="MIA schedules">
       <h2 className="text-lg font-semibold">MIA arrivals and departures</h2>
       <p className="my-2 text-sm text-gray-400">
-        FlightAware · partial board, one page per category · refreshed every six hours. Flights
-        without reported positions appear here only.
+        FlightAware · partial morning board · collected at 04:00 local time. Flights without
+        reported positions appear here only.
       </p>
       {refreshed > 0 && (
         <p className="mb-3 text-xs text-gray-400">Last fetched {formatMiamiTime(refreshed)}</p>
       )}
+      <p>
+        <Link className="text-mia-accent underline" href="/airports/MIA">
+          Open airport arrivals and departures
+        </Link>
+      </p>
       {!schedules.length ? (
         <p className="text-sm text-gray-400">No schedule data available.</p>
       ) : (

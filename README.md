@@ -177,7 +177,7 @@ history shows it. I review what it writes, and I can walk through any part of th
 
 ## FlightAware regional snapshots
 
-The optional AeroAPI worker adds a daily, partial snapshot from Orlando through the Keys and MIA schedules every six hours under a shared **$9.50/month usage cap**. Highlighter green aircraft come from the receiver; highlighter yellow aircraft are dated FlightAware observations. Use the source filter on the map or aircraft table. Snapshot positions are historical, fade after five minutes, and expire after 48 hours. See [rollout and budget details](docs/flightaware-rollout.md).
+The optional AeroAPI worker adds a daily, partial snapshot from Orlando through the Keys and morning schedules for MIA, FLL, PBI, MCO and RSW under a shared **$9.50/month usage cap**. Highlighter green aircraft come from the receiver; highlighter yellow aircraft are dated FlightAware observations. Use the source filter on the map or aircraft table. Click an airport for its cached morning board and separately labeled receiver observations. Snapshot positions are historical, fade after five minutes, and expire after 48 hours. See [rollout and budget details](docs/flightaware-rollout.md).
 
 ## Known limitations
 

@@ -34,13 +34,12 @@
 
 ## Ingestor (Raspberry Pi) — two services
 
-Production runs two ingestor processes against the shared `flights_current`
-table:
+Production uses separate receiver observations, morning schedule baselines, and inferred progress; the legacy `flights_current` table remains for compatibility:
 
 | Unit | Provider | Interval | Owns |
 |---|---|---|---|
 | `mia-ingestor-adsb` | `adsb1090` (local PiAware/dump1090) | 15 s | live positions, weather |
-| `mia-ingestor-aeroapi` | `flightaware` (AeroAPI boards) | 4 h | schedules, delays, cancellations, gates, predictions |
+| `mia-ingestor-aeroapi` | `flightaware` | 15 min worker wake | five morning airport boards at 04:00 Miami time; daily regional snapshot after 12 UTC |
 
 Setup:
 
@@ -86,3 +85,5 @@ costs coverage, never money.
 - **Free-tier check**: `npm run ops:supabase-free-tier`
 - **When something looks stale**: [runbook.md](runbook.md)
 - **Vercel dashboard**: Monitor frontend deployments and analytics
+
+For the morning airport explorer, apply the airport-board migration before deploying workers and follow [the rollout guide](flightaware-rollout.md). Airport clicks only read cached baselines. The receiver worker independently records inferred flight progress; provider schedule fields are not changed by inference.

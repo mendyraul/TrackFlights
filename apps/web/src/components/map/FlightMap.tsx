@@ -5,7 +5,6 @@ import {
   MapContainer,
   TileLayer,
   Marker,
-  Popup,
   Polyline,
   useMap,
   Tooltip,
@@ -24,6 +23,7 @@ const DEFAULT_ZOOM = 7;
 
 interface FlightMapProps {
   flights: Flight[];
+  onAirportSelect: (iata: string) => void;
   now: number;
   onSelect: (flight: Flight) => void;
   selectedId: string | null;
@@ -84,43 +84,46 @@ const AIRPORT_STYLE: Record<
   highlighted: { size: 16, color: "#f59e0b", glow: 16, opacity: 1 },
 };
 
-function createAirportIcon(role: AirportRole): L.DivIcon {
+function createAirportIcon(role: AirportRole, code: string): L.DivIcon {
   const { size, color, glow, opacity } = AIRPORT_STYLE[role];
   const ring =
     role === "highlighted" ? `<span class="mia-airport-ring" style="color:${color};"></span>` : "";
 
   return L.divIcon({
     className: "",
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    html: `<div style="position:relative;width:${size}px;height:${size}px;">
+    iconSize: [size + 54, 44],
+    iconAnchor: [size / 2, 22],
+    html: `<div aria-hidden="true" style="position:relative;width:${size + 54}px;height:44px;">
+      <span style="position:absolute;left:${size + 4}px;top:6px;padding:8px 4px;font-size:11px;font-weight:bold;color:#b8e8ff;background:rgba(10,10,26,0.85);border-radius:4px;">${code}</span>
+      <div style="position:absolute;left:0;top:${(44 - size) / 2}px;width:${size}px;height:${size}px;">
       ${ring}
-      <span style="display:block;width:100%;height:100%;background:${color};border-radius:50%;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 ${glow}px ${color};opacity:${opacity};"></span>
+      <span style="display:block;width:100%;height:100%;background:${color};border-radius:50%;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 ${glow}px ${color};opacity:${opacity};"></span></div>
     </div>`,
   });
 }
 
-function AirportBlob({ airport, role }: { airport: AirportRef; role: AirportRole }) {
+function AirportBlob({
+  airport,
+  role,
+  onSelect,
+}: {
+  airport: AirportRef;
+  role: AirportRole;
+  onSelect: (iata: string) => void;
+}) {
   return (
     <Marker
       position={[airport.lat, airport.lon]}
-      icon={createAirportIcon(role)}
+      icon={createAirportIcon(role, airport.iata)}
       // Keep blobs beneath aircraft markers so they never swallow a plane click.
       zIndexOffset={-500}
-      keyboard={false}
+      keyboard
+      title={`Open ${airport.iata} airport board`}
+      eventHandlers={{ click: () => onSelect(airport.iata) }}
     >
       <Tooltip direction="top" offset={[0, -8]} opacity={1}>
         <strong>{airport.iata}</strong> — {airport.city}
       </Tooltip>
-      <Popup>
-        <div style={{ fontSize: 12 }}>
-          <strong>{airport.iata}</strong>
-          <br />
-          {airport.name}
-          <br />
-          {airport.city}, {airport.country}
-        </div>
-      </Popup>
     </Marker>
   );
 }
@@ -130,7 +133,13 @@ function AirportBlob({ airport, role }: { airport: AirportRef; role: AirportRole
  * A highlighted endpoint outside the ambient set (a destination in Bogota, say)
  * is added here so clicking a flight always reveals where it is headed.
  */
-function AirportLayer({ highlighted }: { highlighted: readonly string[] }) {
+function AirportLayer({
+  highlighted,
+  onSelect,
+}: {
+  highlighted: readonly string[];
+  onSelect: (iata: string) => void;
+}) {
   const highlightedSet = new Set(highlighted);
   const shown = new Map<string, AirportRef>();
 
@@ -146,6 +155,7 @@ function AirportLayer({ highlighted }: { highlighted: readonly string[] }) {
         <AirportBlob
           key={airport.iata}
           airport={airport}
+          onSelect={onSelect}
           role={
             highlightedSet.has(airport.iata)
               ? "highlighted"
@@ -326,6 +336,7 @@ function createClusterIcon(cluster: any, stale: boolean): L.DivIcon {
 
 function FlightMapInner({
   flights,
+  onAirportSelect,
   now,
   onSelect,
   selectedId,
@@ -347,7 +358,7 @@ function FlightMapInner({
       <TileLayer attribution={basemap.attribution} url={basemap.url} />
 
       {/* Airport blobs (MIA, surrounding fields, selected flight endpoints) */}
-      <AirportLayer highlighted={highlightedAirports} />
+      <AirportLayer highlighted={highlightedAirports} onSelect={onAirportSelect} />
 
       {routeLine && (
         <Polyline

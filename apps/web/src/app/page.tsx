@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/site";
 import { MapView } from "@/components/map/MapView";
@@ -18,7 +19,9 @@ export default function MapPage() {
           explains how the data is captured.
         </p>
       </noscript>
-      <MapView />
+      <Suspense fallback={<p className="p-6">Loading map…</p>}>
+        <MapView />
+      </Suspense>
     </>
   );
 }
