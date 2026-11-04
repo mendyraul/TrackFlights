@@ -68,7 +68,10 @@ test("every existing airplane opens its own telemetry and schedule details", asy
   await showMapFilters(page);
   for (const f of rows.filter((f) => f.latitude != null && f.longitude != null)) {
     await test.step(`select ${ident(f)} / ${f.icao_hex}`, async () => {
+      await showMapFilters(page);
       await page.getByRole("searchbox").fill(f.icao_hex ?? ident(f));
+      const toggle = page.getByRole("button", { name: /^Filters/ });
+      if (await toggle.isVisible()) await toggle.click();
       const marker = page
         .locator(".leaflet-marker-icon[role=button]")
         .filter({ has: page.locator("svg") });

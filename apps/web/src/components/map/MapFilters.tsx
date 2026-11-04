@@ -23,6 +23,7 @@ export function MapFilters({ filters, onChange, operators, totalCount, mappableC
   const [open, setOpen] = useState(false);
   const active =
     (filters.source && filters.source !== "all") ||
+    filters.airports === "all" ||
     filters.phase !== "all" ||
     Boolean(filters.operator) ||
     Boolean(filters.search);
@@ -45,6 +46,17 @@ export function MapFilters({ filters, onChange, operators, totalCount, mappableC
         className={`${open ? "flex" : "hidden"} w-full flex-wrap items-end gap-2 rounded-lg border border-gray-700 bg-mia-panel/95 px-3 py-2 shadow-lg backdrop-blur-sm sm:flex sm:w-auto`}
       >
         <SourceFilter value={filters.source ?? "all"} onChange={(source) => update({ source })} />
+        <label className="flex flex-col gap-0.5 text-[11px] text-gray-400">
+          Airports
+          <select
+            className={control}
+            value={filters.airports ?? "scheduled"}
+            onChange={(e) => update({ airports: e.target.value as "scheduled" | "all" })}
+          >
+            <option value="scheduled">Planned schedule coverage</option>
+            <option value="all">All nearby airports</option>
+          </select>
+        </label>
         <label className="flex flex-col gap-0.5 text-[11px] text-gray-400">
           Phase
           <select

@@ -22,6 +22,7 @@ const FlightMap = dynamic(() => import("@/components/map/FlightMap"), {
 
 export interface MapFilterState {
   source?: "all" | "adsb1090" | "flightaware";
+  airports?: "scheduled" | "all";
   phase: FlightPhase | "all";
   operator: string;
   search: string;
@@ -42,6 +43,7 @@ export function MapView() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filters, setFilters] = useState<MapFilterState>({
     source: "all",
+    airports: "scheduled",
     phase: "all",
     operator: "",
     search: searchParams.get("flight") ?? "",
@@ -199,6 +201,7 @@ export function MapView() {
         <FlightMap
           now={now}
           onAirportSelect={onAirportSelect}
+          showOtherAirports={filters.airports === "all"}
           flights={mappable}
           onSelect={onSelect}
           selectedId={selectedId}

@@ -7,6 +7,8 @@ runs this suite in the `web / production browser` job.
 
 The suite checks:
 
+- The default five planned airports, the optional unlabeled nearby-airport layer, and airport dot alignment with aircraft at identical coordinates before and after viewport resizing.
+
 - Airport marker clicks (including a grounded aircraft overlapping the dot), desktop panels/mobile sheets, full airport pages, partial morning boards, independent official/observed statuses, expandable details, and unsupported-airport states.
 
 - Navigation through Map, Flights, Analytics, and Behind the Scenes, including active

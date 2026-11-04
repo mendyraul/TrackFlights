@@ -15,6 +15,7 @@ import L from "leaflet";
 import type { Flight } from "@/types/database";
 import { SURROUNDING_AIRPORTS, lookupAirport, type AirportRef } from "@/lib/airports";
 import { broadcastCallsign } from "@/lib/airlines";
+import { BOARD_AIRPORTS } from "@/lib/airport-board";
 import { basemap } from "@/lib/basemap";
 import "leaflet/dist/leaflet.css";
 
@@ -24,6 +25,7 @@ const DEFAULT_ZOOM = 7;
 interface FlightMapProps {
   flights: Flight[];
   onAirportSelect: (iata: string) => void;
+  showOtherAirports: boolean;
   now: number;
   onSelect: (flight: Flight) => void;
   selectedId: string | null;
@@ -84,20 +86,16 @@ const AIRPORT_STYLE: Record<
   highlighted: { size: 16, color: "#f59e0b", glow: 16, opacity: 1 },
 };
 
-function createAirportIcon(role: AirportRole, code: string): L.DivIcon {
+function createAirportIcon(role: AirportRole, code: string, labeled: boolean): L.DivIcon {
   const { size, color, glow, opacity } = AIRPORT_STYLE[role];
-  const ring =
-    role === "highlighted" ? `<span class="mia-airport-ring" style="color:${color};"></span>` : "";
-
+  // The geographic point is always (22,22). Labels extend right without moving it.
   return L.divIcon({
-    className: "",
-    iconSize: [size + 54, 44],
-    iconAnchor: [size / 2, 22],
-    html: `<div aria-hidden="true" style="position:relative;width:${size + 54}px;height:44px;">
-      <span style="position:absolute;left:${size + 4}px;top:6px;padding:8px 4px;font-size:11px;font-weight:bold;color:#b8e8ff;background:rgba(10,10,26,0.85);border-radius:4px;">${code}</span>
-      <div style="position:absolute;left:0;top:${(44 - size) / 2}px;width:${size}px;height:${size}px;">
-      ${ring}
-      <span style="display:block;width:100%;height:100%;background:${color};border-radius:50%;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 ${glow}px ${color};opacity:${opacity};"></span></div>
+    className: "mia-airport-marker",
+    iconSize: [labeled ? 92 : 44, 44],
+    iconAnchor: [22, 22],
+    html: `<div aria-hidden="true" style="position:relative;width:100%;height:44px;">
+      <span data-airport-dot style="position:absolute;left:22px;top:22px;transform:translate(-50%,-50%);box-sizing:border-box;width:${size}px;height:${size}px;background:${color};border-radius:50%;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 ${glow}px ${color};opacity:${opacity};"></span>
+      ${labeled ? `<span data-airport-label style="position:absolute;left:36px;top:6px;padding:8px 4px;font-size:11px;font-weight:bold;color:#b8e8ff;background:rgba(10,10,26,0.85);border-radius:4px;">${code}</span>` : ""}
     </div>`,
   });
 }
@@ -114,7 +112,7 @@ function AirportBlob({
   return (
     <Marker
       position={[airport.lat, airport.lon]}
-      icon={createAirportIcon(role, airport.iata)}
+      icon={createAirportIcon(role, airport.iata, BOARD_AIRPORTS.includes(airport.iata))}
       // Keep blobs beneath aircraft markers so they never swallow a plane click.
       zIndexOffset={-500}
       keyboard
@@ -136,14 +134,19 @@ function AirportBlob({
 function AirportLayer({
   highlighted,
   onSelect,
+  showOtherAirports,
 }: {
+  showOtherAirports: boolean;
   highlighted: readonly string[];
   onSelect: (iata: string) => void;
 }) {
   const highlightedSet = new Set(highlighted);
   const shown = new Map<string, AirportRef>();
 
-  for (const airport of SURROUNDING_AIRPORTS) shown.set(airport.iata, airport);
+  for (const airport of SURROUNDING_AIRPORTS) {
+    if (showOtherAirports || BOARD_AIRPORTS.includes(airport.iata))
+      shown.set(airport.iata, airport);
+  }
   for (const code of highlightedSet) {
     const airport = lookupAirport(code);
     if (airport) shown.set(airport.iata, airport);
@@ -310,6 +313,23 @@ function MapBoundsUpdater({ flights }: { flights: Flight[] }) {
   return null;
 }
 
+function MapSizeObserver() {
+  const map = useMap();
+  useEffect(() => {
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => map.invalidateSize({ pan: false, animate: false }));
+    });
+    observer.observe(map.getContainer());
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [map]);
+  return null;
+}
+
 // ── Cluster Icon ───────────────────────────────────────────────────────
 
 function createClusterIcon(cluster: any, stale: boolean): L.DivIcon {
@@ -337,6 +357,7 @@ function createClusterIcon(cluster: any, stale: boolean): L.DivIcon {
 function FlightMapInner({
   flights,
   onAirportSelect,
+  showOtherAirports,
   now,
   onSelect,
   selectedId,
@@ -354,11 +375,16 @@ function FlightMapInner({
       // The default top-left zoom buttons sat on top of the filter panel.
       zoomControl={false}
     >
+      <MapSizeObserver />
       <ZoomControl position="bottomright" />
       <TileLayer attribution={basemap.attribution} url={basemap.url} />
 
       {/* Airport blobs (MIA, surrounding fields, selected flight endpoints) */}
-      <AirportLayer highlighted={highlightedAirports} onSelect={onAirportSelect} />
+      <AirportLayer
+        highlighted={highlightedAirports}
+        onSelect={onAirportSelect}
+        showOtherAirports={showOtherAirports}
+      />
 
       {routeLine && (
         <Polyline
