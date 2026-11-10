@@ -32,7 +32,7 @@
 > DNS entirely — the web app shows 503s from `/api/*` routes and the ingestor
 > logs connection errors. Restore the project from the Supabase dashboard.
 
-## Ingestor (Raspberry Pi) — two services
+## Ingestor — two services (Raspberry Pi or a Linux container)
 
 Production uses separate receiver observations, morning schedule baselines, and inferred progress; the legacy `flights_current` table remains for compatibility:
 
@@ -62,6 +62,69 @@ sudo systemctl enable --now mia-ingestor-adsb mia-ingestor-aeroapi
 journalctl -u mia-ingestor-adsb -f
 journalctl -u mia-ingestor-aeroapi -f
 ```
+
+### Option A2: a Proxmox LXC (or any small Linux VM)
+
+The ADS-B ingestor needs Python 3.11+, outbound HTTPS to Supabase and the
+configured weather/heartbeat endpoints, and HTTP access to the dump1090 feeder.
+It can run separately from the antenna's Pi. Start an unprivileged Debian 12
+LXC with 1 vCPU, 512 MB RAM and 8 GB disk, then measure resource usage; these
+are starting allocations, not a verified capacity guarantee. A small VM is
+also an option. Check systemd unit hardening against the installed Proxmox/LXC
+version before enabling container features such as nesting; do not enable
+nesting merely because the workload uses Python. See the
+[Proxmox container documentation](https://pve.proxmox.com/pve-docs/chapter-pct.html).
+The separate AeroAPI service also needs its configured provider credentials
+and reviewed budget; this procedure does not enable it.
+
+```bash
+# In the container, as root
+apt-get install -y git python3-venv python3-pip
+useradd --system --create-home --home-dir /opt/trackflights --shell /usr/sbin/nologin ingestor
+runuser -u ingestor -- git clone https://github.com/mendyraul/TrackFlights.git /opt/trackflights/repo
+cd /opt/trackflights/repo/apps/ingestor
+runuser -u ingestor -- python3 -m venv venv
+runuser -u ingestor -- venv/bin/pip install -r requirements.txt
+```
+
+Copy the repository-root `.env` from the old host **directly host to host** (it holds the
+service-role key, so don't paste it anywhere), then `chmod 600` it, owned by
+`ingestor`. Create `.env.adsb` from `infra/systemd/env.adsb.example` with
+`ADSB_JSON_URL` pointing at the feeder's IP. Install the units from
+`infra/systemd/`, changing `User`/`Group` to `ingestor` and the paths to
+`/opt/trackflights/repo`.
+
+Cut over without overlap. Two ADS-B ingestors would both write:
+
+```bash
+# old host
+sudo systemctl disable --now mia-ingestor mia-ingestor-adsb
+# container
+# First confirm both old ADS-B writers are inactive, including any non-systemd
+# process/container found in inventory. Stop here if that cannot be established.
+systemctl daemon-reload
+systemctl enable --now mia-ingestor-adsb
+journalctl -u mia-ingestor-adsb -f        # "ADS-B snapshot ... received=N" and "Poll cycle complete"
+curl -s https://<your-vercel-app>/api/healthz/data   # "freshness":"live"
+```
+
+### Upgrading an existing host
+
+1. **Apply new Supabase migrations first.** Newer code writes tables that
+   older databases don't have. Those writes fail with `PGRST205 ... schema
+   cache`, while flight upserts keep working. Run `supabase db push`, or paste
+   the new files from `supabase/migrations/` into the SQL editor in order.
+2. `git pull` as the service user, then `venv/bin/pip install -r requirements.txt`.
+3. **Check `.env` for retired keys.** Settings read `.env` directly and
+   reject keys they don't define (pydantic `extra_forbidden`). For example,
+   `PREDICTIONS_ENABLED` and `ANOMALY_DETECTION_ENABLED` were removed and now
+   stop the service at start. Values passed by systemd `EnvironmentFile`
+   lines are only ignored.
+4. Restart the intended unit and watch the first few cycles. Confirm data freshness
+   and that only the intended writer is active.
+
+The LXC move was reported on 2026-11-07. This checklist is deployment guidance,
+not a fresh verification of the running ingestor or its current host.
 
 ### Option B: Docker
 
