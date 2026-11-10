@@ -65,11 +65,17 @@ journalctl -u mia-ingestor-aeroapi -f
 
 ### Option A2: a Proxmox LXC (or any small Linux VM)
 
-The ingestor only needs Python 3.11+, outbound HTTPS to Supabase, and HTTP to
-the dump1090 feeder, so it doesn't have to run on the Pi with the antenna. A
-Debian 12 unprivileged LXC with 1 vCPU, 512 MB of RAM and 8 GB of disk is
-plenty. Turn on `nesting=1`: Debian 12's systemd expects it, and the units use
-`PrivateTmp`/`NoNewPrivileges`.
+The ADS-B ingestor needs Python 3.11+, outbound HTTPS to Supabase and the
+configured weather/heartbeat endpoints, and HTTP access to the dump1090 feeder.
+It can run separately from the antenna's Pi. Start an unprivileged Debian 12
+LXC with 1 vCPU, 512 MB RAM and 8 GB disk, then measure resource usage; these
+are starting allocations, not a verified capacity guarantee. A small VM is
+also an option. Check systemd unit hardening against the installed Proxmox/LXC
+version before enabling container features such as nesting; do not enable
+nesting merely because the workload uses Python. See the
+[Proxmox container documentation](https://pve.proxmox.com/pve-docs/chapter-pct.html).
+The separate AeroAPI service also needs its configured provider credentials
+and reviewed budget; this procedure does not enable it.
 
 ```bash
 # In the container, as root
@@ -81,7 +87,7 @@ runuser -u ingestor -- python3 -m venv venv
 runuser -u ingestor -- venv/bin/pip install -r requirements.txt
 ```
 
-Copy `.env` from the old host **directly host to host** (it holds the
+Copy the repository-root `.env` from the old host **directly host to host** (it holds the
 service-role key, so don't paste it anywhere), then `chmod 600` it, owned by
 `ingestor`. Create `.env.adsb` from `infra/systemd/env.adsb.example` with
 `ADSB_JSON_URL` pointing at the feeder's IP. Install the units from
@@ -94,6 +100,9 @@ Cut over without overlap. Two ADS-B ingestors would both write:
 # old host
 sudo systemctl disable --now mia-ingestor mia-ingestor-adsb
 # container
+# First confirm both old ADS-B writers are inactive, including any non-systemd
+# process/container found in inventory. Stop here if that cannot be established.
+systemctl daemon-reload
 systemctl enable --now mia-ingestor-adsb
 journalctl -u mia-ingestor-adsb -f        # "ADS-B snapshot ... received=N" and "Poll cycle complete"
 curl -s https://<your-vercel-app>/api/healthz/data   # "freshness":"live"
@@ -111,7 +120,11 @@ curl -s https://<your-vercel-app>/api/healthz/data   # "freshness":"live"
    `PREDICTIONS_ENABLED` and `ANOMALY_DETECTION_ENABLED` were removed and now
    stop the service at start. Values passed by systemd `EnvironmentFile`
    lines are only ignored.
-4. Restart the unit and watch the first few cycles.
+4. Restart the intended unit and watch the first few cycles. Confirm data freshness
+   and that only the intended writer is active.
+
+The LXC move was reported on 2026-11-07. This checklist is deployment guidance,
+not a fresh verification of the running ingestor or its current host.
 
 ### Option B: Docker
 
