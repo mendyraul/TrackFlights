@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     aeroapi_board_cost_per_page_usd: float = 0.005
     aeroapi_cost_per_query_usd: float = 0.02
     aeroapi_max_pages: int = 1  # 15 results per page; each page bills one query
+    # Client-side spacing between AeroAPI calls, in result sets (pages) per
+    # minute. Bursting the morning boards hits HTTP 429. 0 disables pacing.
+    aeroapi_result_sets_per_minute: float = 6.0
     aeroapi_budget_state_path: str = str(_PROJECT_ROOT / ".state" / "aeroapi_budget.json")
 
     # ADS-B (self-hosted readsb/dump1090 feed on the local Pi)
@@ -186,6 +189,8 @@ def validate_runtime_settings() -> None:
             errors.append("AeroAPI endpoint prices must be positive")
         if settings.aeroapi_max_pages <= 0:
             errors.append("aeroapi_max_pages must be > 0")
+        if settings.aeroapi_result_sets_per_minute < 0:
+            errors.append("aeroapi_result_sets_per_minute must be >= 0")
 
     if settings.flight_provider == "adsb1090":
         if not settings.adsb_json_url:

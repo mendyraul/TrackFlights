@@ -13,6 +13,7 @@ import structlog
 from src.config import settings
 from src.providers.base_provider import BaseFlightProvider
 from src.services.aeroapi_budget import AeroApiBudget
+from src.services.aeroapi_pacer import pacer
 
 logger = structlog.get_logger()
 
@@ -47,6 +48,7 @@ class FlightAwareProvider(BaseFlightProvider):
         url = f"{self.base_url}/airports/{airport_code}/flights/{board}"
         headers = {"x-apikey": self.api_key, "Accept": "application/json"}
 
+        await pacer.wait(int(params.get("max_pages", 1)))
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.get(url, headers=headers, params=params)
             resp.raise_for_status()
