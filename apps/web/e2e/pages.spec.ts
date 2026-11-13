@@ -329,7 +329,12 @@ test("analytics renders live counts, charts, weather, history, forecast and aler
   ])
     await expect(page.getByText(value, { exact: true })).toBeVisible();
   await expect(page.locator(".recharts-wrapper > .recharts-surface")).toHaveCount(5);
-  await expect(page.getByText("Nov 3", { exact: true })).toBeVisible();
+  // Scope to the x-axis: a Recharts tooltip can also render "Nov 3" and trip strict mode.
+  await expect(
+    page.locator(".recharts-xAxis .recharts-cartesian-axis-tick-value").getByText("Nov 3", {
+      exact: true,
+    })
+  ).toBeVisible();
   await expect(page.getByText(/off by 2.5 aircraft\/hour/)).toBeVisible();
   await expectNoOverflow(page);
 });
