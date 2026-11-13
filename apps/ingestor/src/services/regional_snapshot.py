@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import httpx
 
 from src.config import settings
+from src.services.aeroapi_pacer import pacer
 from src.services.observations import write_observations
 
 
@@ -17,6 +18,7 @@ async def fetch_regional_snapshot(provider, client):
     ):
         return
     south, west, north, east = (float(v) for v in settings.aeroapi_bbox.split(","))
+    await pacer.wait(4)
     async with httpx.AsyncClient(timeout=30) as http:
         response = await http.get(
             provider.base_url + "/flights/search",
