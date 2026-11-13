@@ -279,7 +279,11 @@ export function FlightBoard() {
                   <td className="px-3 py-2.5 font-mono font-semibold text-white">
                     {a.callsign ?? <span className="text-gray-400">—</span>}
                     <div className="font-sans text-xs">
-                      <SourceLabel source={a.flight.data_source} />
+                      <SourceLabel
+                        source={a.flight.data_source}
+                        updatedAt={a.flight.updated_at}
+                        now={now}
+                      />
                     </div>
                   </td>
                   <td className="px-3 py-2.5 font-mono text-gray-300">{a.hex ?? "—"}</td>

@@ -1,4 +1,5 @@
 "use client";
+import { LAST_SEEN_COLOR, formatAge, isLastSeen } from "@/lib/freshness";
 export type SourceFilterValue = "all" | "adsb1090" | "flightaware";
 export function SourceFilter({
   value,
@@ -22,7 +23,27 @@ export function SourceFilter({
     </label>
   );
 }
-export function SourceLabel({ source }: { source?: string }) {
+export function SourceLabel({
+  source,
+  updatedAt,
+  now,
+}: {
+  source?: string;
+  /** With `now`, receiver rows older than the tracked window read "last seen". */
+  updatedAt?: string;
+  now?: number;
+}) {
+  if (
+    updatedAt !== undefined &&
+    now !== undefined &&
+    isLastSeen({ data_source: source, updated_at: updatedAt }, now)
+  ) {
+    return (
+      <span style={{ color: LAST_SEEN_COLOR }}>
+        My receiver · last seen {formatAge(now - Date.parse(updatedAt))}
+      </span>
+    );
+  }
   return (
     <span className={source === "flightaware" ? "text-[#FFFF00]" : "text-[#39FF14]"}>
       {source === "flightaware" ? "FlightAware snapshot" : "My receiver"}

@@ -4,6 +4,7 @@ import { SourceFilter } from "@/components/ui/SourceFilter";
 import { useState } from "react";
 import type { MapFilterState } from "@/components/map/MapView";
 import { PHASE_LABEL, type FlightPhase } from "@/lib/phase";
+import { LAST_SEEN_COLOR } from "@/lib/freshness";
 
 interface Props {
   filters: MapFilterState;
@@ -11,13 +12,22 @@ interface Props {
   operators: string[];
   totalCount: number;
   mappableCount: number;
+  /** Receiver positions no longer being heard (drawn grey). */
+  lastSeenCount?: number;
 }
 
 const PHASES: FlightPhase[] = ["arriving", "departing", "overflight", "other-airport", "on-ground"];
 const control =
   "rounded border border-gray-700 bg-mia-dark px-2 py-1.5 text-sm text-gray-200 focus:border-mia-accent focus:outline-none";
 
-export function MapFilters({ filters, onChange, operators, totalCount, mappableCount }: Props) {
+export function MapFilters({
+  filters,
+  onChange,
+  operators,
+  totalCount,
+  mappableCount,
+  lastSeenCount = 0,
+}: Props) {
   const update = (patch: Partial<MapFilterState>) => onChange({ ...filters, ...patch });
   // Collapsed by default on phones so the controls don't cover half the map.
   const [open, setOpen] = useState(false);
@@ -105,6 +115,12 @@ export function MapFilters({ filters, onChange, operators, totalCount, mappableC
         {mappableCount} on map · {totalCount} total
         <span className="ml-3 text-[#39FF14]">● My receiver</span> ·{" "}
         <span className="text-[#FFFF00]">● FlightAware daily snapshot</span>
+        {lastSeenCount > 0 && (
+          <>
+            {" "}
+            · <span style={{ color: LAST_SEEN_COLOR }}>● Last seen by my receiver</span>
+          </>
+        )}
       </div>
     </div>
   );

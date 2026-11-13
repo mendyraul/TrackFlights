@@ -68,7 +68,7 @@ export function FlightDetailSidebar({ aircraft: a, now, isUpdating, onClose }: P
               <h2 className="truncate font-mono text-xl font-bold text-mia-accent">{a.ident}</h2>
               <p className="truncate text-sm text-gray-300">{a.operator.label}</p>
               <p className="text-xs">
-                <SourceLabel source={f.data_source} />
+                <SourceLabel source={f.data_source} updatedAt={f.updated_at} now={now} />
               </p>
               {f.data_source === "flightaware" && (
                 <p className="text-xs text-gray-400">

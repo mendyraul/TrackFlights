@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isLastSeen,
   LIVE_MAX_AGE_MS,
   OFFLINE_AFTER_MS,
   classifyFreshness,
@@ -66,5 +67,15 @@ describe("freshness", () => {
       })
     ).toBe("offline");
     expect(trackedNow([{ updated_at: new Date(future).toISOString() }], NOW)).toEqual([]);
+  });
+
+  it("marks receiver rows past the tracked window as last seen, never FlightAware rows", () => {
+    const now = Date.parse("2026-11-13T02:00:00Z");
+    const at = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOString();
+    expect(isLastSeen({ data_source: "adsb1090", updated_at: at(1) }, now)).toBe(false);
+    expect(isLastSeen({ data_source: "adsb1090", updated_at: at(6) }, now)).toBe(true);
+    expect(isLastSeen({ updated_at: at(180) }, now)).toBe(true);
+    expect(isLastSeen({ data_source: "flightaware", updated_at: at(180) }, now)).toBe(false);
+    expect(isLastSeen({ data_source: "adsb1090", updated_at: "not a date" }, now)).toBe(false);
   });
 });
