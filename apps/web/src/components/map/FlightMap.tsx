@@ -17,6 +17,7 @@ import { SURROUNDING_AIRPORTS, lookupAirport, type AirportRef } from "@/lib/airp
 import { broadcastCallsign } from "@/lib/airlines";
 import { BOARD_AIRPORTS } from "@/lib/airport-board";
 import { basemap } from "@/lib/basemap";
+import { LAST_SEEN_COLOR, formatAge, isLastSeen } from "@/lib/freshness";
 import "leaflet/dist/leaflet.css";
 
 const MIA_CENTER: [number, number] = [25.7959, -80.287];
@@ -47,10 +48,11 @@ function createAircraftIcon(
   isSelected: boolean,
   isChanged: boolean,
   stale = false,
-  source = "adsb1090"
+  source = "adsb1090",
+  lastSeen = false
 ): L.DivIcon {
   const rotation = heading ?? 0;
-  const color = source === "flightaware" ? "#FFFF00" : "#39FF14";
+  const color = source === "flightaware" ? "#FFFF00" : lastSeen ? LAST_SEEN_COLOR : "#39FF14";
   const size = isSelected ? 28 : 22;
   const glow = isSelected
     ? "drop-shadow(0 0 6px white)"
@@ -191,7 +193,8 @@ function SmoothMarker({
 }) {
   const markerRef = useRef<L.Marker>(null);
   const prevPos = useRef<[number, number]>([flight.latitude!, flight.longitude!]);
-  const title = markerTitle(flight);
+  const lastSeen = isLastSeen(flight, now);
+  const title = markerTitle(flight, now);
 
   useEffect(() => {
     const marker = markerRef.current;
@@ -236,7 +239,8 @@ function SmoothMarker({
         flight.data_source === "flightaware"
           ? now - Date.parse(flight.updated_at) > 300_000
           : stale,
-        flight.data_source
+        flight.data_source,
+        lastSeen
       )
     );
   }, [
@@ -247,6 +251,7 @@ function SmoothMarker({
     isSelected,
     isChanged,
     stale,
+    lastSeen,
     flight.data_source,
     flight.updated_at,
     now,
@@ -263,7 +268,8 @@ function SmoothMarker({
         flight.data_source === "flightaware"
           ? now - Date.parse(flight.updated_at) > 300_000
           : stale,
-        flight.data_source
+        flight.data_source,
+        lastSeen
       )}
       // Details open in the side panel / bottom sheet, so no popup here.
       // Leaflet uses title as the focusable marker's accessible name.
@@ -279,7 +285,7 @@ function SmoothMarker({
   );
 }
 
-function markerTitle(flight: Flight): string {
+function markerTitle(flight: Flight, now: number): string {
   const ident = broadcastCallsign(flight) ?? flight.icao_hex ?? flight.flight_iata;
   const alt =
     flight.altitude_ft === 0
@@ -287,7 +293,7 @@ function markerTitle(flight: Flight): string {
       : flight.altitude_ft != null
         ? `${flight.altitude_ft.toLocaleString()} ft`
         : "altitude unknown";
-  return `${ident}, ${alt}, ${flight.data_source === "flightaware" ? "FlightAware historical snapshot, position " + flight.updated_at : "My receiver"}`;
+  return `${ident}, ${alt}, ${flight.data_source === "flightaware" ? "FlightAware historical snapshot, position " + flight.updated_at : isLastSeen(flight, now) ? "My receiver, last seen " + formatAge(now - Date.parse(flight.updated_at)) : "My receiver"}`;
 }
 
 // ── Bounds Updater ─────────────────────────────────────────────────────

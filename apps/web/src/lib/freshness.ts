@@ -70,6 +70,22 @@ export function trackedNow<T extends HasUpdatedAt>(rows: readonly T[], now: numb
   });
 }
 
+/** Grey for receiver positions that are no longer being heard. */
+export const LAST_SEEN_COLOR = "#9CA3AF";
+
+/**
+ * A receiver row older than the tracked window: a last known position, not a
+ * live one. FlightAware rows are never "last seen"; they have their own label.
+ */
+export function isLastSeen(
+  row: HasUpdatedAt & { data_source?: string | null },
+  now: number
+): boolean {
+  if (row.data_source === "flightaware") return false;
+  const age = now - Date.parse(row.updated_at);
+  return Number.isFinite(age) && age > TRACKED_WINDOW_MS;
+}
+
 /** "12s ago", "4m ago", "3h ago", "92d ago". */
 export function formatAge(ms: number): string {
   const seconds = Math.max(0, Math.floor(ms / 1000));

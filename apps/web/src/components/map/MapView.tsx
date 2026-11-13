@@ -13,6 +13,7 @@ import { FlightDetailSidebar } from "@/components/map/FlightDetailSidebar";
 import { MapFilters } from "@/components/map/MapFilters";
 import { DataStatusBanner } from "@/components/ui/DataStatusBanner";
 import { toAircraft, visibleFlights } from "@/lib/aircraft";
+import { isLastSeen } from "@/lib/freshness";
 import type { FlightPhase } from "@/lib/phase";
 
 const FlightMap = dynamic(() => import("@/components/map/FlightMap"), {
@@ -179,6 +180,7 @@ export function MapView() {
           operators={operators}
           totalCount={filtered.length}
           mappableCount={mappable.length}
+          lastSeenCount={mappable.filter((f) => isLastSeen(f, now)).length}
         />
 
         {loading ? (
