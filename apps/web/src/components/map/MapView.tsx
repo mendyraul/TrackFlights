@@ -84,9 +84,9 @@ export function MapView() {
 
   const selected = selectedId ? (aircraft.find((a) => a.flight.id === selectedId) ?? null) : null;
 
-  // Route line and endpoint highlights only exist for rows with schedule data
-  // (the optional AeroAPI feed). Coordinates come from the bundled airport
-  // table, so selecting a flight never costs a database read.
+  // Draw the remaining route from the latest aircraft position to its known
+  // destination. Highlight both known airports independently of the line.
+  // Airport coordinates come from the bundled table, without a database read.
   //
   // Everything handed to <FlightMap> is memoized: the page re-renders every
   // second (the "updated Xs ago" clock), and fresh arrays/callbacks would
@@ -94,13 +94,16 @@ export function MapView() {
   const { highlightedAirports, routeLine } = useMemo(() => {
     const originCode = selected?.flight.origin_iata ?? null;
     const destinationCode = selected?.flight.destination_iata ?? null;
-    const origin = originCode ? airportCoords(originCode) : null;
     const destination = destinationCode ? airportCoords(destinationCode) : null;
+    const position: [number, number] | null =
+      selected?.flight.latitude != null && selected.flight.longitude != null
+        ? [selected.flight.latitude, selected.flight.longitude]
+        : null;
     return {
       highlightedAirports: [originCode, destinationCode].filter((code): code is string =>
         Boolean(code)
       ),
-      routeLine: origin && destination ? { origin, destination } : null,
+      routeLine: position && destination ? { position, destination } : null,
     };
   }, [selected]);
   const onSelect = useCallback((f: Flight) => {

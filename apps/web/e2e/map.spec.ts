@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("production map mounts its lazy module and immediately draws a selected route", async ({
+test("production map draws the selected route from the aircraft's current position", async ({
   page,
 }) => {
   const renderErrors: string[] = [];
@@ -52,6 +52,20 @@ test("production map mounts its lazy module and immediately draws a selected rou
   await page.getByRole("button", { name: /^TST101,/ }).click();
   await expect(page.getByText("TST101", { exact: true }).first()).toBeVisible();
   await expect(page.locator('path[stroke-dasharray="8 8"]')).toBeVisible();
+  // Compare screen coordinates so this catches an airport-to-airport line on
+  // both desktop and mobile, regardless of the map's initial zoom and bounds.
+  const routeStartDistance = await page.evaluate(() => {
+    const line = document.querySelector<SVGPathElement>('path[stroke-dasharray="8 8"]')!;
+    const marker = document.querySelector<HTMLElement>('.leaflet-marker-icon[title^="TST101,"]')!;
+    const start = line.getPointAtLength(0);
+    const screenStart = new DOMPoint(start.x, start.y).matrixTransform(line.getScreenCTM()!);
+    const aircraft = marker.getBoundingClientRect();
+    return Math.hypot(
+      screenStart.x - (aircraft.left + aircraft.width / 2),
+      screenStart.y - (aircraft.top + aircraft.height / 2)
+    );
+  });
+  expect(routeStartDistance).toBeLessThan(2);
   expect(renderErrors).toEqual([]);
 });
 

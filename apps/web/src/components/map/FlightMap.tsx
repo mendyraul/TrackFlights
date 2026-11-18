@@ -31,7 +31,7 @@ interface FlightMapProps {
   onSelect: (flight: Flight) => void;
   selectedId: string | null;
   routeLine: {
-    origin: [number, number];
+    position: [number, number];
     destination: [number, number];
   } | null;
   recentlyChanged: Set<string>;
@@ -394,7 +394,7 @@ function FlightMapInner({
 
       {routeLine && (
         <Polyline
-          positions={[routeLine.origin, routeLine.destination]}
+          positions={[routeLine.position, routeLine.destination]}
           pathOptions={{
             color: "#22d3ee",
             weight: 3,
